@@ -1,0 +1,237 @@
+'use client'
+
+import { useRouter } from 'next/navigation'
+import { fmtTime, fmtDateTime, waNumber } from '@/lib/format'
+import type { Contractor, Driver, Organization, Trip, Vehicle } from '@/lib/types'
+import { assignTrip, setTripStatus } from './actions'
+
+type Lookups = { drivers: Driver[]; vehicles: Vehicle[]; organizations: Organization[]; contractors: Contractor[] }
+
+// The 5-stage workflow. doneCount = how many stages a status has completed.
+const FLOW = ['Assign', 'Dispatch', 'Confirm', 'En route', 'Done'] as const
+const DONE: Record<string, number> = {
+  booked: 0, assigned: 1, dispatched: 2, confirmed: 3, enroute: 4, completed: 5, cancelled: 0,
+}
+const STATUS_LABEL: Record<string, string> = {
+  booked: 'Unassigned', assigned: 'Assigned', dispatched: 'Dispatched', confirmed: 'Confirmed',
+  enroute: 'En route', completed: 'Completed', cancelled: 'Cancelled',
+}
+const STATUS_COLOR: Record<string, string> = {
+  booked: 'var(--danger)', assigned: 'var(--gold)', dispatched: 'var(--accent-mid)',
+  confirmed: 'var(--accent)', enroute: 'var(--accent)', completed: 'var(--ink3)', cancelled: 'var(--ink3)',
+}
+
+export default function DispatchBoard({ day, trips, lookups }: { day: string; trips: Trip[]; lookups: Lookups }) {
+  const router = useRouter()
+  const { drivers, vehicles, organizations, contractors } = lookups
+  const driver = (id: string | null) => drivers.find((d) => d.id === id) ?? null
+  const plate = (id: string | null) => vehicles.find((v) => v.id === id)?.plate ?? null
+  const orgName = (id: string | null) => organizations.find((o) => o.id === id)?.name ?? ''
+  const conName = (id: string | null) => contractors.find((c) => c.id === id)?.name ?? ''
+
+  const active = trips.filter((t) => t.status !== 'completed' && t.status !== 'cancelled')
+  const sorted = [...active].sort((a, b) => (DONE[a.status] - DONE[b.status]) || (a.flight_time ?? a.trip_date).localeCompare(b.flight_time ?? b.trip_date))
+  const count = (s: string) => trips.filter((t) => t.status === s).length
+
+  function shiftDay(delta: number) {
+    const d = new Date(day); d.setDate(d.getDate() + delta)
+    router.push(`/dispatch?d=${d.toISOString().slice(0, 10)}`)
+  }
+
+  return (
+    <>
+      {/* Workflow legend — explains the three distinct actions */}
+      <div className="card animate-fadeup" style={{ padding: '14px 18px', marginBottom: 16 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ink3)' }}>How it works</span>
+          <Legend n="1" word="Assign" desc="pick the driver & vehicle" />
+          <Arrow />
+          <Legend n="2" word="Dispatch" desc="send the job to the driver" />
+          <Arrow />
+          <Legend n="3" word="Confirm" desc="driver accepts it" />
+          <Arrow />
+          <Legend n="4" word="Start → Done" desc="trip runs & closes" />
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <button className="btn-ghost" style={navBtn} onClick={() => shiftDay(-1)}>‹</button>
+        <input type="date" className="input" value={day} onChange={(e) => router.push(`/dispatch?d=${e.target.value}`)} style={{ width: 168 }} />
+        <button className="btn-ghost" style={navBtn} onClick={() => shiftDay(1)}>›</button>
+        <div style={{ flex: 1 }} />
+        <div style={{ fontSize: 13.5, color: 'var(--ink2)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {count('booked') > 0 && <Tag color="var(--danger)">{count('booked')} to assign</Tag>}
+          {count('assigned') > 0 && <Tag color="var(--gold)">{count('assigned')} to dispatch</Tag>}
+          {count('dispatched') > 0 && <Tag color="var(--accent-mid)">{count('dispatched')} awaiting confirm</Tag>}
+          {count('completed') > 0 && <Tag color="var(--ink3)">{count('completed')} done</Tag>}
+        </div>
+      </div>
+
+      {sorted.length === 0 && <div className="card" style={{ padding: 36, textAlign: 'center', color: 'var(--ink3)' }}>{count('completed') > 0 ? 'All jobs for this day are completed. ✓' : 'No jobs for this day.'}</div>}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 14 }}>
+        {sorted.map((t) => {
+          const d = driver(t.driver_id)
+          const doneCount = DONE[t.status] ?? 0
+          const msg = `Hi ${d?.name ?? ''}, trip for ${t.client_name}: ${t.pickup ?? ''} → ${t.dropoff ?? ''}${t.flight_time ? ` at ${fmtTime(t.flight_time)}` : ''}${t.flight_no ? ` (flight ${t.flight_no})` : ''}. Vehicle ${plate(t.vehicle_id) ?? ''}. Please confirm.`
+
+          return (
+            <div key={t.id} className="card card-hover animate-fadeup" style={{ padding: 0, overflow: 'hidden' }}>
+              {/* status accent bar */}
+              <div style={{ height: 3, background: STATUS_COLOR[t.status] }} />
+              <div style={{ padding: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 15.5 }}>{t.client_name}</div>
+                    <div style={{ fontSize: 13, color: 'var(--ink2)', marginTop: 2 }}>{(t.pickup || '—')} → {(t.dropoff || '—')}</div>
+                  </div>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: STATUS_COLOR[t.status], background: 'var(--surface2)', padding: '3px 9px', borderRadius: 'var(--radius-pill)', whiteSpace: 'nowrap' }}>{STATUS_LABEL[t.status]}</span>
+                </div>
+
+                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12.5, color: 'var(--ink3)', margin: '9px 0 12px' }}>
+                  {t.flight_no && <span>✈ {t.flight_no} · {t.flight_time ? fmtTime(t.flight_time) : ''}</span>}
+                  <span>{conName(t.contractor_id)}{orgName(t.organization_id) ? ` · ${orgName(t.organization_id)}` : ''}</span>
+                </div>
+
+                {/* Stepper */}
+                <Stepper doneCount={doneCount} />
+
+                {/* Step-specific action area */}
+                <div style={{ marginTop: 14 }}>{renderAction()}</div>
+              </div>
+            </div>
+          )
+
+          function renderAction() {
+            if (t.status === 'booked') {
+              return (
+                <ActionBlock step="1" title="Assign a driver & vehicle" hint="Choose who runs this job.">
+                  <form action={assignTrip} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <input type="hidden" name="id" value={t.id} />
+                    <select name="driver_id" className="input" required style={selStyle} defaultValue=""><option value="" disabled>Driver…</option>{drivers.map((dr) => <option key={dr.id} value={dr.id}>{dr.name}</option>)}</select>
+                    <select name="vehicle_id" className="input" required style={selStyle} defaultValue=""><option value="" disabled>Vehicle…</option>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate}</option>)}</select>
+                    <button type="submit" className="btn-primary" style={actBtn}>Assign →</button>
+                  </form>
+                </ActionBlock>
+              )
+            }
+            const who = <div style={{ fontSize: 13.5, marginBottom: 4 }}><strong>{plate(t.vehicle_id) ?? '—'}</strong> · {d?.name ?? 'No driver'}{t.assigned_by ? <span style={{ color: 'var(--ink3)' }}> · by {t.assigned_by}{t.assigned_at ? `, ${fmtDateTime(t.assigned_at)}` : ''}</span> : null}</div>
+            const contact = d?.phone ? (
+              <div style={{ display: 'flex', gap: 8, margin: '8px 0', flexWrap: 'wrap' }}>
+                <a href={`tel:${d.phone.replace(/\s/g, '')}`} className="btn-ghost" style={contactBtn}>📞 Call</a>
+                <a href={`https://wa.me/${waNumber(d.phone)}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" className="btn-ghost" style={{ ...contactBtn, color: '#1DA851', borderColor: '#1DA851' }}>💬 WhatsApp</a>
+                <a href={`sms:${d.phone.replace(/\s/g, '')}?body=${encodeURIComponent(msg)}`} className="btn-ghost" style={contactBtn}>✉ SMS</a>
+              </div>
+            ) : null
+
+            if (t.status === 'assigned') {
+              return (
+                <ActionBlock step="2" title="Dispatch to the driver" hint="Send the trip details, then mark it dispatched.">
+                  {who}{contact}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <StatusBtn id={t.id} status="dispatched" label="Mark as dispatched →" primary />
+                    <StatusBtn id={t.id} status="booked" label="Unassign" />
+                  </div>
+                </ActionBlock>
+              )
+            }
+            if (t.status === 'dispatched') {
+              return (
+                <ActionBlock step="3" title={`Awaiting ${d?.name?.split(' ')[0] ?? 'driver'}'s confirmation`} hint="Sent. Mark confirmed once the driver accepts.">
+                  {who}{contact}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <StatusBtn id={t.id} status="confirmed" label="✓ Driver confirmed" primary />
+                    <StatusBtn id={t.id} status="assigned" label="Back" />
+                  </div>
+                </ActionBlock>
+              )
+            }
+            if (t.status === 'confirmed') {
+              return (
+                <ActionBlock step="4" title="Ready to go" hint={`${d?.name?.split(' ')[0] ?? 'Driver'} confirmed. Start when the trip begins.`}>
+                  {who}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <StatusBtn id={t.id} status="enroute" label="▶ Start trip" primary />
+                  </div>
+                </ActionBlock>
+              )
+            }
+            // enroute
+            return (
+              <ActionBlock step="" title="On the road" hint="Close the job when the passenger is dropped off.">
+                {who}
+                <StatusBtn id={t.id} status="completed" label="✓ Complete trip" primary />
+              </ActionBlock>
+            )
+          }
+        })}
+      </div>
+    </>
+  )
+}
+
+function Stepper({ doneCount }: { doneCount: number }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+      {FLOW.map((label, i) => {
+        const done = i < doneCount
+        const activeStep = i === doneCount
+        const color = done ? 'var(--accent)' : activeStep ? 'var(--gold)' : 'var(--ink3)'
+        return (
+          <div key={label} style={{ display: 'flex', alignItems: 'center', flex: i < FLOW.length - 1 ? 1 : '0 0 auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <div style={{
+                width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 10, fontWeight: 700,
+                background: done ? 'var(--accent)' : activeStep ? 'var(--gold-light)' : 'transparent',
+                color: done ? 'var(--on-accent)' : color,
+                border: `1.5px solid ${done ? 'var(--accent)' : color}`,
+                transition: 'all .3s var(--ease)',
+              }}>{done ? '✓' : i + 1}</div>
+              <span style={{ fontSize: 9.5, fontWeight: activeStep ? 700 : 500, color, whiteSpace: 'nowrap' }}>{label}</span>
+            </div>
+            {i < FLOW.length - 1 && <div style={{ flex: 1, height: 2, background: i < doneCount ? 'var(--accent)' : 'var(--border)', margin: '0 4px', marginBottom: 14, transition: 'background .3s var(--ease)' }} />}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function ActionBlock({ step, title, hint, children }: { step: string; title: string; hint: string; children: React.ReactNode }) {
+  return (
+    <div style={{ background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', padding: 12 }}>
+      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>{step && <span style={{ color: 'var(--accent)' }}>{step} · </span>}{title}</div>
+      <div style={{ fontSize: 12, color: 'var(--ink2)', margin: '2px 0 9px' }}>{hint}</div>
+      {children}
+    </div>
+  )
+}
+
+function StatusBtn({ id, status, label, primary }: { id: string; status: string; label: string; primary?: boolean }) {
+  return (
+    <form action={setTripStatus}>
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="status" value={status} />
+      <button type="submit" className={primary ? 'btn-primary' : 'btn-ghost'} style={actBtn}>{label}</button>
+    </form>
+  )
+}
+function Legend({ n, word, desc }: { n: string; word: string; desc: string }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+      <span style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent)', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{n}</span>
+      <span style={{ fontSize: 13 }}><strong>{word}</strong> <span style={{ color: 'var(--ink3)' }}>— {desc}</span></span>
+    </span>
+  )
+}
+function Arrow() { return <span style={{ color: 'var(--ink3)', fontSize: 14 }}>→</span> }
+function Tag({ color, children }: { color: string; children: React.ReactNode }) {
+  return <span style={{ fontWeight: 600, color }}>{children}</span>
+}
+
+const navBtn: React.CSSProperties = { width: 34, height: 34, fontSize: 18, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+const contactBtn: React.CSSProperties = { padding: '6px 12px', fontSize: 13, display: 'inline-flex', alignItems: 'center' }
+const actBtn: React.CSSProperties = { padding: '8px 14px', fontSize: 13, cursor: 'pointer' }
+const selStyle: React.CSSProperties = { flex: 1, minWidth: 100, padding: '7px 9px' }
