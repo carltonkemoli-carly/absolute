@@ -57,6 +57,19 @@ export async function listUnassignedTrips(): Promise<Trip[]> {
   const { data } = await (await sb()).from('trips').select('*').eq('status', 'booked').order('trip_date')
   return (data ?? []) as Trip[]
 }
+// Delete every still-unassigned (booked) trip — used to clear out bad/duplicate imports.
+export async function clearUnassignedTrips(): Promise<number> {
+  if (DEV_MODE) {
+    const data = loadStore()
+    const before = data.trips.length
+    data.trips = data.trips.filter((t) => t.status !== 'booked')
+    saveStore(data)
+    return before - data.trips.length
+  }
+  const s = await sb()
+  const { count } = await s.from('trips').delete({ count: 'exact' }).eq('status', 'booked')
+  return count ?? 0
+}
 export async function listFuel(start: string, end: string): Promise<FuelEntry[]> {
   if (DEV_MODE) return loadStore().fuel.filter((f) => f.fuel_date >= start && f.fuel_date <= end).sort(byField('fuel_date', -1))
   const { data } = await (await sb()).from('fuel_entries').select('*').gte('fuel_date', start).lte('fuel_date', end).order('fuel_date', { ascending: false })

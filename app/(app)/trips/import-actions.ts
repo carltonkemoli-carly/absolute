@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { batchInsert, saveRecord, listContractors, listOrganizations } from '@/lib/db'
+import { batchInsert, saveRecord, listContractors, listOrganizations, listTrips } from '@/lib/db'
 import type { ImportResult } from '@/lib/import-types'
 
 export async function importTrips(rows: Record<string, string>[]): Promise<ImportResult> {
@@ -28,12 +28,24 @@ export async function importTrips(rows: Record<string, string>[]): Promise<Impor
   const conId = (n: string) => contractors.find((c) => c.name.toLowerCase() === n.trim().toLowerCase())?.id ?? null
   const orgId = (n: string) => organizations.find((o) => o.name.toLowerCase() === n.trim().toLowerCase())?.id ?? null
 
-  let skipped = 0
+  // Build a set of existing trips (across the date range of this import) to skip duplicates.
+  const dates = rows.map((r) => parseDate(r.trip_date)).filter(Boolean).sort()
+  const existing = dates.length ? await listTrips(dates[0], dates[dates.length - 1]) : []
+  const sig = (date: string, client: string, pickup: string, dropoff: string) =>
+    `${date}|${client.toLowerCase()}|${pickup.toLowerCase()}|${dropoff.toLowerCase()}`
+  const seen = new Set(existing.map((t) => sig(t.trip_date, t.client_name ?? '', t.pickup ?? '', t.dropoff ?? '')))
+
+  let skipped = 0, dupes = 0
   const batch: Record<string, unknown>[] = []
   for (const r of rows) {
     const client_name = (r.client_name || '').trim()
     const trip_date = parseDate(r.trip_date)
     if (!client_name || !trip_date) { skipped++; continue }
+    const pickup = (r.pickup || '').trim()
+    const dropoff = (r.dropoff || '').trim()
+    const key = sig(trip_date, client_name, pickup, dropoff)
+    if (seen.has(key)) { dupes++; continue } // already imported — don't pile up duplicates
+    seen.add(key)
     batch.push({
       trip_date,
       client_name,
@@ -54,9 +66,13 @@ export async function importTrips(rows: Record<string, string>[]): Promise<Impor
   const created = batch.length
   revalidatePath('/trips')
   revalidatePath('/dispatch')
+  const extras = [
+    skipped ? `${skipped} skipped (missing date/client)` : '',
+    dupes ? `${dupes} duplicate${dupes === 1 ? '' : 's'} skipped` : '',
+  ].filter(Boolean).join(', ')
   return {
     created, skipped,
-    message: `Imported ${created} trip${created === 1 ? '' : 's'} as bookings${skipped ? `, skipped ${skipped} (missing date/client)` : ''}. Assign them in Dispatch.`,
+    message: `Imported ${created} trip${created === 1 ? '' : 's'} as bookings${extras ? ` (${extras})` : ''}. Assign them in Dispatch.`,
   }
 }
 

@@ -1,9 +1,11 @@
 'use client'
 
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { fmtTime, fmtDateTime, waNumber } from '@/lib/format'
+import toast from 'react-hot-toast'
+import { fmtTime, fmtDateTime, fmtDate, waNumber } from '@/lib/format'
 import type { Contractor, Driver, Organization, Trip, Vehicle } from '@/lib/types'
-import { assignTrip, setTripStatus } from './actions'
+import { assignTrip, setTripStatus, clearPendingTrips } from './actions'
 
 type Lookups = { drivers: Driver[]; vehicles: Vehicle[]; organizations: Organization[]; contractors: Contractor[] }
 
@@ -33,8 +35,26 @@ export default function DispatchBoard({ day, trips, pendingTrips = [], lookups }
   const sorted = [...active].sort((a, b) => (DONE[a.status] - DONE[b.status]) || (a.flight_time ?? a.trip_date).localeCompare(b.flight_time ?? b.trip_date))
   const count = (s: string) => trips.filter((t) => t.status === s).length
 
-  // Unassigned trips on OTHER dates — shown above the day view so imports are always visible
+  const [clearing, startClear] = useTransition()
+
+  // Unassigned trips on OTHER dates — shown above the day view so imports are always visible.
+  // Grouped by date so a large import (e.g. a full BCD month) stays readable.
   const otherPending = pendingTrips.filter((t) => t.trip_date !== day)
+  const byDate = new Map<string, Trip[]>()
+  for (const t of otherPending) {
+    const arr = byDate.get(t.trip_date) ?? []
+    arr.push(t); byDate.set(t.trip_date, arr)
+  }
+  const pendingDays = [...byDate.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+
+  function onClearPending() {
+    if (!confirm(`Delete all ${pendingTrips.length} unassigned job(s)? This cannot be undone. Use this to clear out a bad or duplicated import, then re-import cleanly.`)) return
+    startClear(async () => {
+      const n = await clearPendingTrips()
+      toast.success(`Cleared ${n} unassigned job${n === 1 ? '' : 's'}.`)
+      router.refresh()
+    })
+  }
 
   function shiftDay(delta: number) {
     const d = new Date(day); d.setDate(d.getDate() + delta)
@@ -57,45 +77,33 @@ export default function DispatchBoard({ day, trips, pendingTrips = [], lookups }
         </div>
       </div>
 
-      {/* Pending queue — unassigned trips from OTHER dates (e.g. freshly imported BCD jobs) */}
+      {/* Pending queue — unassigned trips from OTHER dates (e.g. freshly imported BCD jobs).
+          Grouped by date; click a day to open it below and assign in the roomy card view. */}
       {otherPending.length > 0 && (
-        <div className="card animate-fadeup" style={{ marginBottom: 18, padding: 0, overflow: 'hidden', border: '1.5px solid var(--danger)' }}>
-          <div style={{ padding: '12px 16px', background: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#fff' }}>⚠ {otherPending.length} unassigned job{otherPending.length > 1 ? 's' : ''} on other dates</span>
-            <span style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.8)' }}>Imported trips waiting to be assigned — use the date picker to jump to their day</span>
+        <div className="card animate-fadeup" style={{ marginBottom: 18, padding: 0, overflow: 'hidden', border: '1.5px solid var(--gold)' }}>
+          <div style={{ padding: '12px 16px', background: 'var(--gold-light)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--ink)' }}>
+              📋 {otherPending.length} unassigned job{otherPending.length > 1 ? 's' : ''} across {pendingDays.length} day{pendingDays.length > 1 ? 's' : ''}
+            </span>
+            <span style={{ fontSize: 12.5, color: 'var(--ink2)', flex: 1, minWidth: 180 }}>Open a day to assign drivers below.</span>
+            <button className="btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5, cursor: 'pointer', color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={onClearPending} disabled={clearing}>
+              {clearing ? 'Clearing…' : '🗑 Clear all'}
+            </button>
           </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-                  {['Date', 'Client', 'Route', 'Contractor', 'Action'].map((h) => (
-                    <th key={h} style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--ink2)', whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {otherPending.map((t) => (
-                  <tr key={t.id} style={{ borderTop: '1px solid var(--border)' }}>
-                    <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', fontWeight: 600 }}>
-                      <button className="btn-ghost" style={{ padding: '4px 10px', fontSize: 12.5, cursor: 'pointer' }} onClick={() => router.push(`/dispatch?d=${t.trip_date}`)}>
-                        {t.trip_date} ↗
-                      </button>
-                    </td>
-                    <td style={{ padding: '9px 12px', fontWeight: 600 }}>{t.client_name}</td>
-                    <td style={{ padding: '9px 12px', color: 'var(--ink2)', whiteSpace: 'nowrap' }}>{t.pickup ?? '—'} → {t.dropoff ?? '—'}</td>
-                    <td style={{ padding: '9px 12px', color: 'var(--ink3)', whiteSpace: 'nowrap' }}>{conName(t.contractor_id)}</td>
-                    <td style={{ padding: '9px 12px' }}>
-                      <form action={assignTrip} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                        <input type="hidden" name="id" value={t.id} />
-                        <select name="driver_id" className="input" required style={{ ...selStyle, minWidth: 110 }} defaultValue=""><option value="" disabled>Driver…</option>{drivers.map((dr) => <option key={dr.id} value={dr.id}>{dr.name}</option>)}</select>
-                        <select name="vehicle_id" className="input" required style={{ ...selStyle, minWidth: 110 }} defaultValue=""><option value="" disabled>Vehicle…</option>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate}</option>)}</select>
-                        <button type="submit" className="btn-primary" style={actBtn}>Assign →</button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
+            {pendingDays.map(([date, jobs]) => (
+              <button key={date} className="card card-hover" onClick={() => router.push(`/dispatch?d=${date}`)}
+                style={{ padding: 14, textAlign: 'left', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                  <span style={{ fontWeight: 700, fontSize: 14 }}>{fmtDate(date)}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gold)', background: 'var(--gold-light)', padding: '2px 8px', borderRadius: 'var(--radius-pill)', whiteSpace: 'nowrap' }}>{jobs.length} job{jobs.length > 1 ? 's' : ''}</span>
+                </div>
+                <div style={{ fontSize: 12.5, color: 'var(--ink3)', lineHeight: 1.5 }}>
+                  {jobs.slice(0, 3).map((j) => j.client_name).join(', ')}{jobs.length > 3 ? `, +${jobs.length - 3} more` : ''}
+                </div>
+                <div style={{ fontSize: 12.5, color: 'var(--accent)', fontWeight: 600, marginTop: 2 }}>Open & assign →</div>
+              </button>
+            ))}
           </div>
         </div>
       )}
