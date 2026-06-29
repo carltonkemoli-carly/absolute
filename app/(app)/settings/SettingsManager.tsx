@@ -1,8 +1,18 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 import type { Contractor, Organization, Profile } from '@/lib/types'
 import { saveContractor, deleteContractor, saveOrganization, deleteOrganization } from './actions'
+import { setUserRole, createUser } from './user-actions'
+
+const ROLE_OPTIONS = [
+  { value: 'owner', label: 'Owner — full access' },
+  { value: 'accountant', label: 'Accountant — sees finance' },
+  { value: 'office', label: 'Office — operations only' },
+  { value: 'driver', label: 'Driver — limited' },
+]
 
 export default function SettingsManager({
   contractors, organizations, profiles, canManageUsers,
@@ -95,18 +105,46 @@ function OrganizationSection({ organizations, contractors }: { organizations: Or
 }
 
 function UsersSection({ profiles }: { profiles: Profile[] }) {
+  const router = useRouter()
+  const [adding, setAdding] = useState(false)
+  const [savingId, setSavingId] = useState<string | null>(null)
+
+  async function changeRole(id: string, role: string) {
+    setSavingId(id)
+    const res = await setUserRole(id, role)
+    setSavingId(null)
+    if (res.ok) { toast.success(res.message); router.refresh() } else toast.error(res.message)
+  }
+
   return (
-    <Section title="Users" desc="People with a login. Roles control access — owner & accountant see finances.">
+    <Section title="Users" desc="People with a login. Owner & accountant see finances; office is operations only.">
       <div className="card" style={{ overflow: 'hidden' }}>
         {profiles.map((p) => (
-          <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-            <div><strong>{p.full_name ?? 'User'}</strong></div>
-            <span style={{ fontSize: 13, color: 'var(--ink2)', textTransform: 'capitalize' }}>{p.role}</span>
+          <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--border)', gap: 12 }}>
+            <div style={{ fontWeight: 600 }}>{p.full_name ?? 'User'}</div>
+            <select className="input" style={{ width: 220, opacity: savingId === p.id ? 0.5 : 1 }} value={p.role} disabled={savingId === p.id}
+              onChange={(e) => changeRole(p.id, e.target.value)}>
+              {ROLE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+            </select>
           </div>
         ))}
-        <div style={{ padding: '11px 16px', fontSize: 12.5, color: 'var(--ink3)' }}>
-          Role changes are managed in Supabase for now (profiles.role). A role editor can be added next.
-        </div>
+        {adding ? (
+          <form action={async (fd) => { const res = await createUser(fd); if (res.ok) { toast.success(res.message); setAdding(false); router.refresh() } else toast.error(res.message) }}
+            style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+            <label className="field"><span>Full name</span><input name="full_name" className="input" placeholder="e.g. Ray Wangari" /></label>
+            <label className="field"><span>Email *</span><input name="email" type="email" className="input" required placeholder="name@absolutecomfort.co.ke" /></label>
+            <label className="field"><span>Temp password *</span><input name="password" className="input" required placeholder="min 8 characters" /></label>
+            <label className="field"><span>Role</span>
+              <select name="role" className="input" defaultValue="office">{ROLE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}</select>
+            </label>
+            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 10 }}>
+              <button type="submit" className="btn-primary" style={{ padding: '9px 16px', fontSize: 14, cursor: 'pointer' }}>Create login</button>
+              <button type="button" className="btn-ghost" style={{ padding: '9px 16px', fontSize: 14, cursor: 'pointer' }} onClick={() => setAdding(false)}>Cancel</button>
+            </div>
+          </form>
+        ) : (
+          <button onClick={() => setAdding(true)} style={{ width: '100%', textAlign: 'left', padding: '13px 16px', background: 'none', border: 'none', color: 'var(--accent-mid)', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>+ Add a staff login</button>
+        )}
       </div>
     </Section>
   )

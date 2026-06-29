@@ -23,6 +23,7 @@ const NAV: NavItem[] = [
   { href: '/expenses', label: 'Expenses', icon: '💸', financeOnly: true },
   { href: '/goals', label: 'Targets & P&L', icon: '🎯', financeOnly: true },
   { href: '/billing', label: 'Billing', icon: '🧾', financeOnly: true },
+  { href: '/receivables', label: 'Receivables', icon: '💰', financeOnly: true },
   { href: '/reports', label: 'Reports', icon: '📈', financeOnly: true },
   { href: '/backup', label: 'Backup', icon: '💾', financeOnly: true },
   { href: '/settings', label: 'Settings', icon: '⚙' },

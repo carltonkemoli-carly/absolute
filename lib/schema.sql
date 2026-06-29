@@ -279,6 +279,26 @@ create table if not exists targets (
   unique (period, kind, category)
 );
 
+-- ---------------------------------------------------------------------------
+-- invoices — receivables: what you've billed each contractor vs paid
+-- ---------------------------------------------------------------------------
+create table if not exists invoices (
+  id            uuid primary key default gen_random_uuid(),
+  contractor_id uuid references contractors(id) on delete set null,
+  invoice_no    text,
+  period_label  text,                  -- e.g. 'June 2026'
+  issue_date    date,
+  due_date      date,
+  amount        numeric(12,2) not null default 0,
+  amount_paid   numeric(12,2) not null default 0,
+  paid_date     date,
+  notes         text,
+  created_by    uuid references auth.users(id) on delete set null,
+  created_at    timestamptz not null default now()
+);
+create index if not exists invoices_contractor_idx on invoices(contractor_id);
+create index if not exists invoices_due_idx        on invoices(due_date);
+
 -- =============================================================================
 -- Row Level Security
 -- V1: any authenticated staff member can read/write operational data.
@@ -297,6 +317,7 @@ alter table routes        enable row level security;
 alter table documents     enable row level security;
 alter table expenses      enable row level security;
 alter table targets       enable row level security;
+alter table invoices      enable row level security;
 
 -- profiles: everyone reads; users update their own name; owners manage all
 drop policy if exists profiles_select on profiles;
@@ -314,7 +335,7 @@ create policy profiles_owner_all on profiles for all to authenticated
 do $$
 declare t text;
 begin
-  foreach t in array array['contractors','organizations','vehicles','drivers','trips','fuel_entries','vehicle_services','routes','documents','expenses','targets']
+  foreach t in array array['contractors','organizations','vehicles','drivers','trips','fuel_entries','vehicle_services','routes','documents','expenses','targets','invoices']
   loop
     execute format('drop policy if exists %I_rw on %I', t, t);
     execute format(

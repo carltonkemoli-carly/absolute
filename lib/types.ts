@@ -200,5 +200,20 @@ export const EXPENSE_CATEGORIES = [
 // Vehicle Hire is computed from hired vehicles + casual trip hire costs.
 export const COST_CATEGORIES = ['Fuel', 'Servicing', 'Vehicle Hire', ...EXPENSE_CATEGORIES] as const
 
+export interface Invoice {
+  id: string
+  contractor_id: string | null
+  invoice_no: string | null
+  period_label: string | null
+  issue_date: string | null
+  due_date: string | null
+  amount: number
+  amount_paid: number
+  paid_date: string | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+}
+
 // Roles allowed to view financial figures (revenue, profit, fuel index)
 export const FINANCE_ROLES: UserRole[] = ['owner', 'accountant']

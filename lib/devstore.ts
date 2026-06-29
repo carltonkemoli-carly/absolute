@@ -5,7 +5,7 @@ import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import type {
   Contractor, Driver, FuelEntry, Organization, Profile, Trip, Vehicle,
-  VehicleService, Route, ComplianceDoc, Expense, Target,
+  VehicleService, Route, ComplianceDoc, Expense, Target, Invoice,
 } from '@/lib/types'
 
 const FILE = join(process.cwd(), '.devdata.json')
@@ -32,6 +32,7 @@ export interface StoreData {
   documents: ComplianceDoc[]
   expenses: Expense[]
   targets: Target[]
+  invoices: Invoice[]
 }
 
 export function uid(prefix = 'row') {
@@ -351,5 +352,27 @@ function seed(): StoreData {
     { id: uid('tgt'), period, kind: 'spend_cap', category: 'Driver Wages', amount: 150000, created_at: '' },
   ]
 
-  return { contractors, vehicles, drivers, organizations, profiles: [DEV_PROFILE], trips, fuel, services, routes, documents, expenses, targets }
+  // Invoices (receivables) — a mix of paid, outstanding and overdue
+  const invoices: Invoice[] = []
+  const inv = (con: Contractor, monthsAgo: number, amount: number, paid: number) => {
+    const issue = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1)
+    const due = new Date(issue.getFullYear(), issue.getMonth(), issue.getDate() + 30)
+    invoices.push({
+      id: uid('inv'), contractor_id: con.id,
+      invoice_no: `INV-${1000 + invoices.length}`,
+      period_label: `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][issue.getMonth()]} ${issue.getFullYear()}`,
+      issue_date: iso(issue), due_date: iso(due),
+      amount, amount_paid: paid, paid_date: paid >= amount ? iso(due) : null,
+      notes: null, created_by: null, created_at: '',
+    })
+  }
+  inv(contractors[0], 3, 540000, 540000) // BCD, paid
+  inv(contractors[0], 2, 610000, 610000) // BCD, paid
+  inv(contractors[0], 1, 580000, 200000) // BCD, partial (overdue)
+  inv(contractors[1], 2, 320000, 320000) // FCM, paid
+  inv(contractors[1], 1, 410000, 0)      // FCM, unpaid (overdue)
+  inv(contractors[1], 0, 380000, 0)      // FCM, current
+  inv(contractors[0], 0, 600000, 0)      // BCD, current
+
+  return { contractors, vehicles, drivers, organizations, profiles: [DEV_PROFILE], trips, fuel, services, routes, documents, expenses, targets, invoices }
 }

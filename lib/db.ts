@@ -5,7 +5,7 @@ import { DEV_MODE } from '@/lib/devmode'
 import { loadStore, saveStore, uid, type StoreData } from '@/lib/devstore'
 import type {
   Contractor, Driver, FuelEntry, Organization, Profile, Trip, Vehicle,
-  VehicleService, Route, ComplianceDoc, Expense, Target,
+  VehicleService, Route, ComplianceDoc, Expense, Target, Invoice,
 } from '@/lib/types'
 
 type Row = Record<string, unknown>
@@ -83,6 +83,11 @@ export async function listExpenses(start?: string, end?: string): Promise<Expens
   const { data } = await q.order('expense_date', { ascending: false })
   return (data ?? []) as Expense[]
 }
+export async function listInvoices(): Promise<Invoice[]> {
+  if (DEV_MODE) return [...loadStore().invoices].sort(byField('due_date', -1))
+  const { data } = await (await sb()).from('invoices').select('*').order('due_date', { ascending: false })
+  return (data ?? []) as Invoice[]
+}
 export async function listTargets(period?: string): Promise<Target[]> {
   if (DEV_MODE) {
     const rows = loadStore().targets
@@ -96,7 +101,7 @@ export async function listTargets(period?: string): Promise<Target[]> {
 
 // ---------- Writes ----------
 type TableName = 'vehicles' | 'drivers' | 'contractors' | 'organizations' | 'trips' | 'fuel_entries'
-  | 'vehicle_services' | 'routes' | 'documents' | 'expenses' | 'targets'
+  | 'vehicle_services' | 'routes' | 'documents' | 'expenses' | 'targets' | 'invoices'
 const DEV_KEY: Record<TableName, keyof StoreData> = {
   vehicles: 'vehicles',
   drivers: 'drivers',
@@ -109,6 +114,7 @@ const DEV_KEY: Record<TableName, keyof StoreData> = {
   documents: 'documents',
   expenses: 'expenses',
   targets: 'targets',
+  invoices: 'invoices',
 }
 
 export async function saveRecord(table: TableName, row: Row, id: string | null): Promise<void> {
