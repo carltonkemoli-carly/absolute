@@ -21,7 +21,7 @@ const STATUS_COLOR: Record<string, string> = {
   confirmed: 'var(--accent)', enroute: 'var(--accent)', completed: 'var(--ink3)', cancelled: 'var(--ink3)',
 }
 
-export default function DispatchBoard({ day, trips, lookups }: { day: string; trips: Trip[]; lookups: Lookups }) {
+export default function DispatchBoard({ day, trips, pendingTrips = [], lookups }: { day: string; trips: Trip[]; pendingTrips?: Trip[]; lookups: Lookups }) {
   const router = useRouter()
   const { drivers, vehicles, organizations, contractors } = lookups
   const driver = (id: string | null) => drivers.find((d) => d.id === id) ?? null
@@ -32,6 +32,9 @@ export default function DispatchBoard({ day, trips, lookups }: { day: string; tr
   const active = trips.filter((t) => t.status !== 'completed' && t.status !== 'cancelled')
   const sorted = [...active].sort((a, b) => (DONE[a.status] - DONE[b.status]) || (a.flight_time ?? a.trip_date).localeCompare(b.flight_time ?? b.trip_date))
   const count = (s: string) => trips.filter((t) => t.status === s).length
+
+  // Unassigned trips on OTHER dates — shown above the day view so imports are always visible
+  const otherPending = pendingTrips.filter((t) => t.trip_date !== day)
 
   function shiftDay(delta: number) {
     const d = new Date(day); d.setDate(d.getDate() + delta)
@@ -53,6 +56,49 @@ export default function DispatchBoard({ day, trips, lookups }: { day: string; tr
           <Legend n="4" word="Start → Done" desc="trip runs & closes" />
         </div>
       </div>
+
+      {/* Pending queue — unassigned trips from OTHER dates (e.g. freshly imported BCD jobs) */}
+      {otherPending.length > 0 && (
+        <div className="card animate-fadeup" style={{ marginBottom: 18, padding: 0, overflow: 'hidden', border: '1.5px solid var(--danger)' }}>
+          <div style={{ padding: '12px 16px', background: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: '#fff' }}>⚠ {otherPending.length} unassigned job{otherPending.length > 1 ? 's' : ''} on other dates</span>
+            <span style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.8)' }}>Imported trips waiting to be assigned — use the date picker to jump to their day</span>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
+                  {['Date', 'Client', 'Route', 'Contractor', 'Action'].map((h) => (
+                    <th key={h} style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--ink2)', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {otherPending.map((t) => (
+                  <tr key={t.id} style={{ borderTop: '1px solid var(--border)' }}>
+                    <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                      <button className="btn-ghost" style={{ padding: '4px 10px', fontSize: 12.5, cursor: 'pointer' }} onClick={() => router.push(`/dispatch?d=${t.trip_date}`)}>
+                        {t.trip_date} ↗
+                      </button>
+                    </td>
+                    <td style={{ padding: '9px 12px', fontWeight: 600 }}>{t.client_name}</td>
+                    <td style={{ padding: '9px 12px', color: 'var(--ink2)', whiteSpace: 'nowrap' }}>{t.pickup ?? '—'} → {t.dropoff ?? '—'}</td>
+                    <td style={{ padding: '9px 12px', color: 'var(--ink3)', whiteSpace: 'nowrap' }}>{conName(t.contractor_id)}</td>
+                    <td style={{ padding: '9px 12px' }}>
+                      <form action={assignTrip} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <input type="hidden" name="id" value={t.id} />
+                        <select name="driver_id" className="input" required style={{ ...selStyle, minWidth: 110 }} defaultValue=""><option value="" disabled>Driver…</option>{drivers.map((dr) => <option key={dr.id} value={dr.id}>{dr.name}</option>)}</select>
+                        <select name="vehicle_id" className="input" required style={{ ...selStyle, minWidth: 110 }} defaultValue=""><option value="" disabled>Vehicle…</option>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate}</option>)}</select>
+                        <button type="submit" className="btn-primary" style={actBtn}>Assign →</button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <button className="btn-ghost" style={navBtn} onClick={() => shiftDay(-1)}>‹</button>

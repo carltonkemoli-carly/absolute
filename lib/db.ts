@@ -51,6 +51,12 @@ export async function listTrips(start: string, end: string): Promise<Trip[]> {
   const { data } = await (await sb()).from('trips').select('*').gte('trip_date', start).lte('trip_date', end).order('trip_date')
   return (data ?? []) as Trip[]
 }
+// All unassigned (booked) trips regardless of date — used by the dispatch pending queue.
+export async function listUnassignedTrips(): Promise<Trip[]> {
+  if (DEV_MODE) return loadStore().trips.filter((t) => t.status === 'booked').sort(byField('trip_date'))
+  const { data } = await (await sb()).from('trips').select('*').eq('status', 'booked').order('trip_date')
+  return (data ?? []) as Trip[]
+}
 export async function listFuel(start: string, end: string): Promise<FuelEntry[]> {
   if (DEV_MODE) return loadStore().fuel.filter((f) => f.fuel_date >= start && f.fuel_date <= end).sort(byField('fuel_date', -1))
   const { data } = await (await sb()).from('fuel_entries').select('*').gte('fuel_date', start).lte('fuel_date', end).order('fuel_date', { ascending: false })

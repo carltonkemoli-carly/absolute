@@ -1,5 +1,5 @@
 import { PageHeader } from '@/components/ui'
-import { listTrips, listDrivers, listVehicles, listContractors, listOrganizations } from '@/lib/db'
+import { listTrips, listUnassignedTrips, listDrivers, listVehicles, listContractors, listOrganizations } from '@/lib/db'
 import { isoDate } from '@/lib/format'
 import type { Contractor, Driver, Organization, Trip, Vehicle } from '@/lib/types'
 import DispatchBoard from './DispatchBoard'
@@ -12,8 +12,8 @@ export default async function DispatchPage({
   const sp = await searchParams
   const day = sp.d && /^\d{4}-\d{2}-\d{2}$/.test(sp.d) ? sp.d : isoDate(new Date())
 
-  const [trips, drivers, vehicles, contractors, organizations] = await Promise.all([
-    listTrips(day, day), listDrivers(), listVehicles(), listContractors(), listOrganizations(),
+  const [trips, unassigned, drivers, vehicles, contractors, organizations] = await Promise.all([
+    listTrips(day, day), listUnassignedTrips(), listDrivers(), listVehicles(), listContractors(), listOrganizations(),
   ])
 
   return (
@@ -22,6 +22,7 @@ export default async function DispatchPage({
       <DispatchBoard
         day={day}
         trips={(trips as Trip[])}
+        pendingTrips={(unassigned as Trip[])}
         lookups={{
           drivers: drivers as Driver[],
           vehicles: vehicles as Vehicle[],
