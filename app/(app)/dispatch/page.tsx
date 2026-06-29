@@ -22,7 +22,8 @@ export default async function DispatchPage({
       <DispatchBoard
         day={day}
         trips={(trips as Trip[])}
-        pendingTrips={(unassigned as Trip[])}
+        pendingTrips={unassigned.trips}
+        pendingTotal={unassigned.total}
         lookups={{
           drivers: drivers as Driver[],
           vehicles: vehicles as Vehicle[],

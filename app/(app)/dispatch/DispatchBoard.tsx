@@ -23,8 +23,9 @@ const STATUS_COLOR: Record<string, string> = {
   confirmed: 'var(--accent)', enroute: 'var(--accent)', completed: 'var(--ink3)', cancelled: 'var(--ink3)',
 }
 
-export default function DispatchBoard({ day, trips, pendingTrips = [], lookups }: { day: string; trips: Trip[]; pendingTrips?: Trip[]; lookups: Lookups }) {
+export default function DispatchBoard({ day, trips, pendingTrips = [], pendingTotal = 0, lookups }: { day: string; trips: Trip[]; pendingTrips?: Trip[]; pendingTotal?: number; lookups: Lookups }) {
   const router = useRouter()
+  const [showQueue, setShowQueue] = useState(false)
   const { drivers, vehicles, organizations, contractors } = lookups
   const driver = (id: string | null) => drivers.find((d) => d.id === id) ?? null
   const plate = (id: string | null) => vehicles.find((v) => v.id === id)?.plate ?? null
@@ -48,7 +49,7 @@ export default function DispatchBoard({ day, trips, pendingTrips = [], lookups }
   const pendingDays = [...byDate.entries()].sort((a, b) => a[0].localeCompare(b[0]))
 
   function onClearPending() {
-    if (!confirm(`Delete all ${pendingTrips.length} unassigned job(s)? This cannot be undone. Use this to clear out a bad or duplicated import, then re-import cleanly.`)) return
+    if (!confirm(`Delete all ${pendingTotal} unassigned job(s)? This cannot be undone. Use this to clear out a bad or duplicated import, then re-import cleanly.`)) return
     startClear(async () => {
       const n = await clearPendingTrips()
       toast.success(`Cleared ${n} unassigned job${n === 1 ? '' : 's'}.`)
@@ -63,36 +64,48 @@ export default function DispatchBoard({ day, trips, pendingTrips = [], lookups }
 
   return (
     <>
-      {/* Workflow legend — explains the three distinct actions */}
-      <div className="card animate-fadeup" style={{ padding: '14px 18px', marginBottom: 16 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
-          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ink3)' }}>How it works</span>
-          <Legend n="1" word="Assign" desc="pick the driver & vehicle" />
-          <Arrow />
-          <Legend n="2" word="Dispatch" desc="send the job to the driver" />
-          <Arrow />
-          <Legend n="3" word="Confirm" desc="driver accepts it" />
-          <Arrow />
-          <Legend n="4" word="Start → Done" desc="trip runs & closes" />
+      {/* Compact pending banner — one line so the day's work stays at the top.
+          Expand to see the date-grouped queue (e.g. freshly imported BCD jobs). */}
+      {pendingTotal > 0 && (
+        <div className="card animate-fadeup" style={{ marginBottom: 14, padding: '10px 14px', border: '1.5px solid var(--gold)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--ink)' }}>
+            📋 {pendingTotal} unassigned job{pendingTotal === 1 ? '' : 's'} waiting
+          </span>
+          <div style={{ flex: 1 }} />
+          <button className="btn-ghost" style={{ padding: '5px 12px', fontSize: 12.5, cursor: 'pointer' }} onClick={() => setShowQueue((s) => !s)}>
+            {showQueue ? 'Hide queue ▴' : 'Show queue by date ▾'}
+          </button>
+          <button className="btn-ghost" style={{ padding: '5px 12px', fontSize: 12.5, cursor: 'pointer', color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={onClearPending} disabled={clearing}>
+            {clearing ? 'Clearing…' : '🗑 Clear all'}
+          </button>
+        </div>
+      )}
+
+      {/* Day navigation — the primary work surface sits right here at the top */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <button className="btn-ghost" style={navBtn} onClick={() => shiftDay(-1)}>‹</button>
+        <input type="date" className="input" value={day} onChange={(e) => router.push(`/dispatch?d=${e.target.value}`)} style={{ width: 168 }} />
+        <button className="btn-ghost" style={navBtn} onClick={() => shiftDay(1)}>›</button>
+        <div style={{ flex: 1 }} />
+        <div style={{ fontSize: 13.5, color: 'var(--ink2)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {count('booked') > 0 && <Tag color="var(--danger)">{count('booked')} to assign</Tag>}
+          {count('assigned') > 0 && <Tag color="var(--gold)">{count('assigned')} to dispatch</Tag>}
+          {count('dispatched') > 0 && <Tag color="var(--accent-mid)">{count('dispatched')} awaiting confirm</Tag>}
+          {count('completed') > 0 && <Tag color="var(--ink3)">{count('completed')} done</Tag>}
         </div>
       </div>
 
-      {/* Pending queue — unassigned trips from OTHER dates (e.g. freshly imported BCD jobs).
-          Grouped by date; click a day to open it below and assign in the roomy card view. */}
-      {otherPending.length > 0 && (
-        <div className="card animate-fadeup" style={{ marginBottom: 18, padding: 0, overflow: 'hidden', border: '1.5px solid var(--gold)' }}>
-          <div style={{ padding: '12px 16px', background: 'var(--gold-light)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--ink)' }}>
-              📋 {otherPending.length} unassigned job{otherPending.length > 1 ? 's' : ''} across {pendingDays.length} day{pendingDays.length > 1 ? 's' : ''}
-            </span>
-            <span style={{ fontSize: 12.5, color: 'var(--ink2)', flex: 1, minWidth: 180 }}>Open a day to assign drivers below.</span>
-            <button className="btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5, cursor: 'pointer', color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={onClearPending} disabled={clearing}>
-              {clearing ? 'Clearing…' : '🗑 Clear all'}
-            </button>
+      {sorted.length === 0 && <div className="card" style={{ padding: 36, textAlign: 'center', color: 'var(--ink3)' }}>{count('completed') > 0 ? 'All jobs for this day are completed. ✓' : 'No jobs for this day. Pick another date above, or expand the pending queue.'}</div>}
+
+      {/* Expandable date-grouped pending queue */}
+      {showQueue && otherPending.length > 0 && (
+        <div className="card animate-fadeup" style={{ marginBottom: 18, padding: 14 }}>
+          <div style={{ fontSize: 12.5, color: 'var(--ink2)', marginBottom: 10 }}>
+            Click a day to open it above and assign drivers.{pendingTrips.length < pendingTotal ? ` Showing the first ${pendingDays.length} days.` : ''}
           </div>
-          <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
             {pendingDays.map(([date, jobs]) => (
-              <button key={date} className="card card-hover" onClick={() => router.push(`/dispatch?d=${date}`)}
+              <button key={date} className="card card-hover" onClick={() => { router.push(`/dispatch?d=${date}`); setShowQueue(false) }}
                 style={{ padding: 14, textAlign: 'left', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
                   <span style={{ fontWeight: 700, fontSize: 14 }}>{fmtDate(date)}</span>
@@ -107,21 +120,6 @@ export default function DispatchBoard({ day, trips, pendingTrips = [], lookups }
           </div>
         </div>
       )}
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <button className="btn-ghost" style={navBtn} onClick={() => shiftDay(-1)}>‹</button>
-        <input type="date" className="input" value={day} onChange={(e) => router.push(`/dispatch?d=${e.target.value}`)} style={{ width: 168 }} />
-        <button className="btn-ghost" style={navBtn} onClick={() => shiftDay(1)}>›</button>
-        <div style={{ flex: 1 }} />
-        <div style={{ fontSize: 13.5, color: 'var(--ink2)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          {count('booked') > 0 && <Tag color="var(--danger)">{count('booked')} to assign</Tag>}
-          {count('assigned') > 0 && <Tag color="var(--gold)">{count('assigned')} to dispatch</Tag>}
-          {count('dispatched') > 0 && <Tag color="var(--accent-mid)">{count('dispatched')} awaiting confirm</Tag>}
-          {count('completed') > 0 && <Tag color="var(--ink3)">{count('completed')} done</Tag>}
-        </div>
-      </div>
-
-      {sorted.length === 0 && <div className="card" style={{ padding: 36, textAlign: 'center', color: 'var(--ink3)' }}>{count('completed') > 0 ? 'All jobs for this day are completed. ✓' : 'No jobs for this day.'}</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 14 }}>
         {sorted.map((t) => {
@@ -272,15 +270,6 @@ function StatusBtn({ id, status, label, primary }: { id: string; status: string;
     </form>
   )
 }
-function Legend({ n, word, desc }: { n: string; word: string; desc: string }) {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-      <span style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent)', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{n}</span>
-      <span style={{ fontSize: 13 }}><strong>{word}</strong> <span style={{ color: 'var(--ink3)' }}>— {desc}</span></span>
-    </span>
-  )
-}
-function Arrow() { return <span style={{ color: 'var(--ink3)', fontSize: 14 }}>→</span> }
 function Tag({ color, children }: { color: string; children: React.ReactNode }) {
   return <span style={{ fontWeight: 600, color }}>{children}</span>
 }

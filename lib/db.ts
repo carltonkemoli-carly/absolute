@@ -52,10 +52,15 @@ export async function listTrips(start: string, end: string): Promise<Trip[]> {
   return (data ?? []) as Trip[]
 }
 // All unassigned (booked) trips regardless of date — used by the dispatch pending queue.
-export async function listUnassignedTrips(): Promise<Trip[]> {
-  if (DEV_MODE) return loadStore().trips.filter((t) => t.status === 'booked').sort(byField('trip_date'))
-  const { data } = await (await sb()).from('trips').select('*').eq('status', 'booked').order('trip_date')
-  return (data ?? []) as Trip[]
+// Capped so a huge backlog doesn't ship 1000s of rows to the browser; total count returned separately.
+export async function listUnassignedTrips(limit = 400): Promise<{ trips: Trip[]; total: number }> {
+  if (DEV_MODE) {
+    const all = loadStore().trips.filter((t) => t.status === 'booked').sort(byField('trip_date'))
+    return { trips: all.slice(0, limit), total: all.length }
+  }
+  const { data, count } = await (await sb())
+    .from('trips').select('*', { count: 'exact' }).eq('status', 'booked').order('trip_date').limit(limit)
+  return { trips: (data ?? []) as Trip[], total: count ?? (data?.length ?? 0) }
 }
 // Delete every still-unassigned (booked) trip — used to clear out bad/duplicate imports.
 export async function clearUnassignedTrips(): Promise<number> {
