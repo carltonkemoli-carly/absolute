@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { saveRecord, listContractors, listOrganizations } from '@/lib/db'
+import { batchInsert, saveRecord, listContractors, listOrganizations } from '@/lib/db'
 import type { ImportResult } from '@/lib/import-types'
 
 export async function importTrips(rows: Record<string, string>[]): Promise<ImportResult> {
@@ -28,12 +28,13 @@ export async function importTrips(rows: Record<string, string>[]): Promise<Impor
   const conId = (n: string) => contractors.find((c) => c.name.toLowerCase() === n.trim().toLowerCase())?.id ?? null
   const orgId = (n: string) => organizations.find((o) => o.name.toLowerCase() === n.trim().toLowerCase())?.id ?? null
 
-  let created = 0, skipped = 0
+  let skipped = 0
+  const batch: Record<string, unknown>[] = []
   for (const r of rows) {
     const client_name = (r.client_name || '').trim()
     const trip_date = parseDate(r.trip_date)
     if (!client_name || !trip_date) { skipped++; continue }
-    await saveRecord('trips', {
+    batch.push({
       trip_date,
       client_name,
       slip_no: emptyToNull(r.slip_no),
@@ -47,9 +48,10 @@ export async function importTrips(rows: Record<string, string>[]): Promise<Impor
       amount: num(r.amount),
       payment: 'account',
       status: 'booked', // new jobs land unassigned, ready for the dispatch board
-    }, null)
-    created++
+    })
   }
+  await batchInsert('trips', batch)
+  const created = batch.length
   revalidatePath('/trips')
   revalidatePath('/dispatch')
   return {

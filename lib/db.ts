@@ -162,6 +162,28 @@ export async function upsertTarget(period: string, kind: Target['kind'], categor
   }
 }
 
+// Batch insert many rows at once — avoids N sequential round-trips on large imports.
+// In dev mode: loads store once, pushes all, saves once.
+// In Supabase: inserts in chunks of 100 (stays well under payload limits).
+export async function batchInsert(table: TableName, rows: Row[]): Promise<void> {
+  if (!rows.length) return
+  if (DEV_MODE) {
+    const data = loadStore()
+    const arr = data[DEV_KEY[table]] as unknown as ({ id: string } & Row)[]
+    const now = new Date().toISOString()
+    for (const row of rows) {
+      arr.unshift({ id: uid(table), created_at: now, ...row } as { id: string } & Row)
+    }
+    saveStore(data)
+    return
+  }
+  const s = await sb()
+  const CHUNK = 100
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    await s.from(table).insert(rows.slice(i, i + CHUNK))
+  }
+}
+
 export async function deleteRecord(table: TableName, id: string): Promise<void> {
   if (DEV_MODE) {
     const data = loadStore()

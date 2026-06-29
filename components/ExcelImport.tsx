@@ -46,13 +46,18 @@ export default function ExcelImport({
     const missing = spec.filter((f) => f.required && !mapping[f.key])
     if (missing.length) { toast.error(`Map a column for: ${missing.map((f) => f.label).join(', ')}`); return }
     setBusy(true)
-    const rows = parsed.rows.map((r) =>
-      Object.fromEntries(spec.map((f) => [f.key, mapping[f.key] ? (r[mapping[f.key]] ?? '') : ''])))
-    const res: ImportResult = await importAction(rows)
-    setBusy(false)
-    toast.success(res.message)
-    setOpen(false); setParsed(null)
-    router.refresh()
+    try {
+      const rows = parsed.rows.map((r) =>
+        Object.fromEntries(spec.map((f) => [f.key, mapping[f.key] ? (r[mapping[f.key]] ?? '') : ''])))
+      const res: ImportResult = await importAction(rows)
+      setBusy(false)
+      toast.success(res.message)
+      setOpen(false); setParsed(null)
+      router.refresh()
+    } catch (err) {
+      setBusy(false)
+      toast.error(`Import failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
   }
 
   if (!open) {
