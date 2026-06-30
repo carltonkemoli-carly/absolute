@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers'
 import { PageHeader } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
 import { listTrips, listContractors, listOrganizations, listVehicles, listDrivers } from '@/lib/db'
@@ -25,7 +26,13 @@ export default async function TripsPage({
   searchParams,
 }: { searchParams: Promise<{ y?: string; m?: string }> }) {
   const sp = await searchParams
-  const { year, month } = resolvePeriod(sp.y, sp.m)
+  // Sticky month: with no month in the URL, reopen on the last month the user viewed.
+  let y = sp.y, m = sp.m
+  if (y === undefined && m === undefined) {
+    const saved = (await cookies()).get('acw_period')?.value
+    if (saved && /^\d{4}-\d{1,2}$/.test(saved)) { const [cy, cm] = saved.split('-'); y = cy; m = cm }
+  }
+  const { year, month } = resolvePeriod(y, m)
   const { start, end } = monthRange(year, month)
   const today = isoDate(new Date())
   const defaultDate = today >= start && today <= end ? today : start

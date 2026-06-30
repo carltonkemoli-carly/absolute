@@ -9,6 +9,8 @@ export default function MonthNav({ year, month }: { year: number; month: number 
   const params = useSearchParams()
 
   function go(y: number, m: number) {
+    // Remember the chosen month so pages can reopen on it next time.
+    document.cookie = `acw_period=${y}-${m}; path=/; max-age=${60 * 60 * 24 * 180}`
     const next = new URLSearchParams(params)
     next.set('y', String(y))
     next.set('m', String(m))
