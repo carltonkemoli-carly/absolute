@@ -7,7 +7,8 @@ import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listFuel, listVehicles, listDrivers, listContractors, listOrganizations, listDocuments, listServices, listExpenses } from '@/lib/db'
 import { OWNERSHIP_LABELS } from '@/lib/types'
 import { buildAttention } from '@/lib/attention'
-import { monthRange, resolvePeriod, kes } from '@/lib/format'
+import { monthRange, kes } from '@/lib/format'
+import { stickyPeriod } from '@/lib/period'
 import type { Trip } from '@/lib/types'
 
 export default async function DashboardPage({
@@ -18,7 +19,7 @@ export default async function DashboardPage({
   if (!canSeeFinance(profile.role)) redirect('/trips')
 
   const sp = await searchParams
-  const { year, month } = resolvePeriod(sp.y, sp.m)
+  const { year, month } = await stickyPeriod(sp)
   const { start, end } = monthRange(year, month)
 
   const [trips, fuel, vehicles, drivers, contractors, organizations, documents, services, expenses] = await Promise.all([

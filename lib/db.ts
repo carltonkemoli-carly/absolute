@@ -75,6 +75,22 @@ export async function clearUnassignedTrips(): Promise<number> {
   const { count } = await s.from('trips').delete({ count: 'exact' }).eq('status', 'booked')
   return count ?? 0
 }
+// The most recent month (on/before today) that has any trips — used to open
+// dashboards on a month with data instead of an empty current month.
+export async function latestTripMonth(today: string): Promise<{ year: number; month: number } | null> {
+  let latest = ''
+  if (DEV_MODE) {
+    for (const t of loadStore().trips) if (t.trip_date <= today && t.trip_date > latest) latest = t.trip_date
+  } else {
+    const { data } = await (await sb())
+      .from('trips').select('trip_date').lte('trip_date', today).order('trip_date', { ascending: false }).limit(1)
+    latest = data?.[0]?.trip_date ?? ''
+  }
+  if (!latest) return null
+  const [y, m] = latest.split('-')
+  return { year: Number(y), month: Number(m) - 1 } // month → 0-indexed
+}
+
 // Trips for one contractor within a date range — used to build invoices from logged jobs.
 export async function listContractorTrips(contractorId: string, start: string, end: string): Promise<Trip[]> {
   if (DEV_MODE) {
