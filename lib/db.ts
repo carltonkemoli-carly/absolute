@@ -75,6 +75,19 @@ export async function clearUnassignedTrips(): Promise<number> {
   const { count } = await s.from('trips').delete({ count: 'exact' }).eq('status', 'booked')
   return count ?? 0
 }
+// Trips for one contractor within a date range — used to build invoices from logged jobs.
+export async function listContractorTrips(contractorId: string, start: string, end: string): Promise<Trip[]> {
+  if (DEV_MODE) {
+    return loadStore().trips
+      .filter((t) => t.contractor_id === contractorId && t.trip_date >= start && t.trip_date <= end)
+      .sort(byField('trip_date'))
+  }
+  const { data } = await (await sb())
+    .from('trips').select('*').eq('contractor_id', contractorId)
+    .gte('trip_date', start).lte('trip_date', end).order('trip_date')
+  return (data ?? []) as Trip[]
+}
+
 export async function listFuel(start: string, end: string): Promise<FuelEntry[]> {
   if (DEV_MODE) return loadStore().fuel.filter((f) => f.fuel_date >= start && f.fuel_date <= end).sort(byField('fuel_date', -1))
   const { data } = await (await sb()).from('fuel_entries').select('*').gte('fuel_date', start).lte('fuel_date', end).order('fuel_date', { ascending: false })
@@ -106,6 +119,11 @@ export async function listExpenses(start?: string, end?: string): Promise<Expens
   if (start && end) q = q.gte('expense_date', start).lte('expense_date', end)
   const { data } = await q.order('expense_date', { ascending: false })
   return (data ?? []) as Expense[]
+}
+export async function getInvoice(id: string): Promise<Invoice | null> {
+  if (DEV_MODE) return loadStore().invoices.find((i) => i.id === id) ?? null
+  const { data } = await (await sb()).from('invoices').select('*').eq('id', id).maybeSingle()
+  return (data ?? null) as Invoice | null
 }
 export async function listInvoices(): Promise<Invoice[]> {
   if (DEV_MODE) return [...loadStore().invoices].sort(byField('due_date', -1))

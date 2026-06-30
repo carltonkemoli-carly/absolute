@@ -357,10 +357,13 @@ function seed(): StoreData {
   const inv = (con: Contractor, monthsAgo: number, amount: number, paid: number) => {
     const issue = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1)
     const due = new Date(issue.getFullYear(), issue.getMonth(), issue.getDate() + 30)
+    const pStart = new Date(issue.getFullYear(), issue.getMonth() - 1, 1)
+    const pEnd = new Date(issue.getFullYear(), issue.getMonth(), 0)
     invoices.push({
       id: uid('inv'), contractor_id: con.id,
       invoice_no: `INV-${1000 + invoices.length}`,
-      period_label: `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][issue.getMonth()]} ${issue.getFullYear()}`,
+      period_label: `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][pStart.getMonth()]} ${pStart.getFullYear()}`,
+      period_start: iso(pStart), period_end: iso(pEnd),
       issue_date: iso(issue), due_date: iso(due),
       amount, amount_paid: paid, paid_date: paid >= amount ? iso(due) : null,
       notes: null, created_by: null, created_at: '',

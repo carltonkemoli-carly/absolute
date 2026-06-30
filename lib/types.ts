@@ -205,6 +205,8 @@ export interface Invoice {
   contractor_id: string | null
   invoice_no: string | null
   period_label: string | null
+  period_start: string | null   // trip-generated invoices: billed range start (YYYY-MM-DD)
+  period_end: string | null     // billed range end
   issue_date: string | null
   due_date: string | null
   amount: number

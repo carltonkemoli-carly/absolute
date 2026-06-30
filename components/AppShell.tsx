@@ -5,41 +5,74 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import NavProgress from '@/components/NavProgress'
 import DemoUserSwitch from '@/components/DemoUserSwitch'
+import NavIcon from '@/components/NavIcon'
 import type { Profile } from '@/lib/types'
 
 type NavItem = { href: string; label: string; icon: string; financeOnly?: boolean }
+type NavGroup = { title: string; items: NavItem[] }
 
-const NAV: NavItem[] = [
-  { href: '/', label: 'Dashboard', icon: '◧', financeOnly: true },
-  { href: '/dispatch', label: 'Dispatch', icon: '🧭' },
-  { href: '/flights', label: 'Flights', icon: '✈' },
-  { href: '/trips', label: 'Trips', icon: '➜' },
-  { href: '/fuel', label: 'Fuel', icon: '⛽' },
-  { href: '/services', label: 'Servicing', icon: '🔧' },
-  { href: '/vehicles', label: 'Fleet', icon: '🚐' },
-  { href: '/drivers', label: 'Drivers', icon: '👤' },
-  { href: '/routes', label: 'Routes & rates', icon: '🗺' },
-  { href: '/compliance', label: 'Compliance', icon: '🛡' },
-  { href: '/expenses', label: 'Expenses', icon: '💸', financeOnly: true },
-  { href: '/goals', label: 'Targets & P&L', icon: '🎯', financeOnly: true },
-  { href: '/billing', label: 'Billing', icon: '🧾', financeOnly: true },
-  { href: '/receivables', label: 'Receivables', icon: '💰', financeOnly: true },
-  { href: '/reports', label: 'Reports', icon: '📈', financeOnly: true },
-  { href: '/backup', label: 'Backup', icon: '💾', financeOnly: true },
-  { href: '/settings', label: 'Settings', icon: '⚙' },
+// Grouped navigation — fewer, clearer sections instead of one long flat list.
+const NAV_GROUPS: NavGroup[] = [
+  {
+    title: 'Overview',
+    items: [{ href: '/', label: 'Dashboard', icon: 'dashboard', financeOnly: true }],
+  },
+  {
+    title: 'Operations',
+    items: [
+      { href: '/dispatch', label: 'Dispatch', icon: 'dispatch' },
+      { href: '/flights', label: 'Flights', icon: 'flights' },
+      { href: '/trips', label: 'Trips', icon: 'trips' },
+    ],
+  },
+  {
+    title: 'Fleet',
+    items: [
+      { href: '/vehicles', label: 'Fleet', icon: 'fleet' },
+      { href: '/drivers', label: 'Drivers', icon: 'drivers' },
+      { href: '/fuel', label: 'Fuel', icon: 'fuel' },
+      { href: '/services', label: 'Servicing', icon: 'servicing' },
+      { href: '/routes', label: 'Routes & rates', icon: 'routes' },
+      { href: '/compliance', label: 'Compliance', icon: 'compliance' },
+    ],
+  },
+  {
+    title: 'Finance',
+    items: [
+      { href: '/receivables', label: 'Receivables', icon: 'receivables', financeOnly: true },
+      { href: '/billing', label: 'Billing', icon: 'billing', financeOnly: true },
+      { href: '/expenses', label: 'Expenses', icon: 'expenses', financeOnly: true },
+      { href: '/goals', label: 'Targets & P&L', icon: 'goals', financeOnly: true },
+      { href: '/reports', label: 'Reports', icon: 'reports', financeOnly: true },
+    ],
+  },
+  {
+    title: 'System',
+    items: [
+      { href: '/backup', label: 'Backup', icon: 'backup', financeOnly: true },
+      { href: '/settings', label: 'Settings', icon: 'settings' },
+    ],
+  },
 ]
+
+const ALL_ITEMS = NAV_GROUPS.flatMap((g) => g.items)
 
 export default function AppShell({
   profile, canFinance, devMode, children,
 }: { profile: Profile; canFinance: boolean; devMode: boolean; children: React.ReactNode }) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
-  const items = NAV.filter((i) => !i.financeOnly || canFinance)
+
+  // Filter finance-gated items, then drop any group left empty.
+  const groups = NAV_GROUPS
+    .map((g) => ({ ...g, items: g.items.filter((i) => !i.financeOnly || canFinance) }))
+    .filter((g) => g.items.length > 0)
 
   // Close the drawer whenever the route changes
   useEffect(() => { setOpen(false) }, [pathname])
 
-  const activeLabel = items.find((i) => (i.href === '/' ? pathname === '/' : pathname.startsWith(i.href)))?.label ?? 'Menu'
+  const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href))
+  const activeLabel = ALL_ITEMS.filter((i) => !i.financeOnly || canFinance).find((i) => isActive(i.href))?.label ?? 'Menu'
 
   return (
     <div className="app-layout">
@@ -56,16 +89,18 @@ export default function AppShell({
           </div>
         </div>
 
-        <nav className="scroll-thin" style={{ flex: 1, padding: '4px 12px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
-          {items.map((item) => {
-            const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
-            return (
-              <Link key={item.href} href={item.href} onClick={() => setOpen(false)} className={`nav-link${active ? ' nav-active' : ''}`}>
-                <span style={{ width: 18, textAlign: 'center', fontSize: 14 }}>{item.icon}</span>
-                {item.label}
-              </Link>
-            )
-          })}
+        <nav className="scroll-thin" style={{ flex: 1, padding: '4px 12px 12px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
+          {groups.map((group) => (
+            <div key={group.title} style={{ marginTop: 14 }}>
+              <div className="nav-section">{group.title}</div>
+              {group.items.map((item) => (
+                <Link key={item.href} href={item.href} onClick={() => setOpen(false)} className={`nav-link${isActive(item.href) ? ' nav-active' : ''}`}>
+                  <NavIcon name={item.icon} />
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          ))}
         </nav>
 
         <div style={{ padding: 14, borderTop: '1px solid var(--border)' }}>

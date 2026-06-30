@@ -287,6 +287,8 @@ create table if not exists invoices (
   contractor_id uuid references contractors(id) on delete set null,
   invoice_no    text,
   period_label  text,                  -- e.g. 'June 2026'
+  period_start  date,                  -- trip-generated invoices: billed range start
+  period_end    date,                  -- billed range end
   issue_date    date,
   due_date      date,
   amount        numeric(12,2) not null default 0,

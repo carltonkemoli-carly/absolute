@@ -154,15 +154,29 @@ tr.row-new td { animation: newRow 2.5s ease forwards; }
 .input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
 
 /* Sidebar nav items */
+/* Section label between nav groups */
+.nav-section {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink3); padding: 0 12px 6px; opacity: 0.75;
+}
 .nav-link {
+  position: relative;
   display: flex; align-items: center; gap: 11px;
-  padding: 10px 12px; border-radius: 10px;
-  font-size: 14.5px; font-weight: 500; color: var(--ink2);
+  padding: 9px 12px; border-radius: 10px;
+  font-size: 14px; font-weight: 500; color: var(--ink2);
   transition: background .18s var(--ease), color .18s var(--ease), transform .12s var(--ease);
 }
+.nav-link svg { color: var(--ink3); transition: color .18s var(--ease); }
 .nav-link:hover { background: var(--surface2); color: var(--ink); }
+.nav-link:hover svg { color: var(--ink2); }
 .nav-link:active { transform: scale(0.98); }
 .nav-link.nav-active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
+.nav-link.nav-active svg { color: var(--accent); }
+/* active accent bar on the left */
+.nav-link.nav-active::before {
+  content: ''; position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 18px; border-radius: 0 3px 3px 0; background: var(--accent);
+}
 
 /* Page content eases in on every navigation */
 @keyframes pageIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -223,4 +237,15 @@ label.field > span { display: block; font-size: 12px; font-weight: 500; color: v
 
 @media (min-width: 861px) {
   .mobile-only { display: none !important; }
+}
+
+/* Print: show only the invoice sheet, drop all app chrome. */
+@media print {
+  .app-sidebar, .mobile-topbar, .sidebar-backdrop, .no-print { display: none !important; }
+  .app-main { max-height: none !important; overflow: visible !important; }
+  .page-pad { padding: 0 !important; max-width: none !important; }
+  body { background: #fff !important; }
+  .invoice-sheet { border: none !important; box-shadow: none !important; padding: 0 !important; }
+  .invoice-sheet table { page-break-inside: auto; }
+  .invoice-sheet tr { page-break-inside: avoid; }
 }

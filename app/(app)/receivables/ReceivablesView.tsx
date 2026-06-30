@@ -1,10 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 import { StatCard } from '@/components/ui'
 import { kes, fmtDate } from '@/lib/format'
 import type { Contractor, Invoice } from '@/lib/types'
-import { saveInvoice, recordPayment, markPaid, deleteInvoice } from './actions'
+import { saveInvoice, recordPayment, markPaid, deleteInvoice, previewInvoiceFromTrips, generateInvoiceFromTrips, type InvoicePreview } from './actions'
+
+const thisMonth = new Date().toISOString().slice(0, 7)
 
 const today = new Date().toISOString().slice(0, 10)
 function outstanding(i: Invoice) { return Math.max(0, Number(i.amount) - Number(i.amount_paid)) }
@@ -22,9 +27,34 @@ function statusOf(i: Invoice): { label: string; color: string } {
 }
 
 export default function ReceivablesView({ invoices, contractors }: { invoices: Invoice[]; contractors: Contractor[] }) {
+  const router = useRouter()
   const [creating, setCreating] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const [payId, setPayId] = useState<string | null>(null)
   const cname = (id: string | null) => contractors.find((c) => c.id === id)?.name ?? '—'
+
+  // Generate-from-trips state
+  const [genContractor, setGenContractor] = useState('')
+  const [genMonth, setGenMonth] = useState(thisMonth)
+  const [preview, setPreview] = useState<InvoicePreview | null>(null)
+  const [busy, startBusy] = useTransition()
+
+  function doPreview() {
+    setPreview(null)
+    startBusy(async () => {
+      const p = await previewInvoiceFromTrips(genContractor, genMonth)
+      setPreview(p)
+      if (!p.ok && p.message) toast.error(p.message)
+    })
+  }
+  function doGenerate(fd: FormData) {
+    startBusy(async () => {
+      await generateInvoiceFromTrips(fd)
+      toast.success('Invoice created from trips.')
+      setGenerating(false); setPreview(null); setGenContractor('')
+      router.refresh()
+    })
+  }
 
   const totalBilled = invoices.reduce((s, i) => s + Number(i.amount), 0)
   const totalCollected = invoices.reduce((s, i) => s + Number(i.amount_paid), 0)
@@ -70,11 +100,62 @@ export default function ReceivablesView({ invoices, contractors }: { invoices: I
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button className="btn-primary" style={{ padding: '9px 16px', fontSize: 14, cursor: 'pointer' }} onClick={() => setCreating((v) => !v)}>
-          {creating ? 'Close' : '+ New invoice'}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+        <button className="btn-primary" style={{ padding: '9px 16px', fontSize: 14, cursor: 'pointer' }} onClick={() => { setGenerating((v) => !v); setCreating(false); setPreview(null) }}>
+          {generating ? 'Close' : '⚡ Generate from trips'}
+        </button>
+        <button className="btn-ghost" style={{ padding: '9px 16px', fontSize: 14, cursor: 'pointer' }} onClick={() => { setCreating((v) => !v); setGenerating(false) }}>
+          {creating ? 'Close' : '+ Manual invoice'}
         </button>
       </div>
+
+      {generating && (
+        <div className="card" style={{ padding: 20 }}>
+          <div className="font-display" style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Generate an invoice from logged trips</div>
+          <p style={{ fontSize: 13, color: 'var(--ink2)', margin: '0 0 14px' }}>Pick a contractor and month — we’ll total every trip you logged for them and build the invoice.</p>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <label className="field" style={{ minWidth: 200 }}><span>Contractor *</span>
+              <select className="input" value={genContractor} onChange={(e) => { setGenContractor(e.target.value); setPreview(null) }}>
+                <option value="">Choose…</option>
+                {contractors.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </label>
+            <label className="field"><span>Month *</span>
+              <input type="month" className="input" value={genMonth} onChange={(e) => { setGenMonth(e.target.value); setPreview(null) }} />
+            </label>
+            <button className="btn-ghost" style={{ padding: '9px 16px', fontSize: 14, cursor: 'pointer' }} disabled={busy || !genContractor} onClick={doPreview}>
+              {busy && !preview ? 'Checking…' : 'Preview'}
+            </button>
+          </div>
+
+          {preview?.ok && (
+            <form action={doGenerate} className="animate-fadeup" style={{ marginTop: 16, padding: 16, background: 'var(--accent-light)', borderRadius: 'var(--radius-sm)' }}>
+              <input type="hidden" name="contractor_id" value={genContractor} />
+              <input type="hidden" name="month" value={genMonth} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ fontSize: 14 }}>
+                  <strong>{cname(genContractor)}</strong> · {preview.label} — <strong>{preview.count}</strong> trip{preview.count === 1 ? '' : 's'}
+                </div>
+                <div className="font-display" style={{ fontSize: 22, fontWeight: 700 }}>{kes(preview.total)}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 14 }}>
+                <label className="field"><span>Invoice no. (optional)</span><input name="invoice_no" className="input" placeholder="INV-1042" /></label>
+                <label className="field"><span>Payment terms</span>
+                  <select name="due_days" className="input" defaultValue="30">
+                    <option value="7">Due in 7 days</option>
+                    <option value="14">Due in 14 days</option>
+                    <option value="30">Due in 30 days</option>
+                    <option value="45">Due in 45 days</option>
+                  </select>
+                </label>
+                <button type="submit" className="btn-primary" style={{ padding: '10px 20px', fontSize: 14, cursor: 'pointer' }} disabled={busy}>
+                  {busy ? 'Creating…' : 'Create invoice →'}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
 
       {creating && (
         <form action={async (fd) => { await saveInvoice(fd); setCreating(false) }} className="card" style={{ padding: 20 }}>
@@ -120,6 +201,7 @@ export default function ReceivablesView({ invoices, contractors }: { invoices: I
                   <Td><span style={{ fontSize: 12, fontWeight: 700, color: st.color }}>{st.label}</span></Td>
                   <Td>
                     <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Link href={`/receivables/${i.id}`} style={linkBtn}>View / print</Link>
                       {outstanding(i) > 0 && (
                         <form action={markPaid}>
                           <input type="hidden" name="id" value={i.id} /><input type="hidden" name="amount" value={i.amount} />
