@@ -5,7 +5,7 @@ import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import type {
   Contractor, Driver, FuelEntry, Organization, Profile, Trip, Vehicle,
-  VehicleService, Route, ComplianceDoc, Expense, Target, Invoice,
+  VehicleService, Route, ComplianceDoc, Expense, Target, Invoice, Company,
 } from '@/lib/types'
 
 const FILE = join(process.cwd(), '.devdata.json')
@@ -33,6 +33,7 @@ export interface StoreData {
   expenses: Expense[]
   targets: Target[]
   invoices: Invoice[]
+  company?: Company
 }
 
 export function uid(prefix = 'row') {

@@ -1,15 +1,16 @@
 import { PageHeader } from '@/components/ui'
 import { requireProfile } from '@/lib/auth'
-import { listContractors, listOrganizations, listProfiles } from '@/lib/db'
+import { listContractors, listOrganizations, listProfiles, getCompany } from '@/lib/db'
 import ThemeToggle from '@/components/ThemeToggle'
 import ChangePassword from '@/components/ChangePassword'
+import CompanyDetails from './CompanyDetails'
 import SettingsManager from './SettingsManager'
 
 export const dynamic = 'force-dynamic'
 
 export default async function SettingsPage() {
-  const [profile, contractors, organizations, profiles] = await Promise.all([
-    requireProfile(), listContractors(), listOrganizations(), listProfiles(),
+  const [profile, contractors, organizations, profiles, company] = await Promise.all([
+    requireProfile(), listContractors(), listOrganizations(), listProfiles(), getCompany(),
   ])
 
   return (
@@ -27,6 +28,14 @@ export default async function SettingsPage() {
           <ThemeToggle />
         </div>
       </section>
+
+      {profile.role === 'owner' && (
+        <section style={{ marginBottom: 26 }}>
+          <h2 className="font-display" style={{ fontSize: 17, fontWeight: 600, margin: '0 0 2px' }}>Company</h2>
+          <p style={{ fontSize: 13.5, color: 'var(--ink2)', margin: '0 0 12px' }}>These details appear on the invoices you print and send to contractors.</p>
+          <CompanyDetails company={company} />
+        </section>
+      )}
 
       <section style={{ marginBottom: 26 }}>
         <h2 className="font-display" style={{ fontSize: 17, fontWeight: 600, margin: '0 0 2px' }}>Account</h2>

@@ -1,19 +1,10 @@
 import { notFound, redirect } from 'next/navigation'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
-import { getInvoice, listContractors, listContractorTrips } from '@/lib/db'
+import { getInvoice, listContractors, listContractorTrips, getCompany } from '@/lib/db'
 import { kes, fmtDate } from '@/lib/format'
 import PrintBar from './PrintButton'
 
 export const dynamic = 'force-dynamic'
-
-// Company details shown on the invoice. Edit here to match your letterhead.
-const COMPANY = {
-  name: 'Absolute Comfort Travel',
-  tagline: 'Executive Airport Transfers & Client Transport',
-  location: 'Nairobi, Kenya',
-  email: 'absolutecomfort@gmail.com',
-  phone: '+254 700 000 000',
-}
 
 export default async function InvoicePrintPage({ params }: { params: Promise<{ id: string }> }) {
   const profile = await requireProfile()
@@ -23,7 +14,7 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
   const invoice = await getInvoice(id)
   if (!invoice) notFound()
 
-  const contractors = await listContractors()
+  const [contractors, COMPANY] = await Promise.all([listContractors(), getCompany()])
   const contractor = contractors.find((c) => c.id === invoice.contractor_id) ?? null
 
   // Line items: the trips this invoice was generated from (if it has a billed range).

@@ -217,5 +217,21 @@ export interface Invoice {
   created_at: string
 }
 
+// Company profile shown on invoices (editable in Settings → Company)
+export interface Company {
+  name: string
+  tagline: string | null
+  location: string | null
+  email: string | null
+  phone: string | null
+}
+export const DEFAULT_COMPANY: Company = {
+  name: 'Absolute Comfort Travel',
+  tagline: 'Executive Airport Transfers & Client Transport',
+  location: 'Nairobi, Kenya',
+  email: 'absolutecomfort@gmail.com',
+  phone: '+254 700 000 000',
+}
+
 // Roles allowed to view financial figures (revenue, profit, fuel index)
 export const FINANCE_ROLES: UserRole[] = ['owner', 'accountant']

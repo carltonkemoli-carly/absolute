@@ -5,8 +5,9 @@ import { DEV_MODE } from '@/lib/devmode'
 import { loadStore, saveStore, uid, type StoreData } from '@/lib/devstore'
 import type {
   Contractor, Driver, FuelEntry, Organization, Profile, Trip, Vehicle,
-  VehicleService, Route, ComplianceDoc, Expense, Target, Invoice,
+  VehicleService, Route, ComplianceDoc, Expense, Target, Invoice, Company,
 } from '@/lib/types'
+import { DEFAULT_COMPANY } from '@/lib/types'
 
 type Row = Record<string, unknown>
 
@@ -155,6 +156,24 @@ export async function listTargets(period?: string): Promise<Target[]> {
   if (period) q = q.eq('period', period)
   const { data } = await q
   return (data ?? []) as Target[]
+}
+
+// ---------- Company profile (single row) ----------
+export async function getCompany(): Promise<Company> {
+  if (DEV_MODE) return { ...DEFAULT_COMPANY, ...(loadStore().company ?? {}) }
+  const { data } = await (await sb()).from('company').select('*').eq('id', 1).maybeSingle()
+  if (!data) return DEFAULT_COMPANY
+  return {
+    name: data.name ?? DEFAULT_COMPANY.name,
+    tagline: data.tagline ?? null,
+    location: data.location ?? null,
+    email: data.email ?? null,
+    phone: data.phone ?? null,
+  }
+}
+export async function saveCompany(c: Company): Promise<void> {
+  if (DEV_MODE) { const d = loadStore(); d.company = c; saveStore(d); return }
+  await (await sb()).from('company').upsert({ id: 1, ...c, updated_at: new Date().toISOString() })
 }
 
 // ---------- Writes ----------
