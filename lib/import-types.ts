@@ -17,3 +17,13 @@ export interface ImportResult {
   skipped: number
   message: string
 }
+
+// Optional dropdowns shown in the import wizard (e.g. "these trips are completed / upcoming").
+export interface ImportOption {
+  key: string
+  label: string
+  choices: { value: string; label: string }[]
+  default: string
+}
+export type ImportOptions = Record<string, string>
+export type ImportAction = (rows: Record<string, string>[], opts: ImportOptions) => Promise<ImportResult>

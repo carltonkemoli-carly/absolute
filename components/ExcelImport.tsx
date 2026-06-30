@@ -4,21 +4,23 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { parseExcelAction } from '@/lib/excel-actions'
-import type { FieldSpec, ImportResult, ParseResult } from '@/lib/import-types'
+import type { FieldSpec, ImportResult, ParseResult, ImportOption, ImportOptions } from '@/lib/import-types'
 
 export default function ExcelImport({
-  label = 'Import from Excel', spec, importAction, hint,
+  label = 'Import from Excel', spec, importAction, hint, options = [],
 }: {
   label?: string
   spec: FieldSpec[]
-  importAction: (rows: Record<string, string>[]) => Promise<ImportResult>
+  importAction: (rows: Record<string, string>[], opts: ImportOptions) => Promise<ImportResult>
   hint?: string
+  options?: ImportOption[]
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [parsed, setParsed] = useState<ParseResult | null>(null)
   const [mapping, setMapping] = useState<Record<string, string>>({})
+  const [opts, setOpts] = useState<ImportOptions>(() => Object.fromEntries(options.map((o) => [o.key, o.default])))
 
   function autoMap(headers: string[]) {
     const m: Record<string, string> = {}
@@ -49,7 +51,7 @@ export default function ExcelImport({
     try {
       const rows = parsed.rows.map((r) =>
         Object.fromEntries(spec.map((f) => [f.key, mapping[f.key] ? (r[mapping[f.key]] ?? '') : ''])))
-      const res: ImportResult = await importAction(rows)
+      const res: ImportResult = await importAction(rows, opts)
       setBusy(false)
       toast.success(res.message)
       setOpen(false); setParsed(null)
@@ -119,6 +121,19 @@ export default function ExcelImport({
               </tbody>
             </table>
           </div>
+
+          {options.length > 0 && (
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 14 }}>
+              {options.map((o) => (
+                <label key={o.key} className="field">
+                  <span>{o.label}</span>
+                  <select className="input" value={opts[o.key]} onChange={(e) => setOpts((p) => ({ ...p, [o.key]: e.target.value }))}>
+                    {o.choices.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
+                </label>
+              ))}
+            </div>
+          )}
 
           <button className="btn-primary" style={{ padding: '10px 20px', fontSize: 14, cursor: 'pointer', opacity: busy ? 0.6 : 1 }} disabled={busy} onClick={doImport}>
             {busy ? 'Importing…' : `Import ${parsed.rows.length} rows`}

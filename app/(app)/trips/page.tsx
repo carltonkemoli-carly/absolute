@@ -50,7 +50,16 @@ export default async function TripsPage({
           label="Import trips from Excel (BCD / FCM / any)"
           spec={TRIP_SPEC}
           importAction={importTrips}
-          hint="Upload a contractor's trip sheet (.xlsx or .csv). New trips arrive as bookings — assign drivers in Dispatch. Title/blank rows above the headers are handled automatically."
+          options={[{
+            key: 'status',
+            label: 'These trips are',
+            default: 'completed',
+            choices: [
+              { value: 'completed', label: 'Completed / historical (for finance & reports)' },
+              { value: 'booked', label: 'Upcoming bookings (send to Dispatch)' },
+            ],
+          }]}
+          hint="Upload a contractor's trip sheet (.xlsx or .csv). Bad dates (Excel serials, swapped day/month) are auto-corrected, cancelled/“not done” rows are skipped, and duplicates are ignored. Title/blank rows above the headers are handled automatically."
         />
       </div>
       <TripManager
