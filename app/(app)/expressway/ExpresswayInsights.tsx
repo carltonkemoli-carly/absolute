@@ -9,7 +9,7 @@ type Trend = { label: string; toll: number; count: number }
 type Dir = { count: number; toll: number }
 
 export default function ExpresswayInsights({
-  period, stats, trend, byDriver, byVehicle, byOrg, byRoute, dow, direction, bands,
+  period, stats, trend, byDriver, byVehicle, byOrg, byRoute, dow, direction, bands, hours, timedCount,
 }: {
   period: string
   stats: { totalTrips: number; expressCount: number; totalToll: number; prevToll: number; avgToll: number }
@@ -18,6 +18,8 @@ export default function ExpresswayInsights({
   dow: { day: string; count: number; toll: number }[]
   direction: { to: Dir; from: Dir; other: Dir }
   bands: { amount: number; count: number }[]
+  hours: { h: number; count: number; toll: number }[]
+  timedCount: number
 }) {
   const [rankBy, setRankBy] = useState<'toll' | 'trips'>('toll')
   const metric = (g: { toll: number; count: number }) => (rankBy === 'toll' ? g.toll : g.count)
@@ -128,9 +130,22 @@ export default function ExpresswayInsights({
         </div>
       </div>
 
-      <p style={{ fontSize: 12.5, color: 'var(--ink3)', textAlign: 'center', margin: '4px 0 0' }}>
-        Tip: time-of-day analysis (busiest hours) needs a pickup time on each trip — not in the BCD sheets yet. Capture it via Dispatch or add a time field to unlock it.
-      </p>
+      {/* Busiest hours */}
+      <div className="card" style={{ padding: 18 }}>
+        <SectionTitle>Busiest hours (expressway)</SectionTitle>
+        {timedCount > 0 ? (
+          <>
+            <p style={tip}>{timedCount} of {stats.expressCount} expressway trips have a pickup time.</p>
+            <Bars
+              items={hours.filter((h) => h.count > 0).map((h) => ({ label: `${String(h.h).padStart(2, '0')}:00`, value: metric(h), sub: '' }))}
+              max={Math.max(1, ...hours.map(metric))} format={fmt} accent="var(--accent-mid)" />
+          </>
+        ) : (
+          <p style={{ fontSize: 13.5, color: 'var(--ink3)' }}>
+            No pickup times recorded yet. Add a <strong>Pickup time</strong> when logging trips (it’s on the trip form now) or include a time column in your import — this chart fills in automatically.
+          </p>
+        )}
+      </div>
     </div>
   )
 

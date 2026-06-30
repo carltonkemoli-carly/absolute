@@ -84,6 +84,17 @@ export default async function ExpresswayPage({
     bucket.count++; bucket.toll += ex(t)
   }
 
+  // ---- busiest hours (needs pickup_time) ----
+  const hours = Array.from({ length: 24 }, (_, h) => ({ h, count: 0, toll: 0 }))
+  let timed = 0
+  for (const t of expressTrips) {
+    const pt = t.pickup_time
+    if (pt && /^\d{1,2}:\d{2}/.test(pt)) {
+      const h = Number(pt.slice(0, 2))
+      if (h >= 0 && h < 24) { hours[h].count++; hours[h].toll += ex(t); timed++ }
+    }
+  }
+
   // ---- toll bands (entry/exit station proxy) ----
   const bandMap = new Map<number, number>()
   for (const t of expressTrips) bandMap.set(ex(t), (bandMap.get(ex(t)) ?? 0) + 1)
@@ -112,6 +123,8 @@ export default async function ExpresswayPage({
         dow={dow}
         direction={dir}
         bands={bands}
+        hours={hours}
+        timedCount={timed}
       />
     </>
   )

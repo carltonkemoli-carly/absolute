@@ -10,6 +10,7 @@ export async function saveTrip(formData: FormData) {
     client_name: String(formData.get('client_name') || '').trim(),
     slip_no: emptyToNull(formData.get('slip_no')),
     pickup: emptyToNull(formData.get('pickup')),
+    pickup_time: emptyToNull(formData.get('pickup_time')),
     dropoff: emptyToNull(formData.get('dropoff')),
     notes: emptyToNull(formData.get('notes')),
     express_charges: num(formData.get('express_charges')),

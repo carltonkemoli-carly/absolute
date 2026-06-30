@@ -13,6 +13,7 @@ const TRIP_SPEC: FieldSpec[] = [
   { key: 'client_name', label: 'Client', keywords: ['client', 'name', 'passenger'], required: true },
   { key: 'slip_no', label: 'Slip / Ticket', keywords: ['slip', 'ticket'] },
   { key: 'pickup', label: 'From', keywords: ['from', 'pickup'] },
+  { key: 'pickup_time', label: 'Pickup time', keywords: ['time', 'pick up time', 'pickup time'] },
   { key: 'dropoff', label: 'To', keywords: ['to', 'dropoff'] },
   { key: 'express_charges', label: 'Express charges', keywords: ['express'] },
   { key: 'voucher_no', label: 'Voucher', keywords: ['voucher'] },

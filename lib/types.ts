@@ -73,6 +73,7 @@ export interface Trip {
   client_name: string
   slip_no: string | null
   pickup: string | null
+  pickup_time: string | null   // "HH:MM" 24h — when the car picks up
   dropoff: string | null
   notes: string | null
   express_charges: number

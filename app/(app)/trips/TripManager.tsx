@@ -130,6 +130,9 @@ function TripForm({ trip, lookups, defaultDate, onDone }: { trip: Trip | null; l
           <label className="field"><span>From</span>
             <input name="pickup" className="input" defaultValue={trip?.pickup ?? ''} placeholder="JKIA" />
           </label>
+          <label className="field"><span>Pickup time</span>
+            <input name="pickup_time" type="time" className="input" defaultValue={trip?.pickup_time ?? ''} />
+          </label>
           <label className="field"><span>To</span>
             <input name="dropoff" className="input" defaultValue={trip?.dropoff ?? ''} placeholder="Westlands" />
           </label>

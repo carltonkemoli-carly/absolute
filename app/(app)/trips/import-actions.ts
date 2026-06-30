@@ -81,6 +81,7 @@ export async function importTrips(rows: Record<string, string>[], opts: ImportOp
       trip_date, client_name,
       slip_no: emptyToNull(r.slip_no),
       pickup: emptyToNull(r.pickup),
+      pickup_time: normalizeTime(r.pickup_time),
       dropoff: emptyToNull(r.dropoff),
       notes: emptyToNull(r.notes),
       express_charges: num(r.express_charges),
@@ -118,6 +119,25 @@ function num(v: string): number {
 function emptyToNull(v: string): string | null {
   const s = String(v ?? '').trim()
   return s === '' ? null : s
+}
+// Normalise a time cell to "HH:MM": accepts "HH:MM[:SS]", "h:mm am/pm", or an
+// Excel time fraction (0–1 of a day).
+function normalizeTime(v: string): string | null {
+  const s = String(v ?? '').trim()
+  if (!s) return null
+  const ampm = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)?$/i)
+  if (ampm) {
+    let h = Number(ampm[1]); const m = ampm[2]; const ap = ampm[3]?.toLowerCase()
+    if (ap === 'pm' && h < 12) h += 12
+    if (ap === 'am' && h === 12) h = 0
+    if (h >= 0 && h <= 23) return `${String(h).padStart(2, '0')}:${m}`
+  }
+  const frac = Number(s)
+  if (Number.isFinite(frac) && frac > 0 && frac < 1) {
+    const mins = Math.round(frac * 24 * 60)
+    return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`
+  }
+  return null
 }
 const CANCEL_RE = /\b(not\s*done|cancel|no\s*show)\b/i
 function isCancelled(client: string, notes: string): boolean {

@@ -139,6 +139,7 @@ create table if not exists trips (
   client_name     text not null,
   slip_no         text,                     -- internal job slip / ticket no
   pickup          text,                     -- FROM
+  pickup_time     text,                     -- "HH:MM" 24h pickup time (for time-of-day analysis)
   dropoff         text,                     -- TO
   notes           text,
   express_charges numeric(10,2) not null default 0,  -- expressway toll (reimbursable)
