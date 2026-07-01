@@ -113,6 +113,10 @@ create table if not exists vehicles (
   ownership    vehicle_ownership not null default 'owned',
   owner_name   text,                         -- for hired vehicles: who owns it
   monthly_fee  numeric(10,2) not null default 0,  -- for monthly_hire: fixed fee
+  purchase_date  date,                          -- when the car entered the fleet
+  purchase_price numeric(12,2) not null default 0,  -- what it cost to buy
+  loan_amount    numeric(12,2) not null default 0,  -- financed amount (0 = bought cash)
+  loan_monthly   numeric(12,2) not null default 0,  -- monthly loan repayment
   notes        text,
   created_at   timestamptz not null default now()
 );

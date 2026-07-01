@@ -47,6 +47,10 @@ export interface Vehicle {
   ownership: VehicleOwnership
   owner_name: string | null
   monthly_fee: number
+  purchase_date: string | null
+  purchase_price: number
+  loan_amount: number
+  loan_monthly: number
   notes: string | null
   created_at: string
 }

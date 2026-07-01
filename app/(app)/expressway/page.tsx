@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { PageHeader } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
-import { listTrips, listDrivers, listVehicles, listOrganizations } from '@/lib/db'
+import { listTrips, listDrivers, listVehicles, listOrganizations, listContractors, listInvoices } from '@/lib/db'
 import { monthRange, MONTH_NAMES } from '@/lib/format'
 import { stickyPeriod } from '@/lib/period'
 import type { Trip } from '@/lib/types'
@@ -25,13 +25,14 @@ export default async function ExpresswayPage({
 
   // 6-month window (for the trend) ending at the selected month
   const windowStart = monthRange(year, month - 5).start
-  const [windowTrips, drivers, vehicles, organizations] = await Promise.all([
-    listTrips(windowStart, end), listDrivers(), listVehicles(), listOrganizations(),
+  const [windowTrips, drivers, vehicles, organizations, contractors, invoices] = await Promise.all([
+    listTrips(windowStart, end), listDrivers(), listVehicles(), listOrganizations(), listContractors(), listInvoices(),
   ])
 
   const driverName = (id: string | null) => drivers.find((d) => d.id === id)?.name ?? 'Unassigned'
   const plate = (id: string | null) => vehicles.find((v) => v.id === id)?.plate ?? 'Unassigned'
   const orgName = (id: string | null) => organizations.find((o) => o.id === id)?.name ?? '—'
+  const conName = (id: string | null) => contractors.find((c) => c.id === id)?.name ?? 'Direct / none'
 
   const monthTrips = windowTrips.filter((t) => t.trip_date >= start && t.trip_date <= end)
   const expressTrips = monthTrips.filter(isExpress)
@@ -84,6 +85,22 @@ export default async function ExpresswayPage({
     bucket.count++; bucket.toll += ex(t)
   }
 
+  // ---- reimbursement: tolls are billed to the contractor; is this month invoiced? ----
+  const conMap = new Map<string, { key: string; label: string; toll: number; count: number }>()
+  for (const t of expressTrips) {
+    const k = t.contractor_id ?? 'none'
+    const g = conMap.get(k) ?? { key: k, label: conName(t.contractor_id), toll: 0, count: 0 }
+    g.toll += ex(t); g.count++; conMap.set(k, g)
+  }
+  const invoicedFor = (contractorId: string) => invoices.some((inv) =>
+    inv.contractor_id === (contractorId === 'none' ? null : contractorId) && (
+      (inv.period_start && inv.period_end && inv.period_start <= end && inv.period_end >= start) ||
+      (inv.issue_date != null && inv.issue_date >= start && inv.issue_date <= end)
+    ))
+  const reimbursement = [...conMap.values()]
+    .map((g) => ({ label: g.label, toll: g.toll, count: g.count, billed: invoicedFor(g.key) }))
+    .sort((a, b) => b.toll - a.toll)
+
   // ---- busiest hours (needs pickup_time) ----
   const hours = Array.from({ length: 24 }, (_, h) => ({ h, count: 0, toll: 0 }))
   let timed = 0
@@ -125,6 +142,7 @@ export default async function ExpresswayPage({
         bands={bands}
         hours={hours}
         timedCount={timed}
+        reimbursement={reimbursement}
       />
     </>
   )

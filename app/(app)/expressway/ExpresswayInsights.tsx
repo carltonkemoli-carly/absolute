@@ -9,7 +9,7 @@ type Trend = { label: string; toll: number; count: number }
 type Dir = { count: number; toll: number }
 
 export default function ExpresswayInsights({
-  period, stats, trend, byDriver, byVehicle, byOrg, byRoute, dow, direction, bands, hours, timedCount,
+  period, stats, trend, byDriver, byVehicle, byOrg, byRoute, dow, direction, bands, hours, timedCount, reimbursement,
 }: {
   period: string
   stats: { totalTrips: number; expressCount: number; totalToll: number; prevToll: number; avgToll: number }
@@ -20,6 +20,7 @@ export default function ExpresswayInsights({
   bands: { amount: number; count: number }[]
   hours: { h: number; count: number; toll: number }[]
   timedCount: number
+  reimbursement: { label: string; toll: number; count: number; billed: boolean }[]
 }) {
   const [rankBy, setRankBy] = useState<'toll' | 'trips'>('toll')
   const metric = (g: { toll: number; count: number }) => (rankBy === 'toll' ? g.toll : g.count)
@@ -127,6 +128,28 @@ export default function ExpresswayInsights({
               ))}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Reimbursement — tolls are billed back to the contractor */}
+      <div className="card" style={{ padding: 18 }}>
+        <SectionTitle>Toll reimbursement (billed to contractor)</SectionTitle>
+        <p style={tip}>Every toll is recoverable. This flags tolls fronted but not yet invoiced for {period}.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {reimbursement.map((r, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: r.billed ? 'var(--surface2)' : 'var(--danger-light)' }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{r.label}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--ink3)' }}>{r.count} expressway trips</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div className="font-display" style={{ fontWeight: 700 }}>{kes(r.toll)}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: r.billed ? 'var(--accent)' : 'var(--danger)' }}>
+                  {r.billed ? '✓ invoiced' : '⚠ not invoiced'}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

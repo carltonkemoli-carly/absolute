@@ -14,11 +14,16 @@ export async function saveVehicle(formData: FormData) {
     ownership: String(formData.get('ownership') || 'owned'),
     owner_name: emptyToNull(formData.get('owner_name')),
     monthly_fee: num(formData.get('monthly_fee')),
+    purchase_date: emptyToNull(formData.get('purchase_date')),
+    purchase_price: num(formData.get('purchase_price')),
+    loan_amount: num(formData.get('loan_amount')),
+    loan_monthly: num(formData.get('loan_monthly')),
     notes: emptyToNull(formData.get('notes')),
   }
   if (!row.plate) return
   await saveRecord('vehicles', row, id || null)
   revalidatePath('/vehicles')
+  revalidatePath('/payback')
 }
 
 export async function deleteVehicle(formData: FormData) {

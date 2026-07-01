@@ -61,6 +61,18 @@ export default function VehicleManager({ vehicles }: { vehicles: Vehicle[] }) {
               <label className="field"><span>Monthly fee (KES, if monthly hire)</span>
                 <input name="monthly_fee" type="number" step="1" className="input" defaultValue={editing === 'new' ? '' : editing.monthly_fee || ''} />
               </label>
+              <label className="field"><span>Purchase date</span>
+                <input name="purchase_date" type="date" className="input" defaultValue={editing === 'new' ? '' : editing.purchase_date ?? ''} />
+              </label>
+              <label className="field"><span>Purchase price (KES)</span>
+                <input name="purchase_price" type="number" step="1" className="input" defaultValue={editing === 'new' ? '' : editing.purchase_price || ''} placeholder="e.g. 2,800,000" />
+              </label>
+              <label className="field"><span>Loan amount (KES, 0 if cash)</span>
+                <input name="loan_amount" type="number" step="1" className="input" defaultValue={editing === 'new' ? '' : editing.loan_amount || ''} />
+              </label>
+              <label className="field"><span>Loan repayment / month (KES)</span>
+                <input name="loan_monthly" type="number" step="1" className="input" defaultValue={editing === 'new' ? '' : editing.loan_monthly || ''} />
+              </label>
               <label className="field"><span>Notes</span>
                 <input name="notes" className="input" defaultValue={editing === 'new' ? '' : editing.notes ?? ''} />
               </label>

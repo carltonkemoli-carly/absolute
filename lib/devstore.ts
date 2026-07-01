@@ -84,13 +84,16 @@ function seed(): StoreData {
   const v = (
     plate: string, model: string, type: string, cap: number,
     ownership: Vehicle['ownership'] = 'owned', owner_name: string | null = null, monthly_fee = 0,
+    econ: { date?: string; price?: number; loan?: number; loanMo?: number } = {},
   ): Vehicle =>
-    ({ id: `veh-${plate}`, plate, model, vehicle_type: type, capacity: cap, photo_url: null, status: 'active', ownership, owner_name, monthly_fee, notes: null, created_at: '' })
+    ({ id: `veh-${plate}`, plate, model, vehicle_type: type, capacity: cap, photo_url: null, status: 'active', ownership, owner_name, monthly_fee,
+      purchase_date: econ.date ?? null, purchase_price: econ.price ?? 0, loan_amount: econ.loan ?? 0, loan_monthly: econ.loanMo ?? 0,
+      notes: null, created_at: '' })
   const vehicles: Vehicle[] = [
-    v('KCD196X', 'Toyota Noah', 'Van', 7),
-    v('KCH845Z', 'Toyota Hiace', 'Van', 14),
-    v('KCL947Z', 'Toyota Fielder', 'Wagon', 5),
-    v('KCC322A', 'Toyota Axio', 'Saloon', 4),
+    v('KCD196X', 'Toyota Noah', 'Van', 7, 'owned', null, 0, { date: '2024-01-15', price: 2800000, loan: 2000000, loanMo: 90000 }),
+    v('KCH845Z', 'Toyota Hiace', 'Van', 14, 'owned', null, 0, { date: '2023-06-01', price: 3500000 }),
+    v('KCL947Z', 'Toyota Fielder', 'Wagon', 5, 'owned', null, 0, { date: '2024-09-01', price: 2200000, loan: 1500000, loanMo: 70000 }),
+    v('KCC322A', 'Toyota Axio', 'Saloon', 4, 'owned', null, 0, { date: '2022-03-01', price: 1900000 }),
     v('KCL523S', 'Toyota Alphard', 'Van', 7, 'monthly_hire', 'James Mwangi', 55000),
     v('KBN406B', 'Toyota Coaster', 'Bus', 26, 'monthly_hire', 'Grace Wanjiru', 60000),
     v('KCN265J', 'Toyota Noah', 'Van', 7, 'casual_hire', 'Peter Otieno', 0),
