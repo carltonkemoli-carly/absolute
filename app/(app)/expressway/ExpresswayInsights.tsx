@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { StatCard } from '@/components/ui'
+import { Bars, SectionTitle } from '@/components/Bars'
 import { kes } from '@/lib/format'
 
 type Group = { key: string; label: string; count: number; toll: number; total: number }
@@ -178,9 +179,6 @@ export default function ExpresswayInsights({
   }
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <div className="font-display" style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>{children}</div>
-}
 function Spotlight({ title, name, big, sub }: { title: string; name: string; big: string; sub: string }) {
   return (
     <div className="card" style={{ padding: 18 }}>
@@ -191,26 +189,4 @@ function Spotlight({ title, name, big, sub }: { title: string; name: string; big
     </div>
   )
 }
-function Bars({ items, max, format, accent }: {
-  items: { label: string; value: number; sub: string }[]
-  max: number; format: (v: number) => string; accent: string
-}) {
-  if (!items.some((i) => i.value > 0)) return <div style={{ color: 'var(--ink3)', fontSize: 13.5 }}>No expressway trips this month.</div>
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-      {items.map((it, i) => (
-        <div key={i}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 3 }}>
-            <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>{it.label}</span>
-            <span style={{ color: 'var(--ink2)' }}>{format(it.value)}{it.sub ? <span style={{ color: 'var(--ink3)' }}> · {it.sub}</span> : null}</span>
-          </div>
-          <div style={{ height: 7, borderRadius: 6, background: 'var(--surface2)', overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${Math.max(2, (it.value / max) * 100)}%`, background: accent, borderRadius: 6, transition: 'width .4s var(--ease)' }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 const tip: React.CSSProperties = { fontSize: 12.5, color: 'var(--ink3)', margin: '-4px 0 12px' }
