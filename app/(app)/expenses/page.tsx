@@ -3,7 +3,8 @@ import { PageHeader, StatCard } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listExpenses, listVehicles, listDrivers } from '@/lib/db'
-import { monthRange, resolvePeriod, isoDate, kes } from '@/lib/format'
+import { monthRange, isoDate, kes } from '@/lib/format'
+import { stickyPeriod } from '@/lib/period'
 import ExpenseManager from './ExpenseManager'
 
 export const dynamic = 'force-dynamic'
@@ -15,7 +16,7 @@ export default async function ExpensesPage({
   if (!canSeeFinance(profile.role)) redirect('/trips')
 
   const sp = await searchParams
-  const { year, month } = resolvePeriod(sp.y, sp.m)
+  const { year, month } = await stickyPeriod(sp)
   const { start, end } = monthRange(year, month)
   const today = isoDate(new Date())
   const defaultDate = today >= start && today <= end ? today : start

@@ -1,7 +1,8 @@
 import { PageHeader, StatCard } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
 import { listFuel, listVehicles, listDrivers, listTrips, listExpenses } from '@/lib/db'
-import { monthRange, resolvePeriod, isoDate, kes } from '@/lib/format'
+import { monthRange, isoDate, kes } from '@/lib/format'
+import { stickyPeriod } from '@/lib/period'
 import ExcelImport from '@/components/ExcelImport'
 import type { FieldSpec } from '@/lib/import-types'
 import FuelManager from './FuelManager'
@@ -21,7 +22,7 @@ export default async function FuelPage({
   searchParams,
 }: { searchParams: Promise<{ y?: string; m?: string }> }) {
   const sp = await searchParams
-  const { year, month } = resolvePeriod(sp.y, sp.m)
+  const { year, month } = await stickyPeriod(sp)
   const { start, end } = monthRange(year, month)
   const today = isoDate(new Date())
   const defaultDate = today >= start && today <= end ? today : start

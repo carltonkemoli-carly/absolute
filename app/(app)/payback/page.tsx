@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { PageHeader, StatCard } from '@/components/ui'
+import PrintButton from '@/components/PrintButton'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listFuel, listExpenses, listServices, listVehicles } from '@/lib/db'
 import { kes, fmtDate, isoDate } from '@/lib/format'
@@ -80,7 +81,7 @@ export default async function PaybackPage() {
 
   return (
     <>
-      <PageHeader title="Vehicle payback" subtitle="What each car has truly brought back — and when it clears its loan" />
+      <PageHeader title="Vehicle payback" subtitle="What each car has truly brought back — and when it clears its loan" action={<PrintButton />} />
 
       <div className="grid-stats" style={{ marginBottom: 18 }}>
         <StatCard label="Capital in fleet" value={kes(fleetInvested)} hint={`${cards.length} owned vehicles`} />

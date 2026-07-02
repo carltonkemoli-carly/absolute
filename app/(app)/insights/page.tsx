@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { PageHeader } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
+import PrintButton from '@/components/PrintButton'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listFuel, listExpenses, listServices, listDrivers, listVehicles, listOrganizations, listContractors } from '@/lib/db'
 import { monthRange, MONTH_NAMES } from '@/lib/format'
@@ -108,7 +109,7 @@ export default async function InsightsPage({
 
   return (
     <>
-      <PageHeader title="Business insights" subtitle="Where the money comes from, which vehicles earn, and where it leaks" action={<MonthNav year={year} month={month} />} />
+      <PageHeader title="Business insights" subtitle="Where the money comes from, which vehicles earn, and where it leaks" action={<div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><MonthNav year={year} month={month} /><PrintButton /></div>} />
       <InsightsView
         period={`${MONTH_NAMES[month]} ${year}`}
         pl={{ revenue, fuel: fuelTotal, expenses: expTotal, net, prevRev, fuelPct: Math.round(fleetFuelPct * 100) }}

@@ -3,7 +3,8 @@ import { PageHeader } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listContractors, listOrganizations } from '@/lib/db'
-import { monthRange, resolvePeriod } from '@/lib/format'
+import { monthRange } from '@/lib/format'
+import { stickyPeriod } from '@/lib/period'
 import BillingView, { type ContractorBill, type BillRow } from './BillingView'
 
 export default async function BillingPage({
@@ -13,7 +14,7 @@ export default async function BillingPage({
   if (!canSeeFinance(profile.role)) redirect('/trips')
 
   const sp = await searchParams
-  const { year, month } = resolvePeriod(sp.y, sp.m)
+  const { year, month } = await stickyPeriod(sp)
   const { start, end } = monthRange(year, month)
 
   const [trips, contractors, organizations] = await Promise.all([
