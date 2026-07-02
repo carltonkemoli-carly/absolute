@@ -35,11 +35,15 @@ export default async function DataHealthPage() {
   const badDates = trips.filter((t) => t.trip_date < '2015-01-01' || t.trip_date > today).length
   add('Trips with an impossible date', badDates, trips.length, 'Before 2015 or in the future — usually an import date bug.', '/trips')
 
-  // Duplicate slips
-  const slipCounts = new Map<string, number>()
-  for (const t of trips) if (t.slip_no) slipCounts.set(t.slip_no, (slipCounts.get(t.slip_no) ?? 0) + 1)
-  const dupSlips = [...slipCounts.values()].filter((n) => n > 1).length
-  add('Duplicate slip numbers', dupSlips, slipCounts.size, 'Same slip on multiple trips can mean a double import.', '/trips')
+  // True duplicate trips (same slip + date + client) — the real double-import signal.
+  // (Slip numbers alone repeat legitimately across months, so don't flag those.)
+  const sig = new Map<string, number>()
+  for (const t of trips) if (t.slip_no) {
+    const k = `${t.slip_no}|${t.trip_date}|${(t.client_name || '').toLowerCase()}`
+    sig.set(k, (sig.get(k) ?? 0) + 1)
+  }
+  const trueDup = [...sig.values()].filter((n) => n > 1).length
+  add('Duplicate trips (same slip, date & client)', trueDup, trips.length, 'Almost always a double import — remove the extras.', '/trips')
 
   // Vehicles
   const owned = vehicles.filter((v) => v.ownership === 'owned')
