@@ -3,11 +3,12 @@ import { PageHeader } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
 import PrintButton from '@/components/PrintButton'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
-import { listTrips, listFuel, listExpenses, listServices, listDrivers, listVehicles, listOrganizations, listContractors } from '@/lib/db'
+import { listTrips, listFuel, listExpenses, listServices, listDrivers, listVehicles, listOrganizations, listContractors, listRoutes } from '@/lib/db'
 import { monthRange, MONTH_NAMES } from '@/lib/format'
 import { stickyPeriod } from '@/lib/period'
-import type { Trip, FuelEntry, Expense } from '@/lib/types'
+import type { Trip, FuelEntry, Expense, Route } from '@/lib/types'
 import InsightsView from './InsightsView'
+import PricingCheck from './PricingCheck'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,9 +25,9 @@ export default async function InsightsPage({
   const { start, end } = monthRange(year, month)
   const winStart = monthRange(year, month - 5).start
 
-  const [winTrips, winFuel, winExp, winSvc, drivers, vehicles, organizations, contractors] = await Promise.all([
+  const [winTrips, winFuel, winExp, winSvc, drivers, vehicles, organizations, contractors, routes] = await Promise.all([
     listTrips(winStart, end), listFuel(winStart, end), listExpenses(winStart, end), listServices(),
-    listDrivers(), listVehicles(), listOrganizations(), listContractors(),
+    listDrivers(), listVehicles(), listOrganizations(), listContractors(), listRoutes(),
   ])
 
   const inMonth = (d: string) => d >= start && d <= end
@@ -113,6 +114,50 @@ export default async function InsightsPage({
     return { label: d.name, trips: dt.length, revenue: sum(dt, amt) }
   }).filter((d) => d.trips > 0)
 
+  // ---- rate-card pricing check ----
+  // Compare each trip's net fare (amount − expressway toll) to the JKIA rate card
+  // for that area + vehicle class. Surfaces under-charging and pricing gaps.
+  const norm = (s: string | null) => (s ?? '').toUpperCase().replace(/\s+/g, ' ').trim()
+  const cardByArea = new Map<string, { route: Route; areaLabel: string }>()
+  for (const r of routes) {
+    const p = norm(r.pickup), d = norm(r.dropoff)
+    const area = p === 'JKIA' ? d : d === 'JKIA' ? p : d
+    const areaLabel = norm(r.pickup) === 'JKIA' ? r.dropoff : r.pickup
+    if (area && area !== 'JKIA' && !cardByArea.has(area)) cardByArea.set(area, { route: r, areaLabel })
+  }
+  const classPrice = (r: Route, vtype: string | null) => {
+    const t = (vtype ?? '').toLowerCase()
+    const p = t.includes('van') ? r.price_van : t.includes('bus') ? r.price_bus : t.includes('wagon') ? r.price_wagon : r.price_saloon
+    return Number(p) || Number(r.price_saloon) || 0
+  }
+  const vType = (id: string | null) => vehicles.find((v) => v.id === id)?.vehicle_type ?? null
+  const priceAgg = new Map<string, { route: string; count: number; actual: number; expected: number }>()
+  const unmatched = new Map<string, { area: string; trips: number; revenue: number }>()
+  let matched = 0, underRecovery = 0, overCharge = 0
+  for (const t of trips) {
+    const P = norm(t.pickup), D = norm(t.dropoff)
+    const area = P === 'JKIA' ? D : D === 'JKIA' ? P : ''
+    if (!area) continue // not a JKIA airport trip → card doesn't apply
+    const net = (Number(t.amount) || 0) - (Number(t.express_charges) || 0)
+    const hit = cardByArea.get(area)
+    if (!hit) {
+      const u = unmatched.get(area) ?? { area, trips: 0, revenue: 0 }
+      u.trips++; u.revenue += Number(t.amount) || 0; unmatched.set(area, u)
+      continue
+    }
+    const expected = classPrice(hit.route, vType(t.vehicle_id))
+    if (expected <= 0) continue
+    matched++
+    if (net < expected) underRecovery += expected - net
+    else overCharge += net - expected
+    const g = priceAgg.get(area) ?? { route: `JKIA ↔ ${hit.areaLabel}`, count: 0, actual: 0, expected: 0 }
+    g.count++; g.actual += net; g.expected += expected; priceAgg.set(area, g)
+  }
+  const priceRows = [...priceAgg.values()]
+    .map((g) => ({ route: g.route, trips: g.count, card: g.expected / g.count, actual: g.actual / g.count, deltaPct: g.expected > 0 ? (g.actual / g.expected - 1) * 100 : 0, totalVar: g.actual - g.expected }))
+    .sort((a, b) => a.totalVar - b.totalVar)
+  const unmatchedTop = [...unmatched.values()].sort((a, b) => b.trips - a.trips).slice(0, 8)
+
   return (
     <>
       <PageHeader title="Business insights" subtitle="Where the money comes from, which vehicles earn, and where it leaks" action={<div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><MonthNav year={year} month={month} /><PrintButton /></div>} />
@@ -123,6 +168,9 @@ export default async function InsightsPage({
         byClient={byClient} byRoute={byRoute} byContractor={byContractor} dow={dowMap}
         perVehicle={perVehicle} perDriver={perDriver}
       />
+      <div style={{ marginTop: 18 }}>
+        <PricingCheck matched={matched} underRecovery={underRecovery} overCharge={overCharge} rows={priceRows} unmatched={unmatchedTop} />
+      </div>
     </>
   )
 }
