@@ -52,6 +52,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: 'System',
     items: [
+      { href: '/data-health', label: 'Data health', icon: 'health' },
       { href: '/backup', label: 'Backup', icon: 'backup', financeOnly: true },
       { href: '/settings', label: 'Settings', icon: 'settings' },
     ],
