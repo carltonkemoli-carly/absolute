@@ -176,12 +176,13 @@ create index if not exists trips_driver_idx       on trips(driver_id);
 create table if not exists fuel_entries (
   id         uuid primary key default gen_random_uuid(),
   fuel_date  date not null,
-  vehicle_id uuid not null references vehicles(id) on delete cascade,
+  vehicle_id uuid references vehicles(id) on delete cascade,  -- nullable: station payment, car not attributed
   driver_id  uuid references drivers(id) on delete set null,
   amount     numeric(10,2) not null default 0,  -- KES
   litres     numeric(10,2),
   odometer   int,
   station    text,
+  mpesa_ref  text,                                -- M-Pesa receipt no. (dedup on re-import)
   notes      text,
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now()

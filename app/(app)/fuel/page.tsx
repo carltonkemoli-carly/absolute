@@ -2,10 +2,20 @@ import { PageHeader, StatCard } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
 import { listFuel, listVehicles, listDrivers, listTrips, listExpenses } from '@/lib/db'
 import { monthRange, resolvePeriod, isoDate, kes } from '@/lib/format'
+import ExcelImport from '@/components/ExcelImport'
+import type { FieldSpec } from '@/lib/import-types'
 import FuelManager from './FuelManager'
 import FuelInsights, { type VehFuel } from './FuelInsights'
+import { importMpesaFuel } from './mpesa-actions'
 
 export const dynamic = 'force-dynamic'
+
+const MPESA_SPEC: FieldSpec[] = [
+  { key: 'date', label: 'Date', keywords: ['completion', 'date', 'time'], required: true },
+  { key: 'details', label: 'Details / recipient', keywords: ['detail', 'description', 'particular', 'transaction party'], required: true },
+  { key: 'amount', label: 'Amount out (Withdrawn)', keywords: ['withdraw', 'paid out', 'debit', 'amount'], required: true },
+  { key: 'reference', label: 'Receipt no.', keywords: ['receipt', 'reference', 'ref', 'code'] },
+]
 
 export default async function FuelPage({
   searchParams,
@@ -58,6 +68,22 @@ export default async function FuelPage({
       </div>
 
       <FuelInsights rows={rows} avgKmpl={avgKmpl} />
+
+      <div style={{ margin: '18px 0' }}>
+        <ExcelImport
+          label="Import fuel from M-Pesa statement"
+          spec={MPESA_SPEC}
+          importAction={importMpesaFuel}
+          options={[{
+            key: 'detect', label: 'Which payments are fuel?', default: 'stations',
+            choices: [
+              { value: 'stations', label: 'Only payments to petrol stations (auto-detect)' },
+              { value: 'all', label: 'Every payment in this file is fuel' },
+            ],
+          }]}
+          hint="Export your M-Pesa statement to Excel/CSV and upload it. We pick out the petrol-station payments automatically and record them as fuel. Re-importing the same statement won't double-count."
+        />
+      </div>
 
       <FuelManager entries={entries} vehicles={vlist} drivers={drivers} defaultDate={defaultDate} />
     </>

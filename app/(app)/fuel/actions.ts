@@ -13,9 +13,10 @@ export async function saveFuel(formData: FormData) {
     litres: numOrNull(formData.get('litres')),
     odometer: intOrNull(formData.get('odometer')),
     station: emptyToNull(formData.get('station')),
+    mpesa_ref: emptyToNull(formData.get('mpesa_ref')),
     notes: emptyToNull(formData.get('notes')),
   }
-  if (!row.fuel_date || !row.vehicle_id) return
+  if (!row.fuel_date) return  // vehicle optional: station payments aren't tied to one car
   await saveRecord('fuel_entries', row, id || null)
   revalidatePath('/fuel')
   revalidatePath('/')

@@ -102,12 +102,13 @@ export interface Trip {
 export interface FuelEntry {
   id: string
   fuel_date: string
-  vehicle_id: string
+  vehicle_id: string | null   // null = paid to station, car not attributed
   driver_id: string | null
   amount: number
   litres: number | null
   odometer: number | null
   station: string | null
+  mpesa_ref: string | null    // M-Pesa receipt no. (dedup on statement re-import)
   notes: string | null
   created_by: string | null
   created_at: string

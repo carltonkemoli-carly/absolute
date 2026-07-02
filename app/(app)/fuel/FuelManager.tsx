@@ -28,9 +28,9 @@ export default function FuelManager({
               <label className="field"><span>Date *</span>
                 <input name="fuel_date" type="date" className="input" required defaultValue={editing === 'new' ? defaultDate : editing.fuel_date} />
               </label>
-              <label className="field"><span>Vehicle *</span>
-                <select name="vehicle_id" className="input" required defaultValue={editing === 'new' ? '' : editing.vehicle_id}>
-                  <option value="">—</option>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate}</option>)}
+              <label className="field"><span>Vehicle</span>
+                <select name="vehicle_id" className="input" defaultValue={editing === 'new' ? '' : editing.vehicle_id ?? ''}>
+                  <option value="">— not sure / any —</option>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate}</option>)}
                 </select>
               </label>
               <label className="field"><span>Driver</span>
@@ -49,6 +49,9 @@ export default function FuelManager({
               </label>
               <label className="field"><span>Station</span>
                 <input name="station" className="input" defaultValue={editing === 'new' ? '' : editing.station ?? ''} placeholder="Shell, Total…" />
+              </label>
+              <label className="field"><span>M-Pesa ref</span>
+                <input name="mpesa_ref" className="input" defaultValue={editing === 'new' ? '' : editing.mpesa_ref ?? ''} placeholder="e.g. SGH4X…" />
               </label>
               <label className="field"><span>Notes</span>
                 <input name="notes" className="input" defaultValue={editing === 'new' ? '' : editing.notes ?? ''} />

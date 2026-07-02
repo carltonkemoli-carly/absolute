@@ -197,6 +197,7 @@ function seed(): StoreData {
         litres: 18 + (fn % 4) * 6,
         odometer: odo[veh.id],
         station: ['Shell', 'Total', 'Rubis'][fn % 3],
+        mpesa_ref: null,
         notes: null,
         created_by: null,
         created_at: '',
