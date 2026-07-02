@@ -130,15 +130,23 @@ export default async function PaybackPage() {
                   {c.hasLoan && (
                     <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
                       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--ink3)', marginBottom: 6 }}>Loan</div>
-                      <Row label="Balance remaining" value={kes(c.loanBalance)} />
-                      <Row label="Clears on" value={c.clearDate ? `${fmtDate(c.clearDate)} (${c.monthsLeft} mo)` : '—'} />
-                      <Row label="Instalment / month" value={kes(c.loanMo)} />
-                      <div style={{ marginTop: 8, padding: '9px 11px', borderRadius: 'var(--radius-sm)', fontSize: 12.5,
-                        background: c.surplus >= 0 ? 'var(--accent-light)' : 'var(--danger-light)', color: c.surplus >= 0 ? 'var(--accent)' : 'var(--danger)' }}>
-                        {c.surplus >= 0
-                          ? `Self-financing: earns ${kes(Math.round(c.surplus))}/mo after its loan instalment.`
-                          : `Shortfall: earns ${kes(Math.round(c.avgMonthly))}/mo but instalment is ${kes(c.loanMo)} — you top up ${kes(Math.round(-c.surplus))}/mo.`}
-                      </div>
+                      {c.loanBalance > 0 ? (
+                        <>
+                          <Row label="Balance remaining" value={kes(c.loanBalance)} />
+                          <Row label="Clears on" value={c.clearDate ? `${fmtDate(c.clearDate)} (${c.monthsLeft} mo)` : '—'} />
+                          <Row label="Instalment / month" value={kes(c.loanMo)} />
+                          <div style={{ marginTop: 8, padding: '9px 11px', borderRadius: 'var(--radius-sm)', fontSize: 12.5,
+                            background: c.surplus >= 0 ? 'var(--accent-light)' : 'var(--danger-light)', color: c.surplus >= 0 ? 'var(--accent)' : 'var(--danger)' }}>
+                            {c.surplus >= 0
+                              ? `Self-financing: earns ${kes(Math.round(c.surplus))}/mo after its loan instalment.`
+                              : `Shortfall: earns ${kes(Math.round(c.avgMonthly))}/mo but the instalment is ${kes(c.loanMo)} — you top up ${kes(Math.round(-c.surplus))}/mo.`}
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ padding: '9px 11px', borderRadius: 'var(--radius-sm)', fontSize: 12.5, background: 'var(--accent-light)', color: 'var(--accent)' }}>
+                          Loan cleared ✓{c.clearDate ? ` (${fmtDate(c.clearDate)})` : ''} — full contribution is now yours.
+                        </div>
+                      )}
                     </div>
                   )}
                 </>

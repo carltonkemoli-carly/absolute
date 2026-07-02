@@ -2,12 +2,14 @@ import { redirect } from 'next/navigation'
 import { PageHeader, StatCard, Card } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
 import AttentionPanel from '@/components/AttentionPanel'
+import AlertsPanel from '@/components/AlertsPanel'
 import Donut from '@/components/Donut'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
-import { listTrips, listFuel, listVehicles, listDrivers, listContractors, listOrganizations, listDocuments, listServices, listExpenses } from '@/lib/db'
+import { listTrips, listFuel, listVehicles, listDrivers, listContractors, listOrganizations, listDocuments, listServices, listExpenses, listInvoices } from '@/lib/db'
 import { OWNERSHIP_LABELS } from '@/lib/types'
 import { buildAttention } from '@/lib/attention'
-import { monthRange, kes } from '@/lib/format'
+import { buildAlerts } from '@/lib/alerts'
+import { monthRange, kes, MONTH_NAMES, isoDate } from '@/lib/format'
 import { stickyPeriod } from '@/lib/period'
 import type { Trip } from '@/lib/types'
 
@@ -22,10 +24,11 @@ export default async function DashboardPage({
   const { year, month } = await stickyPeriod(sp)
   const { start, end } = monthRange(year, month)
 
-  const [trips, fuel, vehicles, drivers, contractors, organizations, documents, services, expenses] = await Promise.all([
-    listTrips(start, end), listFuel(start, end), listVehicles(), listDrivers(), listContractors(), listOrganizations(), listDocuments(), listServices(), listExpenses(start, end),
+  const [trips, fuel, vehicles, drivers, contractors, organizations, documents, services, expenses, invoices] = await Promise.all([
+    listTrips(start, end), listFuel(start, end), listVehicles(), listDrivers(), listContractors(), listOrganizations(), listDocuments(), listServices(), listExpenses(start, end), listInvoices(),
   ])
   const attention = buildAttention(documents, services, vehicles, drivers)
+  const alerts = buildAlerts({ vehicles, trips, fuel, expenses, invoices, contractors, today: isoDate(new Date()), monthLabel: `${MONTH_NAMES[month]} ${year}`, monthStart: start, monthEnd: end })
 
   const revenue = sum(trips, (t) => t.amount)
   const express = sum(trips, (t) => t.express_charges)
@@ -104,6 +107,10 @@ export default async function DashboardPage({
       />
 
       <AttentionPanel items={attention} />
+
+      <div style={{ marginBottom: 18 }}>
+        <AlertsPanel alerts={alerts} />
+      </div>
 
       <div className="grid-stats" style={{ marginBottom: 18 }}>
         <StatCard label="Revenue billed" value={kes(revenue)} hint={`net ${kes(netRevenue)} (excl. expressway)`} accent="var(--accent)" />
