@@ -23,6 +23,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/dispatch', label: 'Dispatch', icon: 'dispatch' },
       { href: '/flights', label: 'Flights', icon: 'flights' },
       { href: '/trips', label: 'Trips', icon: 'trips' },
+      { href: '/quote', label: 'Quote a fare', icon: 'quote' },
     ],
   },
   {

@@ -12,6 +12,7 @@ const PATHS: Record<string, ReactNode> = {
   fuel: (<><path d="M4 21V5c0-1.1.9-2 2-2h5c1.1 0 2 .9 2 2v16" /><path d="M3 21h12" /><path d="M4 11h9" /><path d="M13 8h3l2 2v7a2 2 0 0 0 4 0V9.8L18 5.5" /></>),
   servicing: (<path d="M15 5a4 4 0 0 0-5.3 5.3l-6 6a1.5 1.5 0 0 0 2.1 2.1l6-6A4 4 0 0 0 19 7l-2.8 2.8-2-2L17 5z" />),
   routes: (<><path d="m9 4-6 2v14l6-2 6 2 6-2V4l-6 2-6-2z" /><path d="M9 4v14M15 6v14" /></>),
+  quote: (<><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 7h8M8 11h8M8 15h5" /></>),
   compliance: (<><path d="M12 21s7-3.5 7-9V5.5L12 3 5 5.5V12c0 5.5 7 9 7 9z" /><path d="m9 11.5 2 2 4-4" /></>),
   receivables: (<><rect x="2" y="6" width="20" height="12" rx="2" /><circle cx="12" cy="12" r="2.3" /><path d="M6 12h.01M18 12h.01" /></>),
   expressway: (<><path d="M12 3v18" strokeDasharray="2 3" /><path d="M5 3l-2 18M19 3l2 18" /></>),
