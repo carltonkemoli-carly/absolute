@@ -114,7 +114,9 @@ export default async function DashboardPage({
 
       <div className="grid-stats" style={{ marginBottom: 18 }}>
         <StatCard label="Revenue billed" value={kes(revenue)} hint={`net ${kes(netRevenue)} (excl. expressway)`} accent="var(--accent)" />
-        <StatCard label="Fuel" value={kes(fuelTotal)} hint={`${fuel.length} fill-ups`} />
+        <StatCard label="Net profit" value={kes(revenue - totalCostMonth)}
+          hint={revenue > 0 ? `${pct((revenue - totalCostMonth) / revenue)} margin · after all costs` : 'after all costs'}
+          accent={revenue - totalCostMonth < 0 ? 'var(--danger)' : 'var(--accent)'} />
         <StatCard label="Fuel-to-sales index" value={pct(index)}
           hint={index > 0.3 ? 'High — check fuel use' : 'Healthy'} accent={index > 0.3 ? 'var(--danger)' : 'var(--accent)'} />
         <StatCard label="Expressway charges" value={kes(express)} hint="reimbursable" accent="var(--gold)" />
