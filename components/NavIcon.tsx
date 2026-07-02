@@ -8,6 +8,7 @@ const PATHS: Record<string, ReactNode> = {
   trips: (<><circle cx="6" cy="19" r="2.5" /><circle cx="18" cy="5" r="2.5" /><path d="M8.5 19h9a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7h9" /></>),
   fleet: (<><path d="M3 17V7c0-.6.4-1 1-1h9c.6 0 1 .4 1 1v10" /><path d="M14 9h3.5l3.5 3.5V17" /><path d="M2 17h2M14 17h6" /><circle cx="7" cy="18" r="2" /><circle cx="17" cy="18" r="2" /></>),
   drivers: (<><circle cx="12" cy="8" r="4" /><path d="M5 20c0-3.3 3-5.5 7-5.5s7 2.2 7 5.5" /></>),
+  clients: (<><path d="M3 21V8l6-4 6 4v13" /><path d="M15 21V11l6 3v7" /><path d="M2 21h20M7 9h.01M7 13h.01M11 9h.01M11 13h.01" /></>),
   fuel: (<><path d="M4 21V5c0-1.1.9-2 2-2h5c1.1 0 2 .9 2 2v16" /><path d="M3 21h12" /><path d="M4 11h9" /><path d="M13 8h3l2 2v7a2 2 0 0 0 4 0V9.8L18 5.5" /></>),
   servicing: (<path d="M15 5a4 4 0 0 0-5.3 5.3l-6 6a1.5 1.5 0 0 0 2.1 2.1l6-6A4 4 0 0 0 19 7l-2.8 2.8-2-2L17 5z" />),
   routes: (<><path d="m9 4-6 2v14l6-2 6 2 6-2V4l-6 2-6-2z" /><path d="M9 4v14M15 6v14" /></>),
