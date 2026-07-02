@@ -43,11 +43,15 @@ export default async function InsightsPage({
   const sum = <T,>(a: T[], f: (x: T) => number) => a.reduce((s, x) => s + f(x), 0)
 
   // ---- headline P&L ----
+  const monthlyHireFees = sum(vehicles.filter((v) => v.ownership === 'monthly_hire'), (v) => Number(v.monthly_fee) || 0)
+  const hireOf = (ts: typeof trips) => monthlyHireFees + sum(ts, (t) => Number(t.hire_cost) || 0)
+
   const revenue = sum(trips, amt)
   const fuelTotal = sum(fuel, (f) => Number(f.amount) || 0)
   const expTotal = sum(exp, (e) => Number(e.amount) || 0)
   const svcTotal = sum(svc, (s) => Number(s.cost) || 0)
-  const net = revenue - fuelTotal - expTotal - svcTotal
+  const hireTotal = hireOf(trips)
+  const net = revenue - fuelTotal - expTotal - svcTotal - hireTotal
   const prev = monthRange(year, month - 1)
   const prevRev = sum(winTrips.filter((t) => t.trip_date >= prev.start && t.trip_date <= prev.end), amt)
 
@@ -61,7 +65,8 @@ export default async function InsightsPage({
     const ms = winSvc.filter((s) => s.service_date >= r.start && s.service_date <= r.end)
     const rev = sum(mt, amt)
     const d = new Date(r.start + 'T12:00:00Z')
-    trend.push({ label: `${MONTH_NAMES[d.getUTCMonth()].slice(0, 3)} ${String(d.getUTCFullYear()).slice(2)}`, revenue: rev, net: rev - sum(mf, (x) => Number(x.amount) || 0) - sum(me, (x) => Number(x.amount) || 0) - sum(ms, (x) => Number(x.cost) || 0) })
+    const mnet = rev - sum(mf, (x) => Number(x.amount) || 0) - sum(me, (x) => Number(x.amount) || 0) - sum(ms, (x) => Number(x.cost) || 0) - hireOf(mt)
+    trend.push({ label: `${MONTH_NAMES[d.getUTCMonth()].slice(0, 3)} ${String(d.getUTCFullYear()).slice(2)}`, revenue: rev, net: mnet })
   }
 
   // ---- revenue leaderboards ----
@@ -92,10 +97,11 @@ export default async function InsightsPage({
     const fu = sum(vf, (x) => Number(x.amount) || 0)
     const vex = sum(ve, (x) => Number(x.amount) || 0)
     const vsc = sum(vs, (x) => Number(x.cost) || 0)
+    const vhire = (v.ownership === 'monthly_hire' ? Number(v.monthly_fee) || 0 : 0) + sum(vt, (t) => Number(t.hire_cost) || 0)
     const fuelPct = rev > 0 ? fu / rev : 0
     return {
       label: v.plate, trips: vt.length, revenue: rev, fuel: fu,
-      contribution: rev - fu - vex - vsc,
+      contribution: rev - fu - vex - vsc - vhire,
       fuelPct: Math.round(fuelPct * 100),
       flag: rev > 0 && fleetFuelPct > 0 && fuelPct > fleetFuelPct * 1.25, // burns >25% more fuel per shilling than fleet avg
     }

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { PageHeader } from '@/components/ui'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
-import { listTrips, listFuel, listServices, listExpenses, latestTripMonth } from '@/lib/db'
+import { listTrips, listFuel, listServices, listExpenses, listVehicles, latestTripMonth } from '@/lib/db'
 import { monthRange, MONTH_NAMES, isoDate } from '@/lib/format'
 import ReportsView, { type MonthRow } from './ReportsView'
 
@@ -20,9 +20,10 @@ export default async function ReportsPage() {
   const { start } = monthRange(first.getFullYear(), first.getMonth())
   const { end } = monthRange(base.getFullYear(), base.getMonth())
 
-  const [trips, fuel, services, expenses] = await Promise.all([
-    listTrips(start, end), listFuel(start, end), listServices(), listExpenses(start, end),
+  const [trips, fuel, services, expenses, vehicles] = await Promise.all([
+    listTrips(start, end), listFuel(start, end), listServices(), listExpenses(start, end), listVehicles(),
   ])
+  const monthlyHireFees = vehicles.filter((v) => v.ownership === 'monthly_hire').reduce((a, v) => a + (Number(v.monthly_fee) || 0), 0)
 
   const months: MonthRow[] = []
   for (let i = MONTHS_BACK - 1; i >= 0; i--) {
@@ -36,8 +37,9 @@ export default async function ReportsPage() {
     const fuelCost = mf.reduce((a, f) => a + Number(f.amount), 0)
     const serviceCost = ms.reduce((a, s) => a + Number(s.cost), 0)
     const expenseCost = me.reduce((a, e) => a + Number(e.amount), 0)
+    const hireCost = monthlyHireFees + mt.reduce((a, t) => a + (Number(t.hire_cost) || 0), 0)
     const express = mt.reduce((a, t) => a + Number(t.express_charges), 0)
-    const profit = revenue - fuelCost - serviceCost - expenseCost
+    const profit = revenue - fuelCost - serviceCost - expenseCost - hireCost
     months.push({
       ym,
       label: `${MONTH_NAMES[d.getMonth()].slice(0, 3)} ${String(d.getFullYear()).slice(2)}`,

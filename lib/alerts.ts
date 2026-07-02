@@ -46,7 +46,8 @@ export function buildAlerts(input: {
     const fu = sum(fuel.filter((f) => f.vehicle_id === v.id), (f) => num(f.amount))
     const vex = sum(expenses.filter((e) => e.vehicle_id === v.id), (e) => num(e.amount))
     const vsc = sum(services.filter((s) => s.vehicle_id === v.id), (s) => num(s.cost))
-    const contribution = rev - fu - vex - vsc
+    const vhire = (v.ownership === 'monthly_hire' ? num(v.monthly_fee) : 0) + sum(vt, (t) => num(t.hire_cost))
+    const contribution = rev - fu - vex - vsc - vhire
     const loan = num(v.loan_amount), loanMo = num(v.loan_monthly)
 
     if (contribution < 0) {
