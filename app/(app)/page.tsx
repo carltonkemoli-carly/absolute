@@ -28,7 +28,7 @@ export default async function DashboardPage({
     listTrips(start, end), listFuel(start, end), listVehicles(), listDrivers(), listContractors(), listOrganizations(), listDocuments(), listServices(), listExpenses(start, end), listInvoices(),
   ])
   const attention = buildAttention(documents, services, vehicles, drivers)
-  const alerts = buildAlerts({ vehicles, trips, fuel, expenses, invoices, contractors, today: isoDate(new Date()), monthLabel: `${MONTH_NAMES[month]} ${year}`, monthStart: start, monthEnd: end })
+  const alerts = buildAlerts({ vehicles, trips, fuel, expenses, services: services.filter((s) => s.service_date >= start && s.service_date <= end), invoices, contractors, today: isoDate(new Date()), monthLabel: `${MONTH_NAMES[month]} ${year}`, monthStart: start, monthEnd: end })
 
   const revenue = sum(trips, (t) => t.amount)
   const express = sum(trips, (t) => t.express_charges)

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { PageHeader, StatCard } from '@/components/ui'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
-import { listTrips, listFuel, listExpenses, listVehicles } from '@/lib/db'
+import { listTrips, listFuel, listExpenses, listServices, listVehicles } from '@/lib/db'
 import { kes, fmtDate, isoDate } from '@/lib/format'
 import { OWNERSHIP_LABELS } from '@/lib/types'
 
@@ -22,8 +22,8 @@ export default async function PaybackPage() {
   if (!canSeeFinance(profile.role)) redirect('/trips')
 
   const today = isoDate(new Date())
-  const [trips, fuel, expenses, vehicles] = await Promise.all([
-    listTrips('2000-01-01', today), listFuel('2000-01-01', today), listExpenses('2000-01-01', today), listVehicles(),
+  const [trips, fuel, expenses, services, vehicles] = await Promise.all([
+    listTrips('2000-01-01', today), listFuel('2000-01-01', today), listExpenses('2000-01-01', today), listServices(), listVehicles(),
   ])
   const sum = <T,>(a: T[], f: (x: T) => number) => a.reduce((s, x) => s + f(x), 0)
 
@@ -32,12 +32,15 @@ export default async function PaybackPage() {
     const vt = trips.filter((t) => t.vehicle_id === v.id)
     const vf = fuel.filter((f) => f.vehicle_id === v.id)
     const ve = expenses.filter((e) => e.vehicle_id === v.id)
+    const vs = services.filter((s) => s.vehicle_id === v.id)
     const revenue = sum(vt, (t) => Number(t.amount) || 0)
     const fuelC = sum(vf, (f) => Number(f.amount) || 0)
     const expC = sum(ve, (e) => Number(e.amount) || 0)
-    const contribution = revenue - fuelC - expC
+    const svcC = sum(vs, (s) => Number(s.cost) || 0)
+    const contribution = revenue - fuelC - expC - svcC
     const dataMonths = new Set(vt.map((t) => t.trip_date.slice(0, 7))).size || 1
     const avgMonthly = contribution / dataMonths
+    const tripCount = vt.length
     const price = Number(v.purchase_price) || 0
     const monthsOwned = v.purchase_date ? Math.max(1, monthsBetween(v.purchase_date, today) + 1) : dataMonths
 
@@ -60,9 +63,15 @@ export default async function PaybackPage() {
     const clearDate = hasLoan && v.purchase_date ? addMonths(v.purchase_date, termMonths) : null
     const surplus = avgMonthly - loanMo // does the car cover its own instalment?
 
-    return { v, revenue, fuelC, expC, contribution, avgMonthly, price, monthsOwned, dataMonths,
+    // Break-even: trips/month needed to cover the loan instalment
+    const contribPerTrip = tripCount > 0 ? contribution / tripCount : 0
+    const tripsPerMonth = tripCount / dataMonths
+    const breakevenTrips = hasLoan && contribPerTrip > 0 ? Math.ceil(loanMo / contribPerTrip) : null
+
+    return { v, revenue, fuelC, expC, svcC, contribution, avgMonthly, price, monthsOwned, dataMonths,
       projectedToDate, recoveredPct, paybackDate, paidBack, monthsToPayback,
-      hasLoan, loan, loanMo, loanBalance, monthsLeft, clearDate, surplus }
+      hasLoan, loan, loanMo, loanBalance, monthsLeft, clearDate, surplus,
+      tripsPerMonth, breakevenTrips }
   })
 
   const fleetContribution = sum(cards, (c) => c.contribution)
@@ -141,6 +150,12 @@ export default async function PaybackPage() {
                               ? `Self-financing: earns ${kes(Math.round(c.surplus))}/mo after its loan instalment.`
                               : `Shortfall: earns ${kes(Math.round(c.avgMonthly))}/mo but the instalment is ${kes(c.loanMo)} — you top up ${kes(Math.round(-c.surplus))}/mo.`}
                           </div>
+                          {c.breakevenTrips !== null && (
+                            <div style={{ fontSize: 12.5, color: 'var(--ink2)', marginTop: 8 }}>
+                              <strong>Break-even:</strong> needs ~{c.breakevenTrips} trips/mo to cover the instalment · currently doing ~{Math.round(c.tripsPerMonth)}/mo
+                              {c.tripsPerMonth < c.breakevenTrips ? <span style={{ color: 'var(--danger)' }}> ({c.breakevenTrips - Math.round(c.tripsPerMonth)} short)</span> : <span style={{ color: 'var(--accent)' }}> ✓ on track</span>}
+                            </div>
+                          )}
                         </>
                       ) : (
                         <div style={{ padding: '9px 11px', borderRadius: 'var(--radius-sm)', fontSize: 12.5, background: 'var(--accent-light)', color: 'var(--accent)' }}>

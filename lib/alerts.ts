@@ -1,7 +1,7 @@
 // Proactive business alerts — surfaces inefficiencies before they scale.
 // Loss-making cars, loan shortfalls, loans clearing soon, fuel outliers,
 // and un-invoiced (recoverable) expressway tolls.
-import type { Trip, FuelEntry, Expense, Vehicle, Invoice, Contractor } from '@/lib/types'
+import type { Trip, FuelEntry, Expense, Vehicle, Invoice, Contractor, VehicleService } from '@/lib/types'
 
 export type AlertLevel = 'critical' | 'warning' | 'info'
 export interface BusinessAlert {
@@ -22,6 +22,7 @@ export function buildAlerts(input: {
   trips: Trip[]        // selected month
   fuel: FuelEntry[]    // selected month
   expenses: Expense[]  // selected month
+  services?: VehicleService[] // selected month
   invoices: Invoice[]
   contractors: Contractor[]
   today: string
@@ -29,7 +30,7 @@ export function buildAlerts(input: {
   monthStart: string
   monthEnd: string
 }): BusinessAlert[] {
-  const { vehicles, trips, fuel, expenses, invoices, contractors, today, monthLabel, monthStart, monthEnd } = input
+  const { vehicles, trips, fuel, expenses, services = [], invoices, contractors, today, monthLabel, monthStart, monthEnd } = input
   const alerts: BusinessAlert[] = []
   const sum = <T,>(a: T[], f: (x: T) => number) => a.reduce((s, x) => s + f(x), 0)
 
@@ -44,7 +45,8 @@ export function buildAlerts(input: {
     const rev = sum(vt, (t) => num(t.amount))
     const fu = sum(fuel.filter((f) => f.vehicle_id === v.id), (f) => num(f.amount))
     const vex = sum(expenses.filter((e) => e.vehicle_id === v.id), (e) => num(e.amount))
-    const contribution = rev - fu - vex
+    const vsc = sum(services.filter((s) => s.vehicle_id === v.id), (s) => num(s.cost))
+    const contribution = rev - fu - vex - vsc
     const loan = num(v.loan_amount), loanMo = num(v.loan_monthly)
 
     if (contribution < 0) {

@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { PageHeader } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
-import { listTrips, listFuel, listExpenses, listDrivers, listVehicles, listOrganizations, listContractors } from '@/lib/db'
+import { listTrips, listFuel, listExpenses, listServices, listDrivers, listVehicles, listOrganizations, listContractors } from '@/lib/db'
 import { monthRange, MONTH_NAMES } from '@/lib/format'
 import { stickyPeriod } from '@/lib/period'
 import type { Trip, FuelEntry, Expense } from '@/lib/types'
@@ -23,8 +23,8 @@ export default async function InsightsPage({
   const { start, end } = monthRange(year, month)
   const winStart = monthRange(year, month - 5).start
 
-  const [winTrips, winFuel, winExp, drivers, vehicles, organizations, contractors] = await Promise.all([
-    listTrips(winStart, end), listFuel(winStart, end), listExpenses(winStart, end),
+  const [winTrips, winFuel, winExp, winSvc, drivers, vehicles, organizations, contractors] = await Promise.all([
+    listTrips(winStart, end), listFuel(winStart, end), listExpenses(winStart, end), listServices(),
     listDrivers(), listVehicles(), listOrganizations(), listContractors(),
   ])
 
@@ -32,6 +32,7 @@ export default async function InsightsPage({
   const trips = winTrips.filter((t) => inMonth(t.trip_date))
   const fuel = winFuel.filter((f) => inMonth(f.fuel_date))
   const exp = winExp.filter((e) => inMonth(e.expense_date))
+  const svc = winSvc.filter((s) => inMonth(s.service_date))
 
   const orgName = (id: string | null) => organizations.find((o) => o.id === id)?.name ?? 'Direct / none'
   const conName = (id: string | null) => contractors.find((c) => c.id === id)?.name ?? '—'
@@ -44,7 +45,8 @@ export default async function InsightsPage({
   const revenue = sum(trips, amt)
   const fuelTotal = sum(fuel, (f) => Number(f.amount) || 0)
   const expTotal = sum(exp, (e) => Number(e.amount) || 0)
-  const net = revenue - fuelTotal - expTotal
+  const svcTotal = sum(svc, (s) => Number(s.cost) || 0)
+  const net = revenue - fuelTotal - expTotal - svcTotal
   const prev = monthRange(year, month - 1)
   const prevRev = sum(winTrips.filter((t) => t.trip_date >= prev.start && t.trip_date <= prev.end), amt)
 
@@ -55,9 +57,10 @@ export default async function InsightsPage({
     const mt = winTrips.filter((t) => t.trip_date >= r.start && t.trip_date <= r.end)
     const mf = winFuel.filter((f) => f.fuel_date >= r.start && f.fuel_date <= r.end)
     const me = winExp.filter((e) => e.expense_date >= r.start && e.expense_date <= r.end)
+    const ms = winSvc.filter((s) => s.service_date >= r.start && s.service_date <= r.end)
     const rev = sum(mt, amt)
     const d = new Date(r.start + 'T12:00:00Z')
-    trend.push({ label: `${MONTH_NAMES[d.getUTCMonth()].slice(0, 3)} ${String(d.getUTCFullYear()).slice(2)}`, revenue: rev, net: rev - sum(mf, (x) => Number(x.amount) || 0) - sum(me, (x) => Number(x.amount) || 0) })
+    trend.push({ label: `${MONTH_NAMES[d.getUTCMonth()].slice(0, 3)} ${String(d.getUTCFullYear()).slice(2)}`, revenue: rev, net: rev - sum(mf, (x) => Number(x.amount) || 0) - sum(me, (x) => Number(x.amount) || 0) - sum(ms, (x) => Number(x.cost) || 0) })
   }
 
   // ---- revenue leaderboards ----
@@ -83,13 +86,15 @@ export default async function InsightsPage({
     const vt = trips.filter((t) => t.vehicle_id === v.id)
     const vf = fuel.filter((f) => f.vehicle_id === v.id)
     const ve = exp.filter((e) => e.vehicle_id === v.id)
+    const vs = svc.filter((s) => s.vehicle_id === v.id)
     const rev = sum(vt, amt)
     const fu = sum(vf, (x) => Number(x.amount) || 0)
     const vex = sum(ve, (x) => Number(x.amount) || 0)
+    const vsc = sum(vs, (x) => Number(x.cost) || 0)
     const fuelPct = rev > 0 ? fu / rev : 0
     return {
       label: v.plate, trips: vt.length, revenue: rev, fuel: fu,
-      contribution: rev - fu - vex,
+      contribution: rev - fu - vex - vsc,
       fuelPct: Math.round(fuelPct * 100),
       flag: rev > 0 && fleetFuelPct > 0 && fuelPct > fleetFuelPct * 1.25, // burns >25% more fuel per shilling than fleet avg
     }
