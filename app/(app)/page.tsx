@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation'
 import { PageHeader, StatCard, Card } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
-import AttentionPanel from '@/components/AttentionPanel'
-import AlertsPanel from '@/components/AlertsPanel'
+import NotificationsCard from '@/components/NotificationsCard'
 import Donut from '@/components/Donut'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listFuel, listVehicles, listDrivers, listContractors, listOrganizations, listDocuments, listServices, listExpenses, listInvoices } from '@/lib/db'
@@ -106,12 +105,7 @@ export default async function DashboardPage({
         action={<MonthNav year={year} month={month} />}
       />
 
-      <AttentionPanel items={attention} />
-
-      <div style={{ marginBottom: 18 }}>
-        <AlertsPanel alerts={alerts} />
-      </div>
-
+      {/* Numbers first — that's what a dashboard is for */}
       <div className="grid-stats" style={{ marginBottom: 18 }}>
         <StatCard label="Revenue billed" value={kes(revenue)} hint={`net ${kes(netRevenue)} (excl. expressway)`} accent="var(--accent)" />
         <StatCard label="Net profit" value={kes(revenue - totalCostMonth)}
@@ -122,6 +116,9 @@ export default async function DashboardPage({
         <StatCard label="Expressway charges" value={kes(express)} hint="reimbursable" accent="var(--gold)" />
         <StatCard label="Distance covered" value={`${distanceKm.toLocaleString()} km`} hint={`${trips.length} trips`} />
       </div>
+
+      {/* Compact, clearly-visible notifications — expand to act on them */}
+      <NotificationsCard attention={attention} alerts={alerts} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 16, marginBottom: 16 }}>
         <Card title="Revenue by contractor">
