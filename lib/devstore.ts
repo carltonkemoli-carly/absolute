@@ -63,7 +63,7 @@ export function loadStore(): StoreData {
         const pv = persisted[k]
         merged[k] = Array.isArray(bv) ? (Array.isArray(pv) ? pv : bv) : (pv ?? bv)
       }
-      cache = merged as StoreData
+      cache = merged as unknown as StoreData
       return cache
     } catch {
       // fall through and reseed if the file is corrupt
