@@ -53,7 +53,17 @@ export function loadStore(): StoreData {
   if (cache) return cache
   if (existsSync(FILE)) {
     try {
-      cache = JSON.parse(readFileSync(FILE, 'utf8')) as StoreData
+      const persisted = JSON.parse(readFileSync(FILE, 'utf8')) as Partial<StoreData>
+      // Backfill any collections missing from an older-shape file so newer code
+      // never crashes on undefined arrays (e.g. invoices added after a seed).
+      const base = seed()
+      const merged = { ...base } as Record<string, unknown>
+      for (const k of Object.keys(base) as (keyof StoreData)[]) {
+        const bv = base[k]
+        const pv = persisted[k]
+        merged[k] = Array.isArray(bv) ? (Array.isArray(pv) ? pv : bv) : (pv ?? bv)
+      }
+      cache = merged as StoreData
       return cache
     } catch {
       // fall through and reseed if the file is corrupt
