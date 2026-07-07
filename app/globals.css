@@ -101,6 +101,9 @@ a { color: inherit; text-decoration: none; }
 /* Zebra striping on data tables — alternate row tint for readability */
 main table tbody tr:nth-child(even) { background: var(--stripe); }
 main table thead th { border-bottom: 1px solid var(--border); }
+/* Row hover — helps the eye track across wide tables */
+main table tbody tr { transition: background .12s var(--ease); }
+main table tbody tr:hover { background: var(--accent-light); }
 /* Newly-added rows briefly glow so you can spot them */
 @keyframes newRow { from { background: var(--gold-light); } to { background: transparent; } }
 tr.row-new td { animation: newRow 2.5s ease forwards; }

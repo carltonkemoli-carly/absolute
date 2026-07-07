@@ -187,7 +187,13 @@ export default function ReceivablesView({ invoices, contractors }: { invoices: I
             </tr>
           </thead>
           <tbody>
-            {sorted.length === 0 && <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: 'var(--ink3)' }}>No invoices yet. Create one with “+ New invoice”.</td></tr>}
+            {sorted.length === 0 && (
+              <tr><td colSpan={8} style={{ padding: '30px 18px', textAlign: 'center' }}>
+                <div style={{ fontSize: 26, opacity: 0.6 }}>🧾</div>
+                <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink2)', marginTop: 6 }}>No invoices yet</div>
+                <div style={{ fontSize: 13, color: 'var(--ink3)', marginTop: 4 }}>Use <strong>⚡ Generate from trips</strong> above to bill a contractor for a month in one click, or add a manual invoice.</div>
+              </td></tr>
+            )}
             {sorted.map((i) => {
               const st = statusOf(i)
               return (

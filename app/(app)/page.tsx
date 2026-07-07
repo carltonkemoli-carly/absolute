@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { PageHeader, StatCard, Card } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
 import NotificationsCard from '@/components/NotificationsCard'
+import QuickActions from '@/components/QuickActions'
+import EmptyState from '@/components/EmptyState'
 import Donut from '@/components/Donut'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listFuel, listVehicles, listDrivers, listContractors, listOrganizations, listDocuments, listServices, listExpenses, listInvoices } from '@/lib/db'
@@ -119,6 +121,9 @@ export default async function DashboardPage({
 
       {/* Compact, clearly-visible notifications — expand to act on them */}
       <NotificationsCard attention={attention} alerts={alerts} />
+
+      {/* One-click access to the common daily tasks */}
+      <QuickActions />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 16, marginBottom: 16 }}>
         <Card title="Revenue by contractor">
@@ -238,7 +243,7 @@ function group<T extends { id: string; name: string }>(
 function pct(x: number): string {
   return `${(x * 100).toFixed(1)}%`
 }
-function Empty() { return <div style={{ color: 'var(--ink3)', fontSize: 14, padding: '8px 0' }}>No data this month.</div> }
+function Empty() { return <EmptyState icon="📊" title="No data this month" hint="Pick another month above, or log some trips." /> }
 function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
   return <th style={{ padding: '11px 16px', fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: right ? 'right' : 'left' }}>{children}</th>
 }
