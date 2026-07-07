@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { fmtTime, fmtDateTime, fmtDate, waNumber } from '@/lib/format'
 import type { Contractor, Driver, Organization, Trip, Vehicle } from '@/lib/types'
-import { assignTrip, setTripStatus, clearPendingTrips } from './actions'
+import { setTripStatus, clearPendingTrips } from './actions'
+import AssignForm from './AssignForm'
 
 type Lookups = { drivers: Driver[]; vehicles: Vehicle[]; organizations: Organization[]; contractors: Contractor[] }
 
@@ -157,13 +158,8 @@ export default function DispatchBoard({ day, trips, pendingTrips = [], pendingTo
           function renderAction() {
             if (t.status === 'booked') {
               return (
-                <ActionBlock step="1" title="Assign a driver & vehicle" hint="Choose who runs this job.">
-                  <form action={assignTrip} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <input type="hidden" name="id" value={t.id} />
-                    <select name="driver_id" className="input" required style={selStyle} defaultValue=""><option value="" disabled>Driver…</option>{drivers.map((dr) => <option key={dr.id} value={dr.id}>{dr.name}</option>)}</select>
-                    <select name="vehicle_id" className="input" required style={selStyle} defaultValue=""><option value="" disabled>Vehicle…</option>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate}</option>)}</select>
-                    <button type="submit" className="btn-primary" style={actBtn}>Assign →</button>
-                  </form>
+                <ActionBlock step="1" title="Assign a driver & vehicle" hint="Pick the driver — their usual vehicle fills in automatically.">
+                  <AssignForm tripId={t.id} drivers={drivers} vehicles={vehicles} />
                 </ActionBlock>
               )
             }
@@ -277,4 +273,3 @@ function Tag({ color, children }: { color: string; children: React.ReactNode }) 
 const navBtn: React.CSSProperties = { width: 34, height: 34, fontSize: 18, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
 const contactBtn: React.CSSProperties = { padding: '6px 12px', fontSize: 13, display: 'inline-flex', alignItems: 'center' }
 const actBtn: React.CSSProperties = { padding: '8px 14px', fontSize: 13, cursor: 'pointer' }
-const selStyle: React.CSSProperties = { flex: 1, minWidth: 100, padding: '7px 9px' }
