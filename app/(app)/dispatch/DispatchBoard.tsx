@@ -37,6 +37,11 @@ export default function DispatchBoard({ day, trips, pendingTrips = [], pendingTo
   const sorted = [...active].sort((a, b) => (DONE[a.status] - DONE[b.status]) || (a.flight_time ?? a.trip_date).localeCompare(b.flight_time ?? b.trip_date))
   const count = (s: string) => trips.filter((t) => t.status === s).length
 
+  // Drivers/vehicles already on another job today → warn to avoid double-booking.
+  const assignedActive = active.filter((t) => t.status !== 'booked')
+  const busyDrivers = assignedActive.map((t) => t.driver_id).filter(Boolean) as string[]
+  const busyVehicles = assignedActive.map((t) => t.vehicle_id).filter(Boolean) as string[]
+
   const [clearing, startClear] = useTransition()
 
   // Unassigned trips on OTHER dates — shown above the day view so imports are always visible.
@@ -159,7 +164,7 @@ export default function DispatchBoard({ day, trips, pendingTrips = [], pendingTo
             if (t.status === 'booked') {
               return (
                 <ActionBlock step="1" title="Assign a driver & vehicle" hint="Pick the driver — their usual vehicle fills in automatically.">
-                  <AssignForm tripId={t.id} drivers={drivers} vehicles={vehicles} />
+                  <AssignForm tripId={t.id} drivers={drivers} vehicles={vehicles} busyDrivers={busyDrivers} busyVehicles={busyVehicles} />
                 </ActionBlock>
               )
             }
