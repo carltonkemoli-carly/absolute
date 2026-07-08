@@ -47,20 +47,15 @@ export default async function DashboardPage({
     const vf = fuel.filter((f) => f.vehicle_id === v.id)
     const rev = sum(vt, (t) => t.amount)
     const fu = sum(vf, (f) => f.amount)
-    const litres = sum(vf, (f) => Number(f.litres) || 0)
-    const km = sum(vt, (t) => Number(t.distance_km) || 0)
-    const kmpl = litres > 0 ? km / litres : null
     const svc = sum(services.filter((s) => s.vehicle_id === v.id && s.service_date >= start && s.service_date <= end), (s) => s.cost)
     const hire = (v.ownership === 'monthly_hire' ? Number(v.monthly_fee) : 0) + sum(vt, (t) => Number(t.hire_cost) || 0)
     const vexp = sum(expenses.filter((e) => e.vehicle_id === v.id), (e) => e.amount)
     const contribution = rev - fu - svc - hire - vexp
-    return { id: v.id, label: v.plate, ownership: v.ownership, trips: vt.length, rev, fuel: fu, kmpl, hire, contribution }
+    const fuelPct = rev > 0 ? fu / rev : null
+    return { id: v.id, label: v.plate, ownership: v.ownership, trips: vt.length, rev, fuel: fu, fuelPct, hire, contribution }
   }).filter((r) => r.trips > 0 || r.fuel > 0).sort((a, b) => b.contribution - a.contribution)
 
-  const kmplVals = perVehicle.map((v) => v.kmpl).filter((x): x is number => x != null && x > 0)
-  const avgKmpl = kmplVals.length ? kmplVals.reduce((a, b) => a + b, 0) / kmplVals.length : 0
-
-  const distanceKm = sum(trips, (t) => Number(t.distance_km) || 0)
+  const fleetFuelPct = revenue > 0 ? fuelTotal / revenue : 0
 
   // Per-driver: trips, revenue
   const perDriver = drivers.map((d) => {
@@ -116,7 +111,7 @@ export default async function DashboardPage({
         <StatCard label="Fuel-to-sales index" value={pct(index)}
           hint={index > 0.3 ? 'High — check fuel use' : 'Healthy'} accent={index > 0.3 ? 'var(--danger)' : 'var(--accent)'} />
         <StatCard label="Expressway charges" value={kes(express)} hint="reimbursable" accent="var(--gold)" />
-        <StatCard label="Distance covered" value={`${distanceKm.toLocaleString()} km`} hint={`${trips.length} trips`} />
+        <StatCard label="Trips" value={String(trips.length)} hint="this month" />
       </div>
 
       {/* Compact, clearly-visible notifications — expand to act on them */}
@@ -176,13 +171,13 @@ export default async function DashboardPage({
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5, minWidth: 720 }}>
           <thead>
             <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>Vehicle</Th><Th right>Trips</Th><Th right>km/l</Th><Th right>Revenue</Th><Th right>Fuel</Th><Th right>Hire</Th><Th right>Contribution</Th>
+              <Th>Vehicle</Th><Th right>Trips</Th><Th right>Fuel %</Th><Th right>Revenue</Th><Th right>Fuel</Th><Th right>Hire</Th><Th right>Contribution</Th>
             </tr>
           </thead>
           <tbody>
             {perVehicle.length === 0 && <tr><td colSpan={7} style={{ padding: 24, textAlign: 'center', color: 'var(--ink3)' }}>No activity this month.</td></tr>}
             {perVehicle.map((v) => {
-              const thirsty = v.kmpl !== null && avgKmpl > 0 && v.kmpl < avgKmpl * 0.7
+              const thirsty = v.fuelPct !== null && fleetFuelPct > 0 && v.fuelPct > fleetFuelPct * 1.3
               return (
                 <tr key={v.id} style={{ borderTop: '1px solid var(--border)' }}>
                   <Td>
@@ -190,9 +185,9 @@ export default async function DashboardPage({
                     <div style={{ fontSize: 11.5, color: v.ownership === 'owned' ? 'var(--ink3)' : 'var(--gold)' }}>{OWNERSHIP_LABELS[v.ownership]}</div>
                   </Td>
                   <Td right>
-                    <span title={thirsty ? 'Well below fleet average — check for fuel waste/theft' : undefined}
-                      style={{ fontWeight: 600, color: v.kmpl === null ? 'var(--ink3)' : thirsty ? 'var(--danger)' : 'var(--ink)' }}>
-                      {v.kmpl === null ? '—' : `${v.kmpl.toFixed(1)}${thirsty ? ' ⚠' : ''}`}
+                    <span title={thirsty ? 'Fuel is a high share of this vehicle’s revenue — check for waste/theft' : undefined}
+                      style={{ fontWeight: 600, color: v.fuelPct === null ? 'var(--ink3)' : thirsty ? 'var(--danger)' : 'var(--ink)' }}>
+                      {v.fuelPct === null ? '—' : `${Math.round(v.fuelPct * 100)}%${thirsty ? ' ⚠' : ''}`}
                     </span>
                   </Td>
                   <Td right>{kes(v.rev)}</Td>

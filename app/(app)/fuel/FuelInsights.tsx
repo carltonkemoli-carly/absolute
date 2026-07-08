@@ -6,8 +6,6 @@ export type VehFuel = {
   model: string | null
   fuelCost: number
   litres: number
-  km: number
-  kmpl: number | null
   trips: number
   rev: number
   fuelPct: number | null
@@ -20,12 +18,13 @@ function pct(x: number | null): string {
   return x === null ? '—' : `${Math.round(x * 100)}%`
 }
 
-export default function FuelInsights({ rows, avgKmpl }: { rows: VehFuel[]; avgKmpl: number }) {
+export default function FuelInsights({ rows, fleetFuelPct }: { rows: VehFuel[]; fleetFuelPct: number }) {
   if (rows.length === 0) {
     return <div className="card" style={{ padding: 28, textAlign: 'center', color: 'var(--ink3)', marginBottom: 18 }}>No fuel or trips this month yet.</div>
   }
   const top = rows[0]
-  const thirsty = (r: VehFuel) => r.kmpl !== null && avgKmpl > 0 && r.kmpl < avgKmpl * 0.7
+  // "Thirsty" = fuel is a much bigger share of this vehicle's revenue than the fleet average.
+  const thirsty = (r: VehFuel) => r.fuelPct !== null && fleetFuelPct > 0 && r.fuelPct > fleetFuelPct * 1.3
 
   return (
     <>
@@ -41,26 +40,24 @@ export default function FuelInsights({ rows, avgKmpl }: { rows: VehFuel[]; avgKm
 
         <div className="grid-stats" style={{ marginTop: 16, gap: 10 }}>
           <Mini label="Trips" value={String(top.trips)} />
-          <Mini label="Distance" value={`${top.km.toLocaleString()} km`} />
-          <Mini label="km / litre" value={top.kmpl ? top.kmpl.toFixed(1) : '—'} tone={thirsty(top) ? 'var(--danger)' : undefined} />
           <Mini label="Revenue earned" value={kes(top.rev)} />
-          <Mini label="Fuel ÷ revenue" value={pct(top.fuelPct)} tone={top.fuelPct && top.fuelPct > 0.3 ? 'var(--danger)' : 'var(--accent)'} />
+          <Mini label="Fuel ÷ revenue" value={pct(top.fuelPct)} tone={thirsty(top) ? 'var(--danger)' : 'var(--accent)'} />
           <Mini label="Washes" value={String(top.washesMonth)} tone={top.washesMonth === 0 ? 'var(--danger)' : undefined} />
         </div>
 
         <div style={{ marginTop: 14, fontSize: 13.5, color: 'var(--ink2)', lineHeight: 1.5 }}>
-          <strong>Why:</strong> it covered the most ground — <strong>{top.km.toLocaleString()} km</strong> over <strong>{top.trips} trips</strong>, earning {kes(top.rev)}. Fuel is <strong>{pct(top.fuelPct)}</strong> of what it made{top.fuelPct && top.fuelPct > 0.3 ? ' — on the high side, worth watching.' : ' — reasonable.'}
+          <strong>Why:</strong> it burned the most fuel — <strong>{kes(top.fuelCost)}</strong> over <strong>{top.trips} trips</strong>, earning {kes(top.rev)}. Fuel is <strong>{pct(top.fuelPct)}</strong> of what it made{thirsty(top) ? ' — well above the fleet average.' : ' — in line with the fleet.'}
           {top.driverNames.length > 0 && <> Driven by {top.driverNames.join(', ')}.</>}
-          {thirsty(top) && <span style={{ color: 'var(--danger)', fontWeight: 600 }}> ⚠ Low km/litre vs the fleet — possible fuel waste or leakage.</span>}
+          {thirsty(top) && <span style={{ color: 'var(--danger)', fontWeight: 600 }}> ⚠ Fuel is a high share of its earnings — possible waste or leakage.</span>}
         </div>
       </div>
 
       {/* Per-vehicle breakdown */}
       <div className="card" style={{ overflowX: 'auto', marginBottom: 16 }}>
-        <table className="zebra" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5, minWidth: 820 }}>
+        <table className="zebra" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5, minWidth: 620 }}>
           <thead>
             <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>Vehicle</Th><Th right>Trips</Th><Th right>km</Th><Th right>km/l</Th><Th right>Fuel</Th><Th right>Revenue</Th><Th right>Fuel÷rev</Th><Th right>Washes</Th>
+              <Th>Vehicle</Th><Th right>Trips</Th><Th right>Fuel</Th><Th right>Revenue</Th><Th right>Fuel ÷ rev</Th><Th right>Washes</Th>
             </tr>
           </thead>
           <tbody>
@@ -68,11 +65,9 @@ export default function FuelInsights({ rows, avgKmpl }: { rows: VehFuel[]; avgKm
               <tr key={r.id} style={{ borderTop: '1px solid var(--border)' }}>
                 <td style={{ padding: '11px 14px' }}><strong>{r.plate}</strong><div style={{ fontSize: 11.5, color: 'var(--ink3)' }}>{r.driverNames.slice(0, 2).join(', ') || '—'}</div></td>
                 <Td right>{r.trips}</Td>
-                <Td right>{r.km.toLocaleString()}</Td>
-                <Td right><span style={{ color: thirsty(r) ? 'var(--danger)' : 'var(--ink)', fontWeight: 600 }}>{r.kmpl ? r.kmpl.toFixed(1) : '—'}{thirsty(r) ? ' ⚠' : ''}</span></Td>
                 <Td right><strong>{kes(r.fuelCost)}</strong></Td>
                 <Td right>{kes(r.rev)}</Td>
-                <Td right><span style={{ color: r.fuelPct && r.fuelPct > 0.3 ? 'var(--danger)' : 'var(--ink2)' }}>{pct(r.fuelPct)}</span></Td>
+                <Td right><span style={{ color: thirsty(r) ? 'var(--danger)' : 'var(--ink2)', fontWeight: 600 }}>{pct(r.fuelPct)}{thirsty(r) ? ' ⚠' : ''}</span></Td>
                 <Td right><span style={{ color: r.washesMonth === 0 ? 'var(--danger)' : 'var(--ink)', fontWeight: r.washesMonth === 0 ? 600 : 400 }}>{r.washesMonth}</span></Td>
               </tr>
             ))}

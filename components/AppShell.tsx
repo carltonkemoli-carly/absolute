@@ -21,7 +21,6 @@ const NAV_GROUPS: NavGroup[] = [
     title: 'Operations',
     items: [
       { href: '/dispatch', label: 'Dispatch', icon: 'dispatch' },
-      { href: '/flights', label: 'Flights', icon: 'flights' },
       { href: '/trips', label: 'Trips', icon: 'trips' },
       { href: '/quote', label: 'Quote a fare', icon: 'quote' },
     ],
@@ -45,7 +44,6 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/payback', label: 'Vehicle payback', icon: 'payback', financeOnly: true },
       { href: '/receivables', label: 'Receivables', icon: 'receivables', financeOnly: true },
       { href: '/expressway', label: 'Expressway', icon: 'expressway', financeOnly: true },
-      { href: '/billing', label: 'Billing', icon: 'billing', financeOnly: true },
       { href: '/expenses', label: 'Expenses', icon: 'expenses', financeOnly: true },
       { href: '/goals', label: 'Targets & P&L', icon: 'goals', financeOnly: true },
       { href: '/reports', label: 'Reports', icon: 'reports', financeOnly: true },

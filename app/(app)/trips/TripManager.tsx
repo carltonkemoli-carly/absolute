@@ -162,17 +162,8 @@ function TripForm({ trip, lookups, defaultDate, onDone }: { trip: Trip | null; l
           <label className="field"><span>Voucher no.</span>
             <input name="voucher_no" className="input" defaultValue={trip?.voucher_no ?? ''} />
           </label>
-          <label className="field"><span>Distance (km)</span>
-            <input name="distance_km" type="number" step="0.1" className="input" defaultValue={trip?.distance_km ?? ''} />
-          </label>
           <label className="field"><span>Hire cost (KES, casual hire)</span>
             <input name="hire_cost" type="number" step="1" className="input" defaultValue={trip?.hire_cost || ''} placeholder="paid to vehicle owner" />
-          </label>
-          <label className="field"><span>Flight no. (airport jobs)</span>
-            <input name="flight_no" className="input" defaultValue={trip?.flight_no ?? ''} placeholder="KQ101" />
-          </label>
-          <label className="field"><span>Flight time</span>
-            <input name="flight_time" type="datetime-local" className="input" defaultValue={trip?.flight_time ? trip.flight_time.slice(0, 16) : ''} />
           </label>
           <label className="field"><span>Amount (KES) *</span>
             <input name="amount" type="number" step="1" className="input" required defaultValue={trip?.amount ?? ''} />

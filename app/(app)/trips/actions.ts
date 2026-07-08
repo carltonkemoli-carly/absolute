@@ -20,10 +20,7 @@ export async function saveTrip(formData: FormData) {
     vehicle_id: emptyToNull(formData.get('vehicle_id')),
     driver_id: emptyToNull(formData.get('driver_id')),
     amount: num(formData.get('amount')),
-    distance_km: numOrNull(formData.get('distance_km')),
     hire_cost: num(formData.get('hire_cost')),
-    flight_no: emptyToNull(formData.get('flight_no')),
-    flight_time: emptyToNull(formData.get('flight_time')),
     payment: String(formData.get('payment') || 'account'),
     status: String(formData.get('status') || 'completed'),
   }
@@ -47,10 +44,4 @@ function emptyToNull(v: FormDataEntryValue | null): string | null {
 function num(v: FormDataEntryValue | null): number {
   const n = Number(String(v ?? '').trim())
   return Number.isFinite(n) ? n : 0
-}
-function numOrNull(v: FormDataEntryValue | null): number | null {
-  const s = String(v ?? '').trim()
-  if (s === '') return null
-  const n = Number(s)
-  return Number.isFinite(n) ? n : null
 }

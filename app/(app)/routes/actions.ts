@@ -12,8 +12,6 @@ export async function saveRoute(formData: FormData) {
     price_wagon: num(formData.get('price_wagon')),
     price_van: num(formData.get('price_van')),
     price_bus: num(formData.get('price_bus')),
-    distance_km: numOrNull(formData.get('distance_km')),
-    duration_min: intOrNull(formData.get('duration_min')),
     active: formData.get('active') === 'on',
     notes: emptyToNull(formData.get('notes')),
   }
@@ -35,14 +33,4 @@ function emptyToNull(v: FormDataEntryValue | null): string | null {
 function num(v: FormDataEntryValue | null): number {
   const n = Number(String(v ?? '').trim())
   return Number.isFinite(n) ? n : 0
-}
-function numOrNull(v: FormDataEntryValue | null): number | null {
-  const s = String(v ?? '').trim()
-  if (s === '') return null
-  const n = Number(s)
-  return Number.isFinite(n) ? n : null
-}
-function intOrNull(v: FormDataEntryValue | null): number | null {
-  const n = numOrNull(v)
-  return n === null ? null : Math.round(n)
 }

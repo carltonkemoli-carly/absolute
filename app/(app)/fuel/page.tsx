@@ -40,14 +40,13 @@ export default async function FuelPage({
     const vf = entries.filter((f) => f.vehicle_id === v.id)
     const fuelCost = sum(vf, (f) => f.amount)
     const litres = sum(vf, (f) => Number(f.litres) || 0)
-    const km = sum(vt, (t) => Number(t.distance_km) || 0)
     const rev = sum(vt, (t) => t.amount)
     const vWash = washExp.filter((e) => e.vehicle_id === v.id)
     const driverNames = [...new Set(vt.map((t) => t.driver_id).filter(Boolean))]
       .map((id) => drivers.find((d) => d.id === id)?.name).filter(Boolean) as string[]
     return {
       id: v.id, plate: v.plate, model: v.model,
-      fuelCost, litres, km, kmpl: litres > 0 ? km / litres : null,
+      fuelCost, litres,
       trips: vt.length, rev, fuelPct: rev > 0 ? fuelCost / rev : null,
       driverNames,
       washesMonth: vWash.filter((e) => e.expense_date >= start && e.expense_date <= end).length,
@@ -55,8 +54,9 @@ export default async function FuelPage({
     }
   }).filter((r) => r.fuelCost > 0 || r.trips > 0).sort((a, b) => b.fuelCost - a.fuelCost)
 
-  const kmplVals = rows.map((r) => r.kmpl).filter((x): x is number => x != null && x > 0)
-  const avgKmpl = kmplVals.length ? kmplVals.reduce((a, b) => a + b, 0) / kmplVals.length : 0
+  const fleetRev = sum(rows, (r) => r.rev)
+  const fleetFuel = sum(rows, (r) => r.fuelCost)
+  const fleetFuelPct = fleetRev > 0 ? fleetFuel / fleetRev : 0
   const washedThisMonth = rows.filter((r) => r.washesMonth > 0).length
 
   return (
@@ -68,7 +68,7 @@ export default async function FuelPage({
         <StatCard label="Cars washed" value={`${washedThisMonth} / ${rows.length}`} hint={washedThisMonth < rows.length ? `${rows.length - washedThisMonth} not washed` : 'all clean'} accent={washedThisMonth < rows.length ? 'var(--danger)' : 'var(--accent)'} />
       </div>
 
-      <FuelInsights rows={rows} avgKmpl={avgKmpl} />
+      <FuelInsights rows={rows} fleetFuelPct={fleetFuelPct} />
 
       <div style={{ margin: '18px 0' }}>
         <ExcelImport

@@ -17,7 +17,6 @@ export async function assignTrip(formData: FormData) {
     assigned_at: new Date().toISOString(),
   }, id)
   revalidatePath('/dispatch')
-  revalidatePath('/flights')
 }
 
 // Move a booking along the workflow (confirmed / enroute / completed / cancelled).
@@ -27,7 +26,6 @@ export async function setTripStatus(formData: FormData) {
   if (!id || !status) return
   await saveRecord('trips', { status }, id)
   revalidatePath('/dispatch')
-  revalidatePath('/flights')
   revalidatePath('/trips')
 }
 
