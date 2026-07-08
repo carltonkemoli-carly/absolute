@@ -10,12 +10,12 @@ type Trend = { label: string; toll: number; count: number }
 type Dir = { count: number; toll: number }
 
 export default function ExpresswayInsights({
-  period, stats, trend, byDriver, byVehicle, byOrg, byRoute, dow, direction, bands, hours, timedCount, reimbursement,
+  period, stats, trend, byOrg, byRoute, dow, direction, bands, hours, timedCount, reimbursement,
 }: {
   period: string
   stats: { totalTrips: number; expressCount: number; totalToll: number; prevToll: number; avgToll: number }
   trend: Trend[]
-  byDriver: Group[]; byVehicle: Group[]; byOrg: Group[]; byRoute: Group[]
+  byOrg: Group[]; byRoute: Group[]
   dow: { day: string; count: number; toll: number }[]
   direction: { to: Dir; from: Dir; other: Dir }
   bands: { amount: number; count: number }[]
@@ -30,9 +30,6 @@ export default function ExpresswayInsights({
 
   const pct = stats.totalTrips ? Math.round((stats.expressCount / stats.totalTrips) * 100) : 0
   const delta = stats.prevToll > 0 ? Math.round(((stats.totalToll - stats.prevToll) / stats.prevToll) * 100) : null
-
-  const topDriver = [...byDriver].sort(sortG)[0]
-  const topVehicle = [...byVehicle].sort(sortG)[0]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -53,16 +50,6 @@ export default function ExpresswayInsights({
           max={Math.max(1, ...trend.map((t) => t.toll))} format={kes} accent="var(--gold)" />
       </div>
 
-      {/* Spotlights */}
-      <div className="grid-2">
-        <Spotlight title="Heaviest expressway driver" name={topDriver?.label ?? '—'}
-          big={topDriver ? fmt(metric(topDriver)) : '—'}
-          sub={topDriver ? `${topDriver.count} expressway trips · ${kes(topDriver.toll)} tolls · ${share(topDriver)} of their trips` : 'No data'} />
-        <Spotlight title="Heaviest expressway vehicle" name={topVehicle?.label ?? '—'}
-          big={topVehicle ? fmt(metric(topVehicle)) : '—'}
-          sub={topVehicle ? `${topVehicle.count} expressway trips · ${kes(topVehicle.toll)} tolls · ${share(topVehicle)} of its trips` : 'No data'} />
-      </div>
-
       {/* Rank toggle */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ fontSize: 13, color: 'var(--ink2)' }}>Rank by:</span>
@@ -76,19 +63,6 @@ export default function ExpresswayInsights({
         </div>
       </div>
 
-      {/* Drivers & vehicles */}
-      <div className="grid-2">
-        <div className="card" style={{ padding: 18 }}>
-          <SectionTitle>By driver</SectionTitle>
-          <Bars items={[...byDriver].sort(sortG).map((g) => ({ label: g.label, value: metric(g), sub: share(g) }))}
-            max={Math.max(1, ...byDriver.map(metric))} format={fmt} accent="var(--accent)" />
-        </div>
-        <div className="card" style={{ padding: 18 }}>
-          <SectionTitle>By vehicle</SectionTitle>
-          <Bars items={[...byVehicle].sort(sortG).map((g) => ({ label: g.label, value: metric(g), sub: share(g) }))}
-            max={Math.max(1, ...byVehicle.map(metric))} format={fmt} accent="var(--accent)" />
-        </div>
-      </div>
 
       {/* Clients & routes */}
       <div className="grid-2">
@@ -172,21 +146,6 @@ export default function ExpresswayInsights({
       </div>
     </div>
   )
-
-  function share(g: Group): string {
-    if (!g.total) return '—'
-    return `${Math.round((g.count / g.total) * 100)}%`
-  }
 }
 
-function Spotlight({ title, name, big, sub }: { title: string; name: string; big: string; sub: string }) {
-  return (
-    <div className="card" style={{ padding: 18 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ink3)' }}>{title}</div>
-      <div className="font-display" style={{ fontSize: 22, fontWeight: 700, margin: '6px 0 2px' }}>{name}</div>
-      <div className="font-display" style={{ fontSize: 28, fontWeight: 700, color: 'var(--accent)' }}>{big}</div>
-      <div style={{ fontSize: 13, color: 'var(--ink2)', marginTop: 4 }}>{sub}</div>
-    </div>
-  )
-}
 const tip: React.CSSProperties = { fontSize: 12.5, color: 'var(--ink3)', margin: '-4px 0 12px' }

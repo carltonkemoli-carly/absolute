@@ -40,29 +40,6 @@ export default async function DashboardPage({
   const perContractor = group(contractors, trips, (t) => t.contractor_id, (rows) => sum(rows, (t) => t.amount))
     .sort((a, b) => b.value - a.value)
 
-  // Per-vehicle profitability: revenue minus its direct costs (fuel, service,
-  // hire, vehicle-tagged expenses) = contribution. Plus fuel efficiency (km/l).
-  const perVehicle = vehicles.map((v) => {
-    const vt = trips.filter((t) => t.vehicle_id === v.id)
-    const vf = fuel.filter((f) => f.vehicle_id === v.id)
-    const rev = sum(vt, (t) => t.amount)
-    const fu = sum(vf, (f) => f.amount)
-    const svc = sum(services.filter((s) => s.vehicle_id === v.id && s.service_date >= start && s.service_date <= end), (s) => s.cost)
-    const hire = (v.ownership === 'monthly_hire' ? Number(v.monthly_fee) : 0) + sum(vt, (t) => Number(t.hire_cost) || 0)
-    const vexp = sum(expenses.filter((e) => e.vehicle_id === v.id), (e) => e.amount)
-    const contribution = rev - fu - svc - hire - vexp
-    const fuelPct = rev > 0 ? fu / rev : null
-    return { id: v.id, label: v.plate, ownership: v.ownership, trips: vt.length, rev, fuel: fu, fuelPct, hire, contribution }
-  }).filter((r) => r.trips > 0 || r.fuel > 0).sort((a, b) => b.contribution - a.contribution)
-
-  const fleetFuelPct = revenue > 0 ? fuelTotal / revenue : 0
-
-  // Per-driver: trips, revenue
-  const perDriver = drivers.map((d) => {
-    const dt = trips.filter((t) => t.driver_id === d.id)
-    return { id: d.id, label: d.name, trips: dt.length, rev: sum(dt, (t) => t.amount) }
-  }).filter((r) => r.trips > 0).sort((a, b) => b.rev - a.rev)
-
   // Top organizations
   const perOrg = group(organizations, trips, (t) => t.organization_id, (rows) => sum(rows, (t) => t.amount))
     .filter((r) => r.value > 0).sort((a, b) => b.value - a.value).slice(0, 6)
@@ -166,63 +143,6 @@ export default async function DashboardPage({
         </Card>
       </div>
 
-      <Card title="Per vehicle — profitability & fuel efficiency" pad={false}>
-        <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5, minWidth: 720 }}>
-          <thead>
-            <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>Vehicle</Th><Th right>Trips</Th><Th right>Fuel %</Th><Th right>Revenue</Th><Th right>Fuel</Th><Th right>Hire</Th><Th right>Contribution</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {perVehicle.length === 0 && <tr><td colSpan={7} style={{ padding: 24, textAlign: 'center', color: 'var(--ink3)' }}>No activity this month.</td></tr>}
-            {perVehicle.map((v) => {
-              const thirsty = v.fuelPct !== null && fleetFuelPct > 0 && v.fuelPct > fleetFuelPct * 1.3
-              return (
-                <tr key={v.id} style={{ borderTop: '1px solid var(--border)' }}>
-                  <Td>
-                    <strong>{v.label}</strong>
-                    <div style={{ fontSize: 11.5, color: v.ownership === 'owned' ? 'var(--ink3)' : 'var(--gold)' }}>{OWNERSHIP_LABELS[v.ownership]}</div>
-                  </Td>
-                  <Td right>
-                    <span title={thirsty ? 'Fuel is a high share of this vehicle’s revenue — check for waste/theft' : undefined}
-                      style={{ fontWeight: 600, color: v.fuelPct === null ? 'var(--ink3)' : thirsty ? 'var(--danger)' : 'var(--ink)' }}>
-                      {v.fuelPct === null ? '—' : `${Math.round(v.fuelPct * 100)}%${thirsty ? ' ⚠' : ''}`}
-                    </span>
-                  </Td>
-                  <Td right>{kes(v.rev)}</Td>
-                  <Td right>{kes(v.fuel)}</Td>
-                  <Td right>{v.hire ? kes(v.hire) : '—'}</Td>
-                  <Td right><strong style={{ color: v.contribution < 0 ? 'var(--danger)' : 'var(--accent)' }}>{kes(v.contribution)}</strong></Td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-        </div>
-      </Card>
-
-      <div style={{ height: 16 }} />
-
-      <Card title="Per driver — trips & revenue" pad={false}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
-          <thead>
-            <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>Driver</Th><Th right>Trips</Th><Th right>Revenue</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {perDriver.length === 0 && <tr><td colSpan={3} style={{ padding: 24, textAlign: 'center', color: 'var(--ink3)' }}>No activity this month.</td></tr>}
-            {perDriver.map((d) => (
-              <tr key={d.id} style={{ borderTop: '1px solid var(--border)' }}>
-                <Td><strong>{d.label}</strong></Td>
-                <Td right>{d.trips}</Td>
-                <Td right>{kes(d.rev)}</Td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
     </>
   )
 }

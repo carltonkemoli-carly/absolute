@@ -25,12 +25,10 @@ export default async function ExpresswayPage({
 
   // 6-month window (for the trend) ending at the selected month
   const windowStart = monthRange(year, month - 5).start
-  const [windowTrips, drivers, vehicles, organizations, contractors, invoices] = await Promise.all([
-    listTrips(windowStart, end), listDrivers(), listVehicles(), listOrganizations(), listContractors(), listInvoices(),
+  const [windowTrips, organizations, contractors, invoices] = await Promise.all([
+    listTrips(windowStart, end), listOrganizations(), listContractors(), listInvoices(),
   ])
 
-  const driverName = (id: string | null) => drivers.find((d) => d.id === id)?.name ?? 'Unassigned'
-  const plate = (id: string | null) => vehicles.find((v) => v.id === id)?.plate ?? 'Unassigned'
   const orgName = (id: string | null) => organizations.find((o) => o.id === id)?.name ?? '—'
   const conName = (id: string | null) => contractors.find((c) => c.id === id)?.name ?? 'Direct / none'
 
@@ -64,8 +62,6 @@ export default async function ExpresswayPage({
     return [...m.values()]
   }
 
-  const byDriver = group(expressTrips, (t) => t.driver_id ?? 'none', driverName, monthTrips)
-  const byVehicle = group(expressTrips, (t) => t.vehicle_id ?? 'none', plate, monthTrips)
   const byOrg = group(expressTrips, (t) => t.organization_id ?? 'none', orgName)
   const byRoute = group(expressTrips, (t) => `${(t.pickup || '?').trim()} → ${(t.dropoff || '?').trim()}`, (k) => k)
 
@@ -133,8 +129,6 @@ export default async function ExpresswayPage({
           avgToll: expressTrips.length ? Math.round(totalToll / expressTrips.length) : 0,
         }}
         trend={trend}
-        byDriver={byDriver}
-        byVehicle={byVehicle}
         byOrg={byOrg}
         byRoute={byRoute}
         dow={dow}

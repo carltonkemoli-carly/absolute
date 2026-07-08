@@ -6,16 +6,14 @@ import { Bars, SectionTitle } from '@/components/Bars'
 import { kes } from '@/lib/format'
 
 type Rev = { label: string; revenue: number; trips: number }
-type Veh = { label: string; trips: number; revenue: number; fuel: number; contribution: number; fuelPct: number; flag: boolean }
 
 export default function InsightsView({
-  period, pl, trend, byClient, byRoute, byContractor, dow, perVehicle, perDriver,
+  period, pl, trend, byClient, byRoute, byContractor, dow,
 }: {
   period: string
   pl: { revenue: number; fuel: number; expenses: number; net: number; prevRev: number; fuelPct: number }
   trend: { label: string; revenue: number; net: number }[]
   byClient: Rev[]; byRoute: Rev[]; byContractor: Rev[]; dow: Rev[]
-  perVehicle: Veh[]; perDriver: Rev[]
 }) {
   const [by, setBy] = useState<'revenue' | 'trips'>('revenue')
   const val = (g: Rev) => (by === 'revenue' ? g.revenue : g.trips)
@@ -24,8 +22,6 @@ export default function InsightsView({
 
   const delta = pl.prevRev > 0 ? Math.round(((pl.revenue - pl.prevRev) / pl.prevRev) * 100) : null
   const margin = pl.revenue > 0 ? Math.round((pl.net / pl.revenue) * 100) : 0
-  const topContrib = [...perVehicle].sort((a, b) => b.contribution - a.contribution)
-  const flagged = perVehicle.filter((v) => v.flag)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -61,18 +57,6 @@ export default function InsightsView({
         <p style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 8 }}>Light bar = revenue · solid = net profit</p>
       </div>
 
-      {/* Fleet profit contribution */}
-      <div className="card" style={{ padding: 18 }}>
-        <SectionTitle>Which vehicles actually earn (contribution = revenue − fuel − vehicle costs)</SectionTitle>
-        <Bars items={topContrib.map((v) => ({ label: v.label, value: v.contribution, sub: `${kes(v.revenue)} rev · ${v.fuelPct}% fuel${v.flag ? ' ⚠' : ''}` }))}
-          max={Math.max(1, ...topContrib.map((v) => v.contribution))} format={kes} accent="var(--accent)" />
-        {flagged.length > 0 && (
-          <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--danger-light)', borderRadius: 'var(--radius-sm)', fontSize: 13 }}>
-            ⚠ <strong>{flagged.map((v) => v.label).join(', ')}</strong> burn 25%+ more fuel per shilling earned than the fleet average — check for waste, wrong pricing, or fuel theft.
-          </div>
-        )}
-      </div>
-
       {/* Rank toggle */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ fontSize: 13, color: 'var(--ink2)' }}>Rank by:</span>
@@ -100,11 +84,6 @@ export default function InsightsView({
           <SectionTitle>By day of week</SectionTitle>
           <Bars items={dow.map((g) => ({ label: g.label, value: val(g), sub: '' }))}
             max={Math.max(1, ...dow.map(val))} format={fmt} accent="var(--gold)" />
-        </div>
-        <div className="card" style={{ padding: 18 }}>
-          <SectionTitle>Top drivers</SectionTitle>
-          <Bars items={[...perDriver].sort(sortR).slice(0, 10).map((g) => ({ label: g.label, value: val(g), sub: `${g.trips} trips` }))}
-            max={Math.max(1, ...perDriver.map(val))} format={fmt} accent="var(--accent)" />
         </div>
       </div>
 

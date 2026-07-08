@@ -12,10 +12,6 @@ export interface BusinessAlert {
 }
 
 const num = (v: unknown) => Number(v) || 0
-function monthsBetween(fromIso: string, toIso: string): number {
-  const a = new Date(fromIso + 'T00:00:00Z'), b = new Date(toIso + 'T00:00:00Z')
-  return (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + (b.getUTCMonth() - a.getUTCMonth())
-}
 
 export function buildAlerts(input: {
   vehicles: Vehicle[]
@@ -30,49 +26,17 @@ export function buildAlerts(input: {
   monthStart: string
   monthEnd: string
 }): BusinessAlert[] {
-  const { vehicles, trips, fuel, expenses, services = [], invoices, contractors, today, monthLabel, monthStart, monthEnd } = input
+  const { trips, fuel, invoices, contractors, monthLabel, monthStart, monthEnd } = input
   const alerts: BusinessAlert[] = []
   const sum = <T,>(a: T[], f: (x: T) => number) => a.reduce((s, x) => s + f(x), 0)
 
+  // Company-level fuel-to-sales — the one fuel metric that's truly accurate
+  // (fuel is paid straight to stations, not tied to a car).
   const totalRev = sum(trips, (t) => num(t.amount))
   const totalFuel = sum(fuel, (f) => num(f.amount))
-  const fleetFuelPct = totalRev > 0 ? totalFuel / totalRev : 0
-
-  // ---- per-vehicle checks ----
-  for (const v of vehicles) {
-    const vt = trips.filter((t) => t.vehicle_id === v.id)
-    if (vt.length === 0) continue
-    const rev = sum(vt, (t) => num(t.amount))
-    const fu = sum(fuel.filter((f) => f.vehicle_id === v.id), (f) => num(f.amount))
-    const vex = sum(expenses.filter((e) => e.vehicle_id === v.id), (e) => num(e.amount))
-    const vsc = sum(services.filter((s) => s.vehicle_id === v.id), (s) => num(s.cost))
-    const vhire = (v.ownership === 'monthly_hire' ? num(v.monthly_fee) : 0) + sum(vt, (t) => num(t.hire_cost))
-    const contribution = rev - fu - vex - vsc - vhire
-    const loan = num(v.loan_amount), loanMo = num(v.loan_monthly)
-
-    if (contribution < 0) {
-      alerts.push({ level: 'critical', title: `${v.plate} ran at a loss in ${monthLabel}`, detail: `Contribution ${kes(contribution)} (revenue ${kes(rev)} − fuel & costs). Review pricing, utilisation or costs.`, href: '/insights' })
-    } else if (loan > 0 && loanMo > 0 && contribution < loanMo) {
-      alerts.push({ level: 'warning', title: `${v.plate} isn't covering its loan`, detail: `Earns ${kes(contribution)}/mo but the instalment is ${kes(loanMo)} — you subsidise ${kes(loanMo - contribution)}/mo.`, href: '/payback' })
-    }
-
-    // fuel efficiency outlier
-    if (rev > 0 && fleetFuelPct > 0) {
-      const pct = fu / rev
-      if (pct > fleetFuelPct * 1.25) {
-        alerts.push({ level: 'warning', title: `${v.plate} fuel looks high`, detail: `Fuel is ${Math.round(pct * 100)}% of its revenue vs ${Math.round(fleetFuelPct * 100)}% fleet average — check for waste or theft.`, href: '/insights' })
-      }
-    }
-
-    // loan clearing soon
-    if (loan > 0 && loanMo > 0 && v.purchase_date) {
-      const term = Math.ceil(loan / loanMo)
-      const elapsed = Math.max(0, monthsBetween(v.purchase_date, today))
-      const left = Math.max(0, term - elapsed)
-      if (left >= 1 && left <= 2) {
-        alerts.push({ level: 'info', title: `${v.plate} loan almost cleared`, detail: `About ${left} month${left === 1 ? '' : 's'} of instalments left — that ${kes(loanMo)}/mo will soon be pure profit.`, href: '/payback' })
-      }
-    }
+  const fuelPct = totalRev > 0 ? totalFuel / totalRev : 0
+  if (totalRev > 0 && fuelPct > 0.34) {
+    alerts.push({ level: 'warning', title: `Fuel is high this month`, detail: `Fuel is ${Math.round(fuelPct * 100)}% of revenue (${kes(totalFuel)} on ${kes(totalRev)}) — usually it runs ~28–31%. Worth a look.`, href: '/fuel' })
   }
 
   // ---- un-invoiced expressway tolls (recoverable) ----

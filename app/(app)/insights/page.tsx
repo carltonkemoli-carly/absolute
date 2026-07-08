@@ -87,32 +87,7 @@ export default async function InsightsPage({
   const dowMap = DOW.map((day) => ({ label: day, revenue: 0, trips: 0 }))
   for (const t of trips) { const i = (new Date(t.trip_date + 'T12:00:00Z').getUTCDay() + 6) % 7; dowMap[i].revenue += amt(t); dowMap[i].trips++ }
 
-  // ---- per-vehicle profit + fuel efficiency ----
   const fleetFuelPct = revenue > 0 ? fuelTotal / revenue : 0
-  const perVehicle = vehicles.map((v) => {
-    const vt = trips.filter((t) => t.vehicle_id === v.id)
-    const vf = fuel.filter((f) => f.vehicle_id === v.id)
-    const ve = exp.filter((e) => e.vehicle_id === v.id)
-    const vs = svc.filter((s) => s.vehicle_id === v.id)
-    const rev = sum(vt, amt)
-    const fu = sum(vf, (x) => Number(x.amount) || 0)
-    const vex = sum(ve, (x) => Number(x.amount) || 0)
-    const vsc = sum(vs, (x) => Number(x.cost) || 0)
-    const vhire = (v.ownership === 'monthly_hire' ? Number(v.monthly_fee) || 0 : 0) + sum(vt, (t) => Number(t.hire_cost) || 0)
-    const fuelPct = rev > 0 ? fu / rev : 0
-    return {
-      label: v.plate, trips: vt.length, revenue: rev, fuel: fu,
-      contribution: rev - fu - vex - vsc - vhire,
-      fuelPct: Math.round(fuelPct * 100),
-      flag: rev > 0 && fleetFuelPct > 0 && fuelPct > fleetFuelPct * 1.25, // burns >25% more fuel per shilling than fleet avg
-    }
-  }).filter((v) => v.trips > 0)
-
-  // ---- per-driver ----
-  const perDriver = drivers.map((d) => {
-    const dt = trips.filter((t) => t.driver_id === d.id)
-    return { label: d.name, trips: dt.length, revenue: sum(dt, amt) }
-  }).filter((d) => d.trips > 0)
 
   // ---- rate-card pricing check ----
   // Compare each trip's net fare (amount − expressway toll) to the JKIA rate card
@@ -166,7 +141,6 @@ export default async function InsightsPage({
         pl={{ revenue, fuel: fuelTotal, expenses: expTotal, net, prevRev, fuelPct: Math.round(fleetFuelPct * 100) }}
         trend={trend}
         byClient={byClient} byRoute={byRoute} byContractor={byContractor} dow={dowMap}
-        perVehicle={perVehicle} perDriver={perDriver}
       />
       <div style={{ marginTop: 18 }}>
         <PricingCheck matched={matched} underRecovery={underRecovery} overCharge={overCharge} rows={priceRows} unmatched={unmatchedTop} />
