@@ -32,7 +32,7 @@ export default function ReportsView({ months }: { months: MonthRow[] }) {
 
       <div className="grid-stats" style={{ marginBottom: 18 }}>
         <Stat label="Latest month revenue" value={kes(latest?.revenue ?? 0)} hint={delta === null ? latest?.label : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(0)}% vs prior`} tone={delta !== null && delta < 0 ? 'var(--danger)' : 'var(--accent)'} />
-        <Stat label="Net profit" value={kes(latest?.profit ?? 0)} hint={`${((latest?.margin ?? 0) * 100).toFixed(0)}% margin`} tone={(latest?.profit ?? 0) < 0 ? 'var(--danger)' : 'var(--accent)'} />
+        <Stat label="Gross profit" value={kes(latest?.profit ?? 0)} hint={`${((latest?.margin ?? 0) * 100).toFixed(0)}% · before wages/insurance/loans`} tone={(latest?.profit ?? 0) < 0 ? 'var(--danger)' : 'var(--accent)'} />
         <Stat label="Fuel index" value={`${((latest?.index ?? 0) * 100).toFixed(1)}%`} tone={(latest?.index ?? 0) > 0.3 ? 'var(--danger)' : 'var(--accent)'} />
         <Stat label="6-month revenue" value={kes(months.reduce((a, m) => a + m.revenue, 0))} />
       </div>
@@ -53,7 +53,7 @@ export default function ReportsView({ months }: { months: MonthRow[] }) {
         </div>
         <div style={{ display: 'flex', gap: 18, marginTop: 8, fontSize: 12.5, color: 'var(--ink2)' }}>
           <Legend color="var(--accent-mid)" text="Revenue" />
-          <Legend color="var(--gold)" text="Net profit (after fuel, service & expenses)" />
+          <Legend color="var(--gold)" text="Gross profit (revenue − fuel)" />
         </div>
       </div>
 
@@ -62,7 +62,7 @@ export default function ReportsView({ months }: { months: MonthRow[] }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
           <thead>
             <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>Month</Th><Th right>Trips</Th><Th right>Revenue</Th><Th right>Fuel</Th><Th right>Service</Th><Th right>Expenses</Th><Th right>Net profit</Th><Th right>Margin</Th><Th right>Fuel index</Th>
+              <Th>Month</Th><Th right>Trips</Th><Th right>Revenue</Th><Th right>Fuel</Th><Th right>Gross profit</Th><Th right>Margin</Th><Th right>Fuel index</Th>
             </tr>
           </thead>
           <tbody>
@@ -72,8 +72,6 @@ export default function ReportsView({ months }: { months: MonthRow[] }) {
                 <Td right>{m.trips}</Td>
                 <Td right>{kes(m.revenue)}</Td>
                 <Td right>{kes(m.fuel)}</Td>
-                <Td right>{kes(m.service)}</Td>
-                <Td right>{kes(m.expenses)}</Td>
                 <Td right><strong style={{ color: m.profit < 0 ? 'var(--danger)' : 'var(--ink)' }}>{kes(m.profit)}</strong></Td>
                 <Td right><span style={{ color: m.margin < 0 ? 'var(--danger)' : 'var(--ink2)', fontWeight: 600 }}>{(m.margin * 100).toFixed(0)}%</span></Td>
                 <Td right><span style={{ color: m.index > 0.35 ? 'var(--danger)' : 'var(--accent)', fontWeight: 600 }}>{(m.index * 100).toFixed(1)}%</span></Td>

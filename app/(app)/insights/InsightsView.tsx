@@ -28,14 +28,14 @@ export default function InsightsView({
       {/* Headline P&L */}
       <div className="grid-stats">
         <StatCard label="Revenue" value={kes(pl.revenue)} hint={delta === null ? period : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% vs last month`} accent={delta !== null && delta < 0 ? 'var(--danger)' : 'var(--accent)'} />
-        <StatCard label="Net profit" value={kes(pl.net)} hint={`${margin}% margin`} accent={pl.net >= 0 ? 'var(--accent)' : 'var(--danger)'} />
-        <StatCard label="Fuel-to-sales" value={`${pl.fuelPct}%`} hint={`${kes(pl.fuel)} fuel`} accent={pl.fuelPct > 30 ? 'var(--gold)' : 'var(--accent)'} />
-        <StatCard label="Expenses" value={kes(pl.expenses)} hint="excl. fuel" />
+        <StatCard label="Gross profit" value={kes(pl.net)} hint={`${margin}% · before wages, insurance & loans`} accent="var(--accent)" />
+        <StatCard label="Fuel-to-sales" value={`${pl.fuelPct}%`} hint={`${kes(pl.fuel)} fuel`} accent={pl.fuelPct > 32 ? 'var(--gold)' : 'var(--accent)'} />
+        <StatCard label="Fuel cost" value={kes(pl.fuel)} hint="the only cost logged yet" />
       </div>
 
       {/* Trend */}
       <div className="card" style={{ padding: 18 }}>
-        <SectionTitle>Revenue & profit — last 6 months</SectionTitle>
+        <SectionTitle>Revenue & gross profit — last 6 months</SectionTitle>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {trend.map((t, i) => {
             const max = Math.max(1, ...trend.map((x) => x.revenue))
@@ -44,7 +44,7 @@ export default function InsightsView({
               <div key={i}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 3 }}>
                   <span style={{ fontWeight: 500 }}>{t.label}</span>
-                  <span style={{ color: 'var(--ink2)' }}>{kes(t.revenue)} <span style={{ color: t.net >= 0 ? 'var(--accent)' : 'var(--danger)' }}>· net {kes(t.net)} ({m}%)</span></span>
+                  <span style={{ color: 'var(--ink2)' }}>{kes(t.revenue)} <span style={{ color: t.net >= 0 ? 'var(--accent)' : 'var(--danger)' }}>· gross {kes(t.net)} ({m}%)</span></span>
                 </div>
                 <div style={{ height: 8, borderRadius: 6, background: 'var(--surface2)', overflow: 'hidden', position: 'relative' }}>
                   <div style={{ height: '100%', width: `${(t.revenue / max) * 100}%`, background: 'var(--accent-light)', position: 'absolute' }} />
@@ -54,7 +54,7 @@ export default function InsightsView({
             )
           })}
         </div>
-        <p style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 8 }}>Light bar = revenue · solid = net profit</p>
+        <p style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 8 }}>Light bar = revenue · solid = gross profit (revenue − fuel). Wages, insurance & loans not logged yet.</p>
       </div>
 
       {/* Rank toggle */}

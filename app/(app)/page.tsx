@@ -49,20 +49,7 @@ export default async function DashboardPage({
   // Expressway is billed but passed through (Absolute doesn't keep it)
   const netRevenue = revenue - express
 
-  // Cost breakdown for the month (for the donut + cost mix)
   const CHART = ['var(--accent)', 'var(--gold)', 'var(--accent-mid)', '#84A98C', '#C9A227', '#6B8F71', '#B07A3C']
-  const serviceMonth = sum(services.filter((s) => s.service_date >= start && s.service_date <= end), (s) => s.cost)
-  const hireMonth = sum(vehicles.filter((v) => v.ownership === 'monthly_hire'), (v) => Number(v.monthly_fee)) + sum(trips, (t) => Number(t.hire_cost) || 0)
-  const wagesMonth = sum(expenses.filter((e) => e.category === 'Driver Wages'), (e) => e.amount)
-  const otherExpMonth = sum(expenses.filter((e) => e.category !== 'Driver Wages'), (e) => e.amount)
-  const totalCostMonth = fuelTotal + hireMonth + wagesMonth + serviceMonth + otherExpMonth
-  const costSlices = [
-    { label: 'Fuel', value: fuelTotal, color: CHART[0] },
-    { label: 'Vehicle Hire', value: hireMonth, color: CHART[1] },
-    { label: 'Driver Wages', value: wagesMonth, color: CHART[2] },
-    { label: 'Servicing', value: serviceMonth, color: CHART[3] },
-    { label: 'Other', value: otherExpMonth, color: CHART[4] },
-  ]
   const contractorSlices = perContractor.map((c, i) => ({ label: c.label, value: c.value, color: CHART[i % CHART.length] }))
   const fleetMix = (['owned', 'monthly_hire', 'casual_hire'] as const)
     .map((o, i) => ({ label: OWNERSHIP_LABELS[o], value: vehicles.filter((v) => v.ownership === o).length, color: CHART[i] }))
@@ -82,9 +69,9 @@ export default async function DashboardPage({
       {/* Numbers first — that's what a dashboard is for */}
       <div className="grid-stats" style={{ marginBottom: 18 }}>
         <StatCard label="Revenue billed" value={kes(revenue)} hint={`net ${kes(netRevenue)} (excl. expressway)`} accent="var(--accent)" />
-        <StatCard label="Net profit" value={kes(revenue - totalCostMonth)}
-          hint={revenue > 0 ? `${pct((revenue - totalCostMonth) / revenue)} margin · after all costs` : 'after all costs'}
-          accent={revenue - totalCostMonth < 0 ? 'var(--danger)' : 'var(--accent)'} />
+        <StatCard label="Gross profit" value={kes(revenue - fuelTotal)}
+          hint={revenue > 0 ? `${pct((revenue - fuelTotal) / revenue)} margin · before wages, insurance & loans` : 'revenue − fuel'}
+          accent="var(--accent)" />
         <StatCard label="Fuel-to-sales index" value={pct(index)}
           hint={index > 0.3 ? 'High — check fuel use' : 'Healthy'} accent={index > 0.3 ? 'var(--danger)' : 'var(--accent)'} />
         <StatCard label="Expressway charges" value={kes(express)} hint="reimbursable" accent="var(--gold)" />
@@ -100,9 +87,6 @@ export default async function DashboardPage({
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 16, marginBottom: 16 }}>
         <Card title="Revenue by contractor">
           {contractorSlices.length === 0 ? <Empty /> : <Donut data={contractorSlices} centerValue={kes(revenue)} centerLabel="billed" />}
-        </Card>
-        <Card title="Cost breakdown">
-          {totalCostMonth === 0 ? <Empty /> : <Donut data={costSlices} centerValue={kes(totalCostMonth)} centerLabel="costs" />}
         </Card>
         <Card title="Fleet mix">
           <Donut data={fleetMix} centerValue={String(vehicles.length)} centerLabel="vehicles" />
