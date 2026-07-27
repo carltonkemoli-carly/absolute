@@ -1,16 +1,17 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { PageHeader, StatCard, Card } from '@/components/ui'
+import type { ReactNode } from 'react'
+import { PageHeader, StatCard, Card, EmptyState } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
 import NotificationsCard from '@/components/NotificationsCard'
 import QuickActions from '@/components/QuickActions'
-import EmptyState from '@/components/EmptyState'
-import Donut from '@/components/Donut'
+import SegmentDonut, { type Seg } from '@/components/SegmentDonut'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listFuel, listVehicles, listDrivers, listContractors, listOrganizations, listDocuments, listServices, listExpenses, listInvoices } from '@/lib/db'
-import { OWNERSHIP_LABELS } from '@/lib/types'
+import { OWNERSHIP_LABELS, type Invoice } from '@/lib/types'
 import { buildAttention } from '@/lib/attention'
 import { buildAlerts } from '@/lib/alerts'
-import { monthRange, kes, MONTH_NAMES, isoDate } from '@/lib/format'
+import { monthRange, kes, kesPlain, MONTH_NAMES, isoDate } from '@/lib/format'
 import { stickyPeriod } from '@/lib/period'
 import type { Trip } from '@/lib/types'
 
@@ -31,28 +32,60 @@ export default async function DashboardPage({
   const attention = buildAttention(documents, services, vehicles, drivers)
   const alerts = buildAlerts({ vehicles, trips, fuel, expenses, services: services.filter((s) => s.service_date >= start && s.service_date <= end), invoices, contractors, today: isoDate(new Date()), monthLabel: `${MONTH_NAMES[month]} ${year}`, monthStart: start, monthEnd: end })
 
+  // ---- Financial headlines ----
   const revenue = sum(trips, (t) => t.amount)
   const express = sum(trips, (t) => t.express_charges)
   const fuelTotal = sum(fuel, (f) => f.amount)
   const index = revenue > 0 ? fuelTotal / revenue : 0
-
-  // Revenue per contractor
-  const perContractor = group(contractors, trips, (t) => t.contractor_id, (rows) => sum(rows, (t) => t.amount))
-    .sort((a, b) => b.value - a.value)
-
-  // Top organizations
-  const perOrg = group(organizations, trips, (t) => t.organization_id, (rows) => sum(rows, (t) => t.amount))
-    .filter((r) => r.value > 0).sort((a, b) => b.value - a.value).slice(0, 6)
-
-  const maxContractor = Math.max(1, ...perContractor.map((c) => c.value))
-
-  // Expressway is billed but passed through (Absolute doesn't keep it)
   const netRevenue = revenue - express
 
-  const CHART = ['var(--accent)', 'var(--gold)', 'var(--accent-mid)', '#84A98C', '#C9A227', '#6B8F71', '#B07A3C']
-  const contractorSlices = perContractor.map((c, i) => ({ label: c.label, value: c.value, color: CHART[i % CHART.length] }))
-  const fleetMix = (['owned', 'monthly_hire', 'casual_hire'] as const)
-    .map((o, i) => ({ label: OWNERSHIP_LABELS[o], value: vehicles.filter((v) => v.ownership === o).length, color: CHART[i] }))
+  const today = isoDate(new Date())
+  const outstanding = invoices.reduce((s, i) => s + due(i), 0)
+  const overdue = invoices.reduce((s, i) => s + (due(i) > 0 && i.due_date && i.due_date < today ? due(i) : 0), 0)
+
+  // ---- Palette: colour lives in the data, chrome stays neutral ----
+  const CHART = ['#2C7A53', '#C9A227', '#2F9E8F', '#BC3E22', '#3E7CB1', '#7A5FB0', '#D98A3D']
+  const GREEN = '#2C7A53', GOLD = '#C9A227', TEAL = '#2F9E8F', RED = '#BC3E22'
+
+  // Revenue by contractor (currency donut)
+  const contractorRev: Seg[] = contractors
+    .map((c, i) => ({ label: c.name, value: sum(trips.filter((t) => t.contractor_id === c.id), (t) => t.amount), color: CHART[i % CHART.length] }))
+    .filter((s) => s.value > 0).sort((a, b) => b.value - a.value)
+
+  // Fleet mix by ownership (count donut with ring badges)
+  const fleetMix: Seg[] = ([['owned', GREEN], ['monthly_hire', GOLD], ['casual_hire', TEAL]] as const)
+    .map(([o, color]) => ({ label: OWNERSHIP_LABELS[o], value: vehicles.filter((v) => v.ownership === o).length, color }))
+
+  // Trips by contractor this month (count donut)
+  const tripsByContractor: Seg[] = contractors
+    .map((c, i) => ({ label: c.name, value: trips.filter((t) => t.contractor_id === c.id).length, color: CHART[i % CHART.length] }))
+    .filter((s) => s.value > 0).sort((a, b) => b.value - a.value)
+
+  // Receivables status (count donut)
+  let paidN = 0, overdueN = 0, openN = 0
+  for (const i of invoices) {
+    if (due(i) <= 0) { if (Number(i.amount) > 0) paidN++; continue }
+    if (i.due_date && i.due_date < today) overdueN++; else openN++
+  }
+  const receivablesMix: Seg[] = [
+    { label: 'Paid', value: paidN, color: GREEN },
+    { label: 'Outstanding', value: openN, color: GOLD },
+    { label: 'Overdue', value: overdueN, color: RED },
+  ]
+
+  // Compliance status (count donut) — by document expiry
+  const in30 = isoDate(new Date(Date.now() + 30 * 864e5))
+  let okN = 0, expiringN = 0, expiredN = 0
+  for (const d of documents) {
+    if (d.expiry_date && d.expiry_date < today) expiredN++
+    else if (d.expiry_date && d.expiry_date <= in30) expiringN++
+    else okN++
+  }
+  const complianceMix: Seg[] = [
+    { label: 'Valid', value: okN, color: GREEN },
+    { label: 'Expiring soon', value: expiringN, color: GOLD },
+    { label: 'Expired', value: expiredN, color: RED },
+  ]
 
   const hour = Number(new Date().toLocaleString('en-GB', { timeZone: 'Africa/Nairobi', hour: '2-digit', hour12: false }))
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
@@ -66,86 +99,83 @@ export default async function DashboardPage({
         action={<MonthNav year={year} month={month} />}
       />
 
-      {/* Numbers first — that's what a dashboard is for */}
-      <div className="grid-stats" style={{ marginBottom: 18 }}>
-        <StatCard label="Revenue billed" value={kes(revenue)} hint={`net ${kes(netRevenue)} (excl. expressway)`} accent="var(--accent)" />
-        <StatCard label="Gross profit" value={kes(revenue - fuelTotal)}
-          hint={revenue > 0 ? `${pct((revenue - fuelTotal) / revenue)} margin · before wages, insurance & loans` : 'revenue − fuel'}
-          accent="var(--accent)" />
-        <StatCard label="Fuel-to-sales index" value={pct(index)}
-          hint={index > 0.3 ? 'High — check fuel use' : 'Healthy'} accent={index > 0.3 ? 'var(--danger)' : 'var(--accent)'} />
-        <StatCard label="Expressway charges" value={kes(express)} hint="reimbursable" accent="var(--gold)" />
-        <StatCard label="Trips" value={String(trips.length)} hint="this month" />
-      </div>
+      <Section title="My business">
+        <div className="grid-stats" style={{ marginBottom: 16 }}>
+          <StatCard label="Revenue billed" value={kes(revenue)} hint={`net ${kes(netRevenue)} (excl. expressway)`} accent="var(--accent)" />
+          <StatCard label="Gross profit" value={kes(revenue - fuelTotal)}
+            hint={revenue > 0 ? `${pct((revenue - fuelTotal) / revenue)} margin · before wages, insurance & loans` : 'revenue − fuel'}
+            accent="var(--accent)" />
+          <StatCard label="Fuel-to-sales index" value={pct(index)}
+            hint={index > 0.3 ? 'High — check fuel use' : 'Healthy'} accent={index > 0.3 ? 'var(--danger)' : 'var(--accent)'} />
+          <StatCard label="Expressway charges" value={kes(express)} hint="reimbursable" accent="var(--gold)" />
+          <Link href="/receivables" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <StatCard label="Outstanding" value={kes(outstanding)}
+              hint={overdue > 0 ? `${kes(overdue)} overdue →` : outstanding > 0 ? 'owed to you →' : 'all collected'}
+              accent={overdue > 0 ? 'var(--danger)' : outstanding > 0 ? 'var(--gold)' : 'var(--accent)'} />
+          </Link>
+          <StatCard label="Trips" value={String(trips.length)} hint="this month" />
+        </div>
 
-      {/* Compact, clearly-visible notifications — expand to act on them */}
+        <div className="grid-2">
+          <Card title="Revenue by contractor">
+            {contractorRev.length === 0 ? <Empty /> : (
+              <SegmentDonut data={contractorRev} centerValue={kesPlain(revenue)} centerLabel="Ksh billed" centerSize={19} money />
+            )}
+          </Card>
+          <Card title="Fleet">
+            {vehicles.length === 0 ? <Empty /> : (
+              <SegmentDonut data={fleetMix} centerValue={String(vehicles.length)} centerLabel="vehicles" badges />
+            )}
+          </Card>
+        </div>
+      </Section>
+
+      {/* Compact, clearly-visible notifications + one-click daily tasks */}
       <NotificationsCard attention={attention} alerts={alerts} />
-
-      {/* One-click access to the common daily tasks */}
       <QuickActions />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 16, marginBottom: 16 }}>
-        <Card title="Revenue by contractor">
-          {contractorSlices.length === 0 ? <Empty /> : <Donut data={contractorSlices} centerValue={kes(revenue)} centerLabel="billed" />}
-        </Card>
-        <Card title="Fleet mix">
-          <Donut data={fleetMix} centerValue={String(vehicles.length)} centerLabel="vehicles" />
-        </Card>
-      </div>
-
-      <div className="grid-2" style={{ marginBottom: 16 }}>
-        <Card title="Revenue per contractor">
-          {perContractor.length === 0 ? <Empty /> : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {perContractor.map((c) => (
-                <div key={c.id}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5, marginBottom: 4 }}>
-                    <span style={{ fontWeight: 600 }}>{c.label}</span><span>{kes(c.value)}</span>
-                  </div>
-                  <div style={{ height: 8, background: 'var(--surface2)', borderRadius: 99 }}>
-                    <div style={{ height: '100%', width: `${(c.value / maxContractor) * 100}%`, background: 'var(--accent-mid)', borderRadius: 99 }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-
-        <Card title="Top organizations">
-          {perOrg.length === 0 ? <Empty /> : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
-              <tbody>
-                {perOrg.map((o) => (
-                  <tr key={o.id} style={{ borderTop: '1px solid var(--border)' }}>
-                    <td style={{ padding: '8px 0' }}>{o.label}</td>
-                    <td style={{ padding: '8px 0', textAlign: 'right', fontWeight: 600 }}>{kes(o.value)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Card>
-      </div>
-
+      <Section title="Operations">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+          <Card title="Trips by contractor">
+            {tripsByContractor.length === 0 ? <Empty /> : (
+              <SegmentDonut data={tripsByContractor} centerValue={String(trips.length)} centerLabel="this month" badges />
+            )}
+          </Card>
+          <Card title="Receivables">
+            {invoices.length === 0 ? <Empty msg="No invoices yet" /> : (
+              <SegmentDonut data={receivablesMix} centerValue={String(invoices.length)} centerLabel="invoices" badges />
+            )}
+          </Card>
+          <Card title="Compliance">
+            {documents.length === 0 ? <Empty msg="No documents tracked" /> : (
+              <SegmentDonut data={complianceMix} centerValue={String(documents.length)} centerLabel="documents" badges />
+            )}
+          </Card>
+        </div>
+      </Section>
     </>
   )
 }
 
+// outstanding balance on one invoice
+function due(i: Invoice): number {
+  return Math.max(0, Number(i.amount) - Number(i.amount_paid))
+}
 function sum<T>(rows: T[], f: (r: T) => number): number {
   return rows.reduce((s, r) => s + Number(f(r) || 0), 0)
-}
-function group<T extends { id: string; name: string }>(
-  entities: T[], trips: Trip[], key: (t: Trip) => string | null, agg: (rows: Trip[]) => number,
-): { id: string; label: string; value: number }[] {
-  return entities.map((e) => ({ id: e.id, label: e.name, value: agg(trips.filter((t) => key(t) === e.id)) }))
 }
 function pct(x: number): string {
   return `${(x * 100).toFixed(1)}%`
 }
-function Empty() { return <EmptyState icon="📊" title="No data this month" hint="Pick another month above, or log some trips." /> }
-function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <th style={{ padding: '11px 16px', fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: right ? 'right' : 'left' }}>{children}</th>
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div style={{ marginBottom: 26 }}>
+      <h2 className="font-display" style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 12px 2px' }}>{title}</h2>
+      {children}
+    </div>
+  )
 }
-function Td({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <td style={{ padding: '11px 16px', textAlign: right ? 'right' : 'left' }}>{children}</td>
+function Empty({ msg }: { msg?: string }) {
+  return <EmptyState message={msg ?? 'No data this month — pick another month above, or log some trips.'} />
 }

@@ -21,36 +21,61 @@ const byField = (key: string, dir: 1 | -1 = 1) =>
     return av < bv ? -dir : av > bv ? dir : 0
   }
 
+// A Supabase read resolves to rows + an optional error; wide reads also
+// support `.range()` for paging.
+type QueryResult = { data: unknown[] | null; error: { message: string } | null }
+type PagedQuery = { range: (from: number, to: number) => PromiseLike<QueryResult> }
+
+// Run a single-shot list query and surface any error instead of silently
+// treating a failed query as "no data" — critical for a finance system.
+async function rows<T>(ctx: string, q: PromiseLike<QueryResult>): Promise<T[]> {
+  const { data, error } = await q
+  if (error) console.error(`[db] ${ctx} failed: ${error.message}`)
+  return (data ?? []) as T[]
+}
+
+// PostgREST caps every response at 1000 rows by default. For reads that can
+// exceed that (trips/fuel over wide ranges), page through until exhausted so
+// analytics and backups see the full dataset, not a silently-truncated slice.
+const PAGE_SIZE = 1000
+async function fetchAll<T>(ctx: string, build: () => PagedQuery): Promise<T[]> {
+  const out: T[] = []
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await build().range(from, from + PAGE_SIZE - 1)
+    if (error) { console.error(`[db] ${ctx} failed: ${error.message}`); break }
+    const batch = (data ?? []) as T[]
+    out.push(...batch)
+    if (batch.length < PAGE_SIZE) break
+  }
+  return out
+}
+
 // ---------- Reads ----------
 export async function listVehicles(): Promise<Vehicle[]> {
   if (DEV_MODE) return [...loadStore().vehicles].sort(byField('plate'))
-  const { data } = await (await sb()).from('vehicles').select('*').order('plate')
-  return (data ?? []) as Vehicle[]
+  return rows<Vehicle>('listVehicles', (await sb()).from('vehicles').select('*').order('plate'))
 }
 export async function listDrivers(): Promise<Driver[]> {
   if (DEV_MODE) return [...loadStore().drivers].sort(byField('name'))
-  const { data } = await (await sb()).from('drivers').select('*').order('name')
-  return (data ?? []) as Driver[]
+  return rows<Driver>('listDrivers', (await sb()).from('drivers').select('*').order('name'))
 }
 export async function listContractors(): Promise<Contractor[]> {
   if (DEV_MODE) return [...loadStore().contractors].sort(byField('name'))
-  const { data } = await (await sb()).from('contractors').select('*').order('name')
-  return (data ?? []) as Contractor[]
+  return rows<Contractor>('listContractors', (await sb()).from('contractors').select('*').order('name'))
 }
 export async function listOrganizations(): Promise<Organization[]> {
   if (DEV_MODE) return [...loadStore().organizations].sort(byField('name'))
-  const { data } = await (await sb()).from('organizations').select('*').order('name')
-  return (data ?? []) as Organization[]
+  return rows<Organization>('listOrganizations', (await sb()).from('organizations').select('*').order('name'))
 }
 export async function listProfiles(): Promise<Profile[]> {
   if (DEV_MODE) return [...loadStore().profiles]
-  const { data } = await (await sb()).from('profiles').select('*').order('created_at')
-  return (data ?? []) as Profile[]
+  return rows<Profile>('listProfiles', (await sb()).from('profiles').select('*').order('created_at'))
 }
 export async function listTrips(start: string, end: string): Promise<Trip[]> {
   if (DEV_MODE) return loadStore().trips.filter((t) => t.trip_date >= start && t.trip_date <= end).sort(byField('trip_date'))
-  const { data } = await (await sb()).from('trips').select('*').gte('trip_date', start).lte('trip_date', end).order('trip_date')
-  return (data ?? []) as Trip[]
+  const client = await sb()
+  return fetchAll<Trip>(`listTrips(${start}..${end})`, () =>
+    client.from('trips').select('*').gte('trip_date', start).lte('trip_date', end).order('trip_date'))
 }
 // All unassigned (booked) trips regardless of date — used by the dispatch pending queue.
 // Capped so a huge backlog doesn't ship 1000s of rows to the browser; total count returned separately.
@@ -99,43 +124,43 @@ export async function listContractorTrips(contractorId: string, start: string, e
       .filter((t) => t.contractor_id === contractorId && t.trip_date >= start && t.trip_date <= end)
       .sort(byField('trip_date'))
   }
-  const { data } = await (await sb())
-    .from('trips').select('*').eq('contractor_id', contractorId)
-    .gte('trip_date', start).lte('trip_date', end).order('trip_date')
-  return (data ?? []) as Trip[]
+  const client = await sb()
+  return fetchAll<Trip>(`listContractorTrips(${contractorId})`, () =>
+    client.from('trips').select('*').eq('contractor_id', contractorId)
+      .gte('trip_date', start).lte('trip_date', end).order('trip_date'))
 }
 
 export async function listFuel(start: string, end: string): Promise<FuelEntry[]> {
   if (DEV_MODE) return loadStore().fuel.filter((f) => f.fuel_date >= start && f.fuel_date <= end).sort(byField('fuel_date', -1))
-  const { data } = await (await sb()).from('fuel_entries').select('*').gte('fuel_date', start).lte('fuel_date', end).order('fuel_date', { ascending: false })
-  return (data ?? []) as FuelEntry[]
+  const client = await sb()
+  return fetchAll<FuelEntry>(`listFuel(${start}..${end})`, () =>
+    client.from('fuel_entries').select('*').gte('fuel_date', start).lte('fuel_date', end).order('fuel_date', { ascending: false }))
 }
 
 export async function listServices(): Promise<VehicleService[]> {
   if (DEV_MODE) return [...loadStore().services].sort(byField('service_date', -1))
-  const { data } = await (await sb()).from('vehicle_services').select('*').order('service_date', { ascending: false })
-  return (data ?? []) as VehicleService[]
+  return rows<VehicleService>('listServices', (await sb()).from('vehicle_services').select('*').order('service_date', { ascending: false }))
 }
 export async function listRoutes(): Promise<Route[]> {
   if (DEV_MODE) return [...loadStore().routes].sort(byField('pickup'))
-  const { data } = await (await sb()).from('routes').select('*').order('pickup')
-  return (data ?? []) as Route[]
+  return rows<Route>('listRoutes', (await sb()).from('routes').select('*').order('pickup'))
 }
 export async function listDocuments(): Promise<ComplianceDoc[]> {
   if (DEV_MODE) return [...loadStore().documents].sort(byField('expiry_date'))
-  const { data } = await (await sb()).from('documents').select('*').order('expiry_date')
-  return (data ?? []) as ComplianceDoc[]
+  return rows<ComplianceDoc>('listDocuments', (await sb()).from('documents').select('*').order('expiry_date'))
 }
 export async function listExpenses(start?: string, end?: string): Promise<Expense[]> {
   if (DEV_MODE) {
-    let rows = loadStore().expenses
-    if (start && end) rows = rows.filter((e) => e.expense_date >= start && e.expense_date <= end)
-    return [...rows].sort(byField('expense_date', -1))
+    let list = loadStore().expenses
+    if (start && end) list = list.filter((e) => e.expense_date >= start && e.expense_date <= end)
+    return [...list].sort(byField('expense_date', -1))
   }
-  let q = (await sb()).from('expenses').select('*')
-  if (start && end) q = q.gte('expense_date', start).lte('expense_date', end)
-  const { data } = await q.order('expense_date', { ascending: false })
-  return (data ?? []) as Expense[]
+  const client = await sb()
+  return fetchAll<Expense>(`listExpenses(${start ?? 'all'}..${end ?? 'all'})`, () => {
+    let q = client.from('expenses').select('*')
+    if (start && end) q = q.gte('expense_date', start).lte('expense_date', end)
+    return q.order('expense_date', { ascending: false })
+  })
 }
 export async function getInvoice(id: string): Promise<Invoice | null> {
   if (DEV_MODE) return loadStore().invoices.find((i) => i.id === id) ?? null
@@ -144,18 +169,16 @@ export async function getInvoice(id: string): Promise<Invoice | null> {
 }
 export async function listInvoices(): Promise<Invoice[]> {
   if (DEV_MODE) return [...loadStore().invoices].sort(byField('due_date', -1))
-  const { data } = await (await sb()).from('invoices').select('*').order('due_date', { ascending: false })
-  return (data ?? []) as Invoice[]
+  return rows<Invoice>('listInvoices', (await sb()).from('invoices').select('*').order('due_date', { ascending: false }))
 }
 export async function listTargets(period?: string): Promise<Target[]> {
   if (DEV_MODE) {
-    const rows = loadStore().targets
-    return period ? rows.filter((t) => t.period === period) : [...rows]
+    const list = loadStore().targets
+    return period ? list.filter((t) => t.period === period) : [...list]
   }
   let q = (await sb()).from('targets').select('*')
   if (period) q = q.eq('period', period)
-  const { data } = await q
-  return (data ?? []) as Target[]
+  return rows<Target>('listTargets', q)
 }
 
 // ---------- Company profile (single row) ----------
