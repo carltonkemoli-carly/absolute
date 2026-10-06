@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import { Badge } from '@/components/ui'
+import { kes } from '@/lib/format'
 import type { Driver, Vehicle } from '@/lib/types'
 import { saveDriver, deleteDriver } from './actions'
 
-export default function DriverManager({ drivers, vehicles }: { drivers: Driver[]; vehicles: Vehicle[] }) {
+export default function DriverManager({ drivers, vehicles, canFinance }: { drivers: Driver[]; vehicles: Vehicle[]; canFinance: boolean }) {
   const [editing, setEditing] = useState<Driver | 'new' | null>(null)
   const plateOf = (id: string | null) => vehicles.find((v) => v.id === id)?.plate ?? '—'
 
@@ -37,6 +38,11 @@ export default function DriverManager({ drivers, vehicles }: { drivers: Driver[]
                   {vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate}{v.model ? ` · ${v.model}` : ''}</option>)}
                 </select>
               </label>
+              {canFinance && (
+                <label className="field"><span>Monthly wage (KES)</span>
+                  <input name="monthly_wage" type="number" step="500" min="0" className="input" defaultValue={editing === 'new' ? '' : editing.monthly_wage || ''} placeholder="e.g. 28000" />
+                </label>
+              )}
               <label className="field"><span>Status</span>
                 <select name="status" className="input" defaultValue={editing === 'new' ? 'active' : editing.status}>
                   <option value="active">Active</option>
@@ -44,6 +50,7 @@ export default function DriverManager({ drivers, vehicles }: { drivers: Driver[]
                 </select>
               </label>
             </div>
+            {canFinance && <p style={{ fontSize: 12, color: 'var(--ink3)', margin: '10px 0 0' }}>Wage is used by the Expenses page&rsquo;s &ldquo;Post this month&rsquo;s wages&rdquo; button.</p>}
             <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
               <button type="submit" className="btn-primary" style={{ padding: '9px 18px', fontSize: 14, cursor: 'pointer' }}>Save</button>
               <button type="button" className="btn-ghost" style={{ padding: '9px 18px', fontSize: 14, cursor: 'pointer' }} onClick={() => setEditing(null)}>Cancel</button>
@@ -56,12 +63,12 @@ export default function DriverManager({ drivers, vehicles }: { drivers: Driver[]
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 680 }}>
           <thead>
             <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>Name</Th><Th>Phone</Th><Th>License</Th><Th>Default vehicle</Th><Th>Status</Th><Th></Th>
+              <Th>Name</Th><Th>Phone</Th><Th>License</Th><Th>Default vehicle</Th>{canFinance && <Th>Monthly wage</Th>}<Th>Status</Th><Th></Th>
             </tr>
           </thead>
           <tbody>
             {drivers.length === 0 && (
-              <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: 'var(--ink3)' }}>No drivers yet.</td></tr>
+              <tr><td colSpan={canFinance ? 7 : 6} style={{ padding: 28, textAlign: 'center', color: 'var(--ink3)' }}>No drivers yet.</td></tr>
             )}
             {drivers.map((d) => (
               <tr key={d.id} style={{ borderTop: '1px solid var(--border)' }}>
@@ -69,6 +76,7 @@ export default function DriverManager({ drivers, vehicles }: { drivers: Driver[]
                 <Td>{d.phone ?? '—'}</Td>
                 <Td>{d.license_no ?? '—'}</Td>
                 <Td>{plateOf(d.default_vehicle_id)}</Td>
+                {canFinance && <Td>{d.monthly_wage > 0 ? kes(d.monthly_wage) : <span style={{ color: 'var(--ink3)' }}>—</span>}</Td>}
                 <Td><Badge tone={d.status === 'active' ? 'green' : 'neutral'}>{d.status}</Badge></Td>
                 <Td>
                   <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>

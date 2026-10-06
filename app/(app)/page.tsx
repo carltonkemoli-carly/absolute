@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import type { ReactNode } from 'react'
-import { PageHeader, StatCard, Card, EmptyState } from '@/components/ui'
+import { PageHeader, StatCard, Card, EmptyState, Section } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
 import NotificationsCard from '@/components/NotificationsCard'
 import QuickActions from '@/components/QuickActions'
@@ -13,6 +12,7 @@ import { buildAttention } from '@/lib/attention'
 import { buildAlerts } from '@/lib/alerts'
 import { monthRange, kes, kesPlain, MONTH_NAMES, isoDate } from '@/lib/format'
 import { stickyPeriod } from '@/lib/period'
+import { monthlyPL, profitHeadline } from '@/lib/finance'
 import type { Trip } from '@/lib/types'
 
 export default async function DashboardPage({
@@ -32,12 +32,14 @@ export default async function DashboardPage({
   const attention = buildAttention(documents, services, vehicles, drivers)
   const alerts = buildAlerts({ vehicles, trips, fuel, expenses, services: services.filter((s) => s.service_date >= start && s.service_date <= end), invoices, contractors, today: isoDate(new Date()), monthLabel: `${MONTH_NAMES[month]} ${year}`, monthStart: start, monthEnd: end })
 
-  // ---- Financial headlines ----
-  const revenue = sum(trips, (t) => t.amount)
-  const express = sum(trips, (t) => t.express_charges)
-  const fuelTotal = sum(fuel, (f) => f.amount)
+  // ---- Financial headlines (canonical P&L: gross until real costs logged) ----
+  const pl = monthlyPL({ trips, fuel, expenses, services: services.filter((s) => s.service_date >= start && s.service_date <= end), vehicles })
+  const headline = profitHeadline(pl)
+  const revenue = pl.revenue
+  const express = pl.express
+  const fuelTotal = pl.fuel
   const index = revenue > 0 ? fuelTotal / revenue : 0
-  const netRevenue = revenue - express
+  const netRevenue = pl.netRevenue
 
   const today = isoDate(new Date())
   const outstanding = invoices.reduce((s, i) => s + due(i), 0)
@@ -102,8 +104,8 @@ export default async function DashboardPage({
       <Section title="My business">
         <div className="grid-stats" style={{ marginBottom: 16 }}>
           <StatCard label="Revenue billed" value={kes(revenue)} hint={`net ${kes(netRevenue)} (excl. expressway)`} accent="var(--accent)" />
-          <StatCard label="Gross profit" value={kes(revenue - fuelTotal)}
-            hint={revenue > 0 ? `${pct((revenue - fuelTotal) / revenue)} margin · before wages, insurance & loans` : 'revenue − fuel'}
+          <StatCard label={headline.label} value={kes(headline.value)}
+            hint={revenue > 0 ? `${pct(headline.margin)} margin · ${headline.hint}` : 'revenue − fuel'}
             accent="var(--accent)" />
           <StatCard label="Fuel-to-sales index" value={pct(index)}
             hint={index > 0.3 ? 'High — check fuel use' : 'Healthy'} accent={index > 0.3 ? 'var(--danger)' : 'var(--accent)'} />
@@ -168,14 +170,6 @@ function pct(x: number): string {
   return `${(x * 100).toFixed(1)}%`
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div style={{ marginBottom: 26 }}>
-      <h2 className="font-display" style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 12px 2px' }}>{title}</h2>
-      {children}
-    </div>
-  )
-}
 function Empty({ msg }: { msg?: string }) {
   return <EmptyState message={msg ?? 'No data this month — pick another month above, or log some trips.'} />
 }

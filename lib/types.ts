@@ -67,6 +67,7 @@ export interface Driver {
   phone: string | null
   license_no: string | null
   default_vehicle_id: string | null
+  monthly_wage: number
   status: DriverStatus
   created_at: string
 }

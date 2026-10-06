@@ -1,10 +1,13 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { kes } from '@/lib/format'
+import { kes, kesPlain } from '@/lib/format'
+import SegmentDonut, { type Seg } from '@/components/SegmentDonut'
 import { saveTargets } from './actions'
 
 export type CostLine = { category: string; amount: number; cap: number | null }
+
+const COST_COLORS = ['#BC3E22', '#C9A227', '#2F9E8F', '#3E7CB1', '#7A5FB0', '#D98A3D', '#2C7A53', '#9A6A4B', '#5C8A72', '#A8527C']
 
 export default function GoalsView({
   period, revenue, costs, revenueTarget, profitTarget,
@@ -24,6 +27,11 @@ export default function GoalsView({
   const projMargin = revenue > 0 ? projNet / revenue : 0
   const anyCut = Object.values(cuts).some((v) => v > 0)
 
+  const costSegs: Seg[] = costs
+    .filter((c) => c.amount > 0)
+    .sort((a, b) => b.amount - a.amount)
+    .map((c, i) => ({ label: c.category, value: c.amount, color: COST_COLORS[i % COST_COLORS.length] }))
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Headline */}
@@ -34,18 +42,12 @@ export default function GoalsView({
         <Stat label="Net margin" value={pct(margin)} tone={margin < 0.1 ? 'var(--danger)' : 'var(--accent)'} />
       </div>
 
-      <div className="grid-2">
-        {/* Goals */}
-        <Card title="Goals this quarter">
-          <Goal label="Revenue" actual={revenue} target={revenueTarget} higherIsBetter />
-          <Goal label="Net profit" actual={netProfit} target={profitTarget} higherIsBetter />
-          <div style={{ height: 8 }} />
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>Spend caps</div>
-          {costs.filter((c) => c.cap !== null).length === 0 && <div style={{ fontSize: 13.5, color: 'var(--ink3)' }}>No spend caps set. Use “Edit targets”.</div>}
-          {costs.filter((c) => c.cap !== null).map((c) => <Goal key={c.category} label={c.category} actual={c.amount} target={c.cap as number} />)}
-        </Card>
-
-        {/* P&L statement */}
+      <div className={costSegs.length > 0 ? 'grid-2' : undefined}>
+        {costSegs.length > 0 && (
+          <Card title="Where the money goes">
+            <SegmentDonut data={costSegs} centerValue={kesPlain(totalCost)} centerLabel="Ksh costs" centerSize={18} money />
+          </Card>
+        )}
         <Card title="Profit & Loss">
           <Row label="Revenue" value={kes(revenue)} strong />
           <div style={{ height: 6 }} />
@@ -58,6 +60,16 @@ export default function GoalsView({
           <Row label="Net margin" value={pct(margin)} sub="" />
         </Card>
       </div>
+
+      {/* Goals */}
+      <Card title="Goals this quarter">
+        <Goal label="Revenue" actual={revenue} target={revenueTarget} higherIsBetter />
+        <Goal label="Net profit" actual={netProfit} target={profitTarget} higherIsBetter />
+        <div style={{ height: 8 }} />
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>Spend caps</div>
+        {costs.filter((c) => c.cap !== null).length === 0 && <div style={{ fontSize: 13.5, color: 'var(--ink3)' }}>No spend caps set. Use “Edit targets”.</div>}
+        {costs.filter((c) => c.cap !== null).map((c) => <Goal key={c.category} label={c.category} actual={c.amount} target={c.cap as number} />)}
+      </Card>
 
       {/* What-if */}
       <Card title="What-if — model a spend cut">

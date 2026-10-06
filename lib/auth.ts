@@ -38,3 +38,19 @@ export async function requireProfile(): Promise<Profile> {
 export function canSeeFinance(role: Profile['role']): boolean {
   return FINANCE_ROLES.includes(role)
 }
+
+// Guard for server actions that mutate finance data. Server Actions are
+// reachable by direct POST, not just through our gated pages, so every
+// finance mutation must re-check authorization here (per Next.js guidance).
+export async function requireFinance(): Promise<Profile> {
+  const profile = await requireProfile()
+  if (!canSeeFinance(profile.role)) throw new Error('Not authorized')
+  return profile
+}
+
+// Guard for owner-only actions (user management, destructive data ops).
+export async function requireOwner(): Promise<Profile> {
+  const profile = await requireProfile()
+  if (profile.role !== 'owner') throw new Error('Not authorized')
+  return profile
+}

@@ -87,6 +87,21 @@ export default async function InsightsPage({
   const dowMap = DOW.map((day) => ({ label: day, revenue: 0, trips: 0 }))
   for (const t of trips) { const i = (new Date(t.trip_date + 'T12:00:00Z').getUTCDay() + 6) % 7; dowMap[i].revenue += amt(t); dowMap[i].trips++ }
 
+  // ---- per-vehicle & per-driver (REAL attribution only) ----
+  function revGroupOf(items: Trip[], keyOf: (t: Trip) => string, labelOf: (k: string) => string) {
+    const m = new Map<string, { label: string; revenue: number; trips: number }>()
+    for (const t of items) {
+      const k = keyOf(t)
+      const g = m.get(k) ?? { label: labelOf(k), revenue: 0, trips: 0 }
+      g.revenue += amt(t); g.trips++; m.set(k, g)
+    }
+    return [...m.values()]
+  }
+  const byVehicle = revGroupOf(trips.filter((t) => t.vehicle_id), (t) => t.vehicle_id as string, plate)
+  const byDriver = revGroupOf(trips.filter((t) => t.driver_id), (t) => t.driver_id as string, driverName)
+  const attrCoverage = trips.length ? trips.filter((t) => t.vehicle_id).length / trips.length : 0
+
+  const hasCosts = expTotal + svcTotal + hireTotal > 0
   const fleetFuelPct = revenue > 0 ? fuelTotal / revenue : 0
 
   // ---- rate-card pricing check ----
@@ -138,9 +153,10 @@ export default async function InsightsPage({
       <PageHeader title="Business insights" subtitle="Where the money comes from, which vehicles earn, and where it leaks" action={<div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><MonthNav year={year} month={month} /><PrintButton /></div>} />
       <InsightsView
         period={`${MONTH_NAMES[month]} ${year}`}
-        pl={{ revenue, fuel: fuelTotal, expenses: expTotal, net, prevRev, fuelPct: Math.round(fleetFuelPct * 100) }}
+        pl={{ revenue, fuel: fuelTotal, expenses: expTotal, net, prevRev, fuelPct: Math.round(fleetFuelPct * 100), hasCosts }}
         trend={trend}
         byClient={byClient} byRoute={byRoute} byContractor={byContractor} dow={dowMap}
+        byVehicle={byVehicle} byDriver={byDriver} attrCoverage={attrCoverage}
       />
       <div style={{ marginTop: 18 }}>
         <PricingCheck matched={matched} underRecovery={underRecovery} overCharge={overCharge} rows={priceRows} unmatched={unmatchedTop} />

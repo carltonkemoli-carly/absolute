@@ -8,12 +8,13 @@ import { kes } from '@/lib/format'
 type Rev = { label: string; revenue: number; trips: number }
 
 export default function InsightsView({
-  period, pl, trend, byClient, byRoute, byContractor, dow,
+  period, pl, trend, byClient, byRoute, byContractor, dow, byVehicle, byDriver, attrCoverage,
 }: {
   period: string
-  pl: { revenue: number; fuel: number; expenses: number; net: number; prevRev: number; fuelPct: number }
+  pl: { revenue: number; fuel: number; expenses: number; net: number; prevRev: number; fuelPct: number; hasCosts: boolean }
   trend: { label: string; revenue: number; net: number }[]
   byClient: Rev[]; byRoute: Rev[]; byContractor: Rev[]; dow: Rev[]
+  byVehicle: Rev[]; byDriver: Rev[]; attrCoverage: number
 }) {
   const [by, setBy] = useState<'revenue' | 'trips'>('revenue')
   const val = (g: Rev) => (by === 'revenue' ? g.revenue : g.trips)
@@ -22,20 +23,22 @@ export default function InsightsView({
 
   const delta = pl.prevRev > 0 ? Math.round(((pl.revenue - pl.prevRev) / pl.prevRev) * 100) : null
   const margin = pl.revenue > 0 ? Math.round((pl.net / pl.revenue) * 100) : 0
+  const profitLabel = pl.hasCosts ? 'Net profit' : 'Gross profit'
+  const profitHint = pl.hasCosts ? `${margin}% · after all logged costs` : `${margin}% · before wages, insurance & loans`
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {/* Headline P&L */}
       <div className="grid-stats">
         <StatCard label="Revenue" value={kes(pl.revenue)} hint={delta === null ? period : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% vs last month`} accent={delta !== null && delta < 0 ? 'var(--danger)' : 'var(--accent)'} />
-        <StatCard label="Gross profit" value={kes(pl.net)} hint={`${margin}% · before wages, insurance & loans`} accent="var(--accent)" />
+        <StatCard label={profitLabel} value={kes(pl.net)} hint={profitHint} accent="var(--accent)" />
         <StatCard label="Fuel-to-sales" value={`${pl.fuelPct}%`} hint={`${kes(pl.fuel)} fuel`} accent={pl.fuelPct > 32 ? 'var(--gold)' : 'var(--accent)'} />
-        <StatCard label="Fuel cost" value={kes(pl.fuel)} hint="the only cost logged yet" />
+        <StatCard label={pl.hasCosts ? 'Costs logged' : 'Fuel cost'} value={pl.hasCosts ? kes(pl.fuel + pl.expenses) : kes(pl.fuel)} hint={pl.hasCosts ? 'fuel + expenses' : 'the only cost logged yet'} />
       </div>
 
       {/* Trend */}
       <div className="card" style={{ padding: 18 }}>
-        <SectionTitle>Revenue & gross profit — last 6 months</SectionTitle>
+        <SectionTitle>Revenue &amp; {pl.hasCosts ? 'net' : 'gross'} profit — last 6 months</SectionTitle>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {trend.map((t, i) => {
             const max = Math.max(1, ...trend.map((x) => x.revenue))
@@ -54,7 +57,7 @@ export default function InsightsView({
             )
           })}
         </div>
-        <p style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 8 }}>Light bar = revenue · solid = gross profit (revenue − fuel). Wages, insurance & loans not logged yet.</p>
+        <p style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 8 }}>Light bar = revenue · solid = {pl.hasCosts ? 'net profit (after all logged costs)' : 'gross profit (revenue − fuel; wages, insurance & loans not logged yet)'}.</p>
       </div>
 
       {/* Rank toggle */}
@@ -94,6 +97,32 @@ export default function InsightsView({
             max={Math.max(1, ...byContractor.map(val))} format={fmt} accent="var(--accent-mid)" />
         </div>
       )}
+
+      {/* Fleet & drivers — real attribution only */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, margin: '2px 2px 10px' }}>
+          <span className="font-display" style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Fleet &amp; drivers</span>
+          <span style={{ fontSize: 12, color: 'var(--ink3)' }}>{Math.round(attrCoverage * 100)}% of trips assigned</span>
+        </div>
+        {byVehicle.length === 0 ? (
+          <div className="card" style={{ padding: 20, fontSize: 13.5, color: 'var(--ink2)' }}>
+            No trips are assigned to a vehicle or driver this month yet. Assign them on the <a href="/trips" style={{ color: 'var(--accent-mid)', fontWeight: 600 }}>Trips</a> page and per-car / per-driver earnings appear here.
+          </div>
+        ) : (
+          <div className="grid-2">
+            <div className="card" style={{ padding: 18 }}>
+              <SectionTitle>By vehicle</SectionTitle>
+              <Bars items={[...byVehicle].sort(sortR).slice(0, 10).map((g) => ({ label: g.label, value: val(g), sub: `${g.trips} trips` }))}
+                max={Math.max(1, ...byVehicle.map(val))} format={fmt} accent="var(--accent)" />
+            </div>
+            <div className="card" style={{ padding: 18 }}>
+              <SectionTitle>By driver</SectionTitle>
+              <Bars items={[...byDriver].sort(sortR).slice(0, 10).map((g) => ({ label: g.label, value: val(g), sub: `${g.trips} trips` }))}
+                max={Math.max(1, ...byDriver.map(val))} format={fmt} accent="var(--gold)" />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

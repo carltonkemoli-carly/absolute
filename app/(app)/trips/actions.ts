@@ -2,8 +2,22 @@
 
 import { revalidatePath } from 'next/cache'
 import { saveRecord, deleteRecord } from '@/lib/db'
+import { requireProfile } from '@/lib/auth'
+
+// Fast per-trip attribution from the Trips table (who actually drove, in which
+// car). Powers real per-vehicle / per-driver analytics as coverage grows.
+export async function attributeTrip(id: string, vehicleId: string | null, driverId: string | null) {
+  await requireProfile()
+  if (!id) return
+  await saveRecord('trips', { vehicle_id: vehicleId, driver_id: driverId }, id)
+  revalidatePath('/trips')
+  revalidatePath('/insights')
+  revalidatePath('/payback')
+  revalidatePath('/')
+}
 
 export async function saveTrip(formData: FormData) {
+  await requireProfile()
   const id = String(formData.get('id') || '')
   const row = {
     trip_date: String(formData.get('trip_date') || '').trim(),
@@ -31,6 +45,7 @@ export async function saveTrip(formData: FormData) {
 }
 
 export async function deleteTrip(formData: FormData) {
+  await requireProfile()
   const id = String(formData.get('id') || '')
   if (id) await deleteRecord('trips', id)
   revalidatePath('/trips')

@@ -45,6 +45,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/expressway', label: 'Expressway', icon: 'expressway', financeOnly: true },
       { href: '/expenses', label: 'Expenses', icon: 'expenses', financeOnly: true },
       { href: '/goals', label: 'Targets & P&L', icon: 'goals', financeOnly: true },
+      { href: '/payback', label: 'Vehicle payback', icon: 'payback', financeOnly: true },
       { href: '/reports', label: 'Reports', icon: 'reports', financeOnly: true },
     ],
   },

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
-import { PageHeader, StatCard } from '@/components/ui'
+import Link from 'next/link'
+import { PageHeader, StatCard, Section } from '@/components/ui'
 import PrintButton from '@/components/PrintButton'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listFuel, listExpenses, listServices, listVehicles } from '@/lib/db'
@@ -28,14 +29,23 @@ export default async function PaybackPage() {
   ])
   const sum = <T,>(a: T[], f: (x: T) => number) => a.reduce((s, x) => s + f(x), 0)
 
+  // Attribution coverage — per-car economics only mean something for trips that
+  // have been tagged with a vehicle. Fuel is paid company-wide (M-Pesa, no car),
+  // so we allocate it to each car by its share of attributed revenue.
+  const totalTrips = trips.length
+  const attributedTrips = trips.filter((t) => t.vehicle_id).length
+  const coverage = totalTrips > 0 ? attributedTrips / totalTrips : 0
+  const totalAttrRevenue = sum(trips.filter((t) => t.vehicle_id), (t) => Number(t.amount) || 0)
+  const companyFuel = sum(fuel, (f) => Number(f.amount) || 0)
+
   const owned = vehicles.filter((v) => v.ownership === 'owned')
   const cards = owned.map((v) => {
     const vt = trips.filter((t) => t.vehicle_id === v.id)
-    const vf = fuel.filter((f) => f.vehicle_id === v.id)
     const ve = expenses.filter((e) => e.vehicle_id === v.id)
     const vs = services.filter((s) => s.vehicle_id === v.id)
     const revenue = sum(vt, (t) => Number(t.amount) || 0)
-    const fuelC = sum(vf, (f) => Number(f.amount) || 0)
+    // Fuel allocated by this car's share of all attributed revenue.
+    const fuelC = totalAttrRevenue > 0 ? companyFuel * (revenue / totalAttrRevenue) : 0
     const expC = sum(ve, (e) => Number(e.amount) || 0)
     const svcC = sum(vs, (s) => Number(s.cost) || 0)
     const contribution = revenue - fuelC - expC - svcC
@@ -83,16 +93,37 @@ export default async function PaybackPage() {
     <>
       <PageHeader title="Vehicle payback" subtitle="What each car has truly brought back — and when it clears its loan" action={<PrintButton />} />
 
-      <div className="grid-stats" style={{ marginBottom: 18 }}>
-        <StatCard label="Capital in fleet" value={kes(fleetInvested)} hint={`${cards.length} owned vehicles`} />
-        <StatCard label="Contribution earned" value={kes(fleetContribution)} hint="from recorded trips" accent="var(--accent)" />
-        <StatCard label="Outstanding loans" value={kes(fleetLoanBalance)} hint="remaining balance" accent={fleetLoanBalance > 0 ? 'var(--gold)' : 'var(--accent)'} />
-        <StatCard label="Data window" value={`${Math.max(1, ...cards.map((c) => c.dataMonths))} mo`} hint="months of trips recorded" />
+      {/* Coverage — per-car numbers are only as complete as trip attribution. */}
+      <div className="card" style={{ padding: '12px 16px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+        borderLeft: `3px solid ${coverage >= 0.9 ? 'var(--accent)' : 'var(--gold)'}` }}>
+        <span style={{ fontSize: 13.5 }}>
+          Based on <strong>{attributedTrips}</strong> of <strong>{totalTrips}</strong> trips assigned to a vehicle ({Math.round(coverage * 100)}%).
+        </span>
+        <div style={{ flex: 1, minWidth: 120, height: 7, background: 'var(--surface2)', borderRadius: 99, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${Math.round(coverage * 100)}%`, background: coverage >= 0.9 ? 'var(--accent)' : 'var(--gold)' }} />
+        </div>
+        <Link href="/trips" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--accent-mid)' }}>Assign trips →</Link>
       </div>
 
+      <Section title="Fleet">
+        <div className="grid-stats">
+          <StatCard label="Capital in fleet" value={kes(fleetInvested)} hint={`${cards.length} owned vehicles`} />
+          <StatCard label="Contribution earned" value={kes(fleetContribution)} hint="revenue − allocated fuel, costs & servicing" accent="var(--accent)" />
+          <StatCard label="Outstanding loans" value={kes(fleetLoanBalance)} hint="remaining balance" accent={fleetLoanBalance > 0 ? 'var(--gold)' : 'var(--accent)'} />
+          <StatCard label="Data window" value={`${Math.max(1, ...cards.map((c) => c.dataMonths))} mo`} hint="months of trips recorded" />
+        </div>
+      </Section>
+
       <p style={{ fontSize: 12.5, color: 'var(--ink3)', margin: '0 0 16px' }}>
-        Projections assume each car keeps earning at its recorded monthly average. The more months you log, the sharper these get.
+        Fuel is paid company-wide (M-Pesa), so it&rsquo;s allocated to each car by its share of attributed revenue. Projections assume each car keeps earning at its recorded monthly average — the more trips you tag, the sharper these get.
       </p>
+
+      {attributedTrips === 0 && (
+        <div className="card" style={{ padding: 24, marginBottom: 16, borderLeft: '3px solid var(--gold)' }}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>No trips are assigned to a vehicle yet</div>
+          <div style={{ fontSize: 13.5, color: 'var(--ink2)' }}>Per-car revenue and payback light up as you tag trips with the car that did them. Head to <Link href="/trips" style={{ color: 'var(--accent-mid)', fontWeight: 600 }}>Trips</Link> and assign a vehicle &amp; driver to each row — the loan &amp; break-even figures below already reflect your purchase/loan details.</div>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
         {cards.length === 0 && (

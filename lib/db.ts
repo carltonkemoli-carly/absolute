@@ -217,7 +217,7 @@ const DEV_KEY: Record<TableName, keyof StoreData> = {
   invoices: 'invoices',
 }
 
-export async function saveRecord(table: TableName, row: Row, id: string | null): Promise<void> {
+export async function saveRecord(table: TableName, row: Row, id: string | null): Promise<{ error: string | null }> {
   if (DEV_MODE) {
     const data = loadStore()
     const arr = data[DEV_KEY[table]] as unknown as ({ id: string } & Row)[]
@@ -228,11 +228,12 @@ export async function saveRecord(table: TableName, row: Row, id: string | null):
       arr.unshift({ id: uid(table), created_at: new Date().toISOString(), ...row } as { id: string } & Row)
     }
     saveStore(data)
-    return
+    return { error: null }
   }
   const s = await sb()
-  if (id) await s.from(table).update(row).eq('id', id)
-  else await s.from(table).insert(row)
+  const { error } = id ? await s.from(table).update(row).eq('id', id) : await s.from(table).insert(row)
+  if (error) console.error(`[db] saveRecord(${table}) failed: ${error.message}`)
+  return { error: error?.message ?? null }
 }
 
 // Targets are keyed by (period, kind, category) — upsert by that, not by id.

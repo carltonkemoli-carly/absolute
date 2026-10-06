@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation'
-import { PageHeader, StatCard } from '@/components/ui'
+import { PageHeader, StatCard, Section } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listExpenses, listVehicles, listDrivers } from '@/lib/db'
-import { monthRange, isoDate, kes } from '@/lib/format'
+import { monthRange, isoDate, kes, MONTH_NAMES } from '@/lib/format'
 import { stickyPeriod } from '@/lib/period'
 import ExpenseManager from './ExpenseManager'
 
@@ -20,11 +20,13 @@ export default async function ExpensesPage({
   const { start, end } = monthRange(year, month)
   const today = isoDate(new Date())
   const defaultDate = today >= start && today <= end ? today : start
+  const monthLabel = `${MONTH_NAMES[month]} ${year}`
 
   const [expenses, vehicles, drivers] = await Promise.all([
     listExpenses(start, end), listVehicles(), listDrivers(),
   ])
   const total = expenses.reduce((a, e) => a + Number(e.amount), 0)
+  const wageBudget = drivers.filter((d) => d.status === 'active').reduce((a, d) => a + Number(d.monthly_wage || 0), 0)
 
   const byCat = new Map<string, number>()
   for (const e of expenses) byCat.set(e.category, (byCat.get(e.category) ?? 0) + Number(e.amount))
@@ -32,13 +34,21 @@ export default async function ExpensesPage({
 
   return (
     <>
-      <PageHeader title="Expenses" subtitle="Running costs beyond fuel & servicing" action={<MonthNav year={year} month={month} />} />
-      <div className="grid-stats" style={{ marginBottom: 18 }}>
-        <StatCard label="Total expenses this month" value={kes(total)} hint={`${expenses.length} entries`} />
-        <StatCard label="Biggest category" value={top ? top[0] : '—'} hint={top ? kes(top[1]) : undefined} />
-        <StatCard label="Categories used" value={String(byCat.size)} />
-      </div>
-      <ExpenseManager expenses={expenses} vehicles={vehicles} drivers={drivers} defaultDate={defaultDate} />
+      <PageHeader title="Expenses" subtitle="Running costs beyond fuel — wages, insurance, parking & more" action={<MonthNav year={year} month={month} />} />
+
+      <Section title={monthLabel}>
+        <div className="grid-stats" style={{ marginBottom: 2 }}>
+          <StatCard label="Total expenses" value={kes(total)} hint={`${expenses.length} entr${expenses.length === 1 ? 'y' : 'ies'}`} />
+          <StatCard label="Biggest category" value={top ? top[0] : '—'} hint={top ? kes(top[1]) : 'nothing logged yet'} />
+          <StatCard label="Categories used" value={String(byCat.size)} />
+          <StatCard label="Wage budget" value={kes(wageBudget)} hint="active drivers / month" accent="var(--gold)" />
+        </div>
+      </Section>
+
+      <ExpenseManager
+        expenses={expenses} vehicles={vehicles} drivers={drivers} defaultDate={defaultDate}
+        year={year} month={month} wageBudget={wageBudget} monthLabel={monthLabel}
+      />
     </>
   )
 }

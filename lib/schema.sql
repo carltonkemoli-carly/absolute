@@ -130,6 +130,7 @@ create table if not exists drivers (
   phone              text,
   license_no         text,
   default_vehicle_id uuid references vehicles(id) on delete set null,
+  monthly_wage       numeric(10,2) not null default 0,
   status             driver_status not null default 'active',
   created_at         timestamptz not null default now()
 );

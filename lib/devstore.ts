@@ -110,7 +110,7 @@ function seed(): StoreData {
   ]
 
   const dr = (name: string, plate: string, phone: string): Driver =>
-    ({ id: `drv-${plate}`, name, phone, license_no: null, default_vehicle_id: `veh-${plate}`, status: 'active', created_at: '' })
+    ({ id: `drv-${plate}`, name, phone, license_no: null, default_vehicle_id: `veh-${plate}`, monthly_wage: 28000, status: 'active', created_at: '' })
   const drivers: Driver[] = [
     dr('David Matista', 'KCD196X', '0712 345 011'),
     dr('Moses Simiyu', 'KCH845Z', '0712 345 022'),

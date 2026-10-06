@@ -1,5 +1,19 @@
 import type { ReactNode } from 'react'
 
+// A labelled band grouping related cards — the dashboard's "My business" /
+// "Operations" rhythm, shared so every page groups content the same way.
+export function Section({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
+  return (
+    <div style={{ marginBottom: 26 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, margin: '0 0 12px 2px' }}>
+        <h2 className="font-display" style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>{title}</h2>
+        {action}
+      </div>
+      {children}
+    </div>
+  )
+}
+
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 22, gap: 12, flexWrap: 'wrap' }}>
