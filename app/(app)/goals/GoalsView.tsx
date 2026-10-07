@@ -10,8 +10,11 @@ export type CostLine = { category: string; amount: number; cap: number | null }
 const COST_COLORS = ['#BC3E22', '#C9A227', '#2F9E8F', '#3E7CB1', '#7A5FB0', '#D98A3D', '#2C7A53', '#9A6A4B', '#5C8A72', '#A8527C']
 
 export default function GoalsView({
-  period, revenue, costs, revenueTarget, profitTarget,
-}: { period: string; revenue: number; costs: CostLine[]; revenueTarget: number; profitTarget: number }) {
+  period, revenue, costs, revenueTarget, profitTarget, profitLabel, profitHint, costsComplete,
+}: {
+  period: string; revenue: number; costs: CostLine[]; revenueTarget: number; profitTarget: number
+  profitLabel: string; profitHint: string; costsComplete: boolean
+}) {
   const [cuts, setCuts] = useState<Record<string, number>>({})
   const [editing, setEditing] = useState(false)
 
@@ -38,8 +41,8 @@ export default function GoalsView({
       <div className="grid-stats">
         <Stat label="Revenue" value={kes(revenue)} hint={revenueTarget ? `${pct(revenue / revenueTarget)} of ${kes(revenueTarget)} target` : 'no target set'} tone="var(--accent)" />
         <Stat label="Total costs" value={kes(totalCost)} hint={`${pct(revenue > 0 ? totalCost / revenue : 0)} of revenue`} />
-        <Stat label="Net profit" value={kes(netProfit)} hint={profitTarget ? `${pct(profitTarget > 0 ? netProfit / profitTarget : 0)} of ${kes(profitTarget)} target` : 'no target set'} tone={netProfit < 0 ? 'var(--danger)' : 'var(--accent)'} />
-        <Stat label="Net margin" value={pct(margin)} tone={margin < 0.1 ? 'var(--danger)' : 'var(--accent)'} />
+        <Stat label={profitLabel} value={kes(netProfit)} hint={profitTarget ? `${pct(profitTarget > 0 ? netProfit / profitTarget : 0)} of ${kes(profitTarget)} target` : profitHint} tone={netProfit < 0 ? 'var(--danger)' : costsComplete ? 'var(--accent)' : 'var(--gold)'} />
+        <Stat label={costsComplete ? 'Net margin' : 'Margin before wages'} value={pct(margin)} tone={margin < 0.1 ? 'var(--danger)' : costsComplete ? 'var(--accent)' : 'var(--gold)'} />
       </div>
 
       <div className={costSegs.length > 0 ? 'grid-2' : undefined}>
@@ -56,15 +59,15 @@ export default function GoalsView({
           ))}
           <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0' }} />
           <Row label="Total costs" value={`(${kes(totalCost)})`} />
-          <Row label="Net profit" value={kes(netProfit)} strong tone={netProfit < 0 ? 'var(--danger)' : 'var(--accent)'} />
-          <Row label="Net margin" value={pct(margin)} sub="" />
+          <Row label={profitLabel} value={kes(netProfit)} strong tone={netProfit < 0 ? 'var(--danger)' : costsComplete ? 'var(--accent)' : 'var(--gold)'} />
+          <Row label={costsComplete ? 'Net margin' : 'Margin before wages'} value={pct(margin)} sub="" />
         </Card>
       </div>
 
       {/* Goals */}
       <Card title="Goals this quarter">
         <Goal label="Revenue" actual={revenue} target={revenueTarget} higherIsBetter />
-        <Goal label="Net profit" actual={netProfit} target={profitTarget} higherIsBetter />
+        <Goal label={profitLabel} actual={netProfit} target={profitTarget} higherIsBetter />
         <div style={{ height: 8 }} />
         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>Spend caps</div>
         {costs.filter((c) => c.cap !== null).length === 0 && <div style={{ fontSize: 13.5, color: 'var(--ink3)' }}>No spend caps set. Use “Edit targets”.</div>}
@@ -100,7 +103,7 @@ export default function GoalsView({
             )}
           </div>
           <div style={{ background: 'var(--surface2)', borderRadius: 12, padding: 18, alignSelf: 'start' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Projected net profit</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Projected {profitLabel.toLowerCase()}</div>
             <div className="font-display" style={{ fontSize: 30, fontWeight: 700, margin: '6px 0 2px', color: projNet < 0 ? 'var(--danger)' : 'var(--accent)' }}>{kes(projNet)}</div>
             <div style={{ fontSize: 13.5, color: 'var(--ink2)' }}>
               margin {pct(projMargin)}

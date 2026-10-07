@@ -11,7 +11,7 @@ export default function InsightsView({
   period, pl, trend, byClient, byRoute, byContractor, dow, byVehicle, byDriver, attrCoverage,
 }: {
   period: string
-  pl: { revenue: number; fuel: number; expenses: number; net: number; prevRev: number; fuelPct: number; hasCosts: boolean }
+  pl: { revenue: number; fuel: number; costs: number; net: number; prevRev: number; prevLabel: string; fuelPct: number; costsComplete: boolean; profitLabel: string; profitHint: string }
   trend: { label: string; revenue: number; net: number }[]
   byClient: Rev[]; byRoute: Rev[]; byContractor: Rev[]; dow: Rev[]
   byVehicle: Rev[]; byDriver: Rev[]; attrCoverage: number
@@ -23,22 +23,22 @@ export default function InsightsView({
 
   const delta = pl.prevRev > 0 ? Math.round(((pl.revenue - pl.prevRev) / pl.prevRev) * 100) : null
   const margin = pl.revenue > 0 ? Math.round((pl.net / pl.revenue) * 100) : 0
-  const profitLabel = pl.hasCosts ? 'Net profit' : 'Gross profit'
-  const profitHint = pl.hasCosts ? `${margin}% · after all logged costs` : `${margin}% · before wages, insurance & loans`
+  const profitLabel = pl.profitLabel
+  const profitHint = `${margin}% · ${pl.profitHint}`
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {/* Headline P&L */}
       <div className="grid-stats">
-        <StatCard label="Revenue" value={kes(pl.revenue)} hint={delta === null ? period : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% vs last month`} accent={delta !== null && delta < 0 ? 'var(--danger)' : 'var(--accent)'} />
-        <StatCard label={profitLabel} value={kes(pl.net)} hint={profitHint} accent="var(--accent)" />
+        <StatCard label="Revenue" value={kes(pl.revenue)} hint={delta === null ? period : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% ${pl.prevLabel}`} accent={delta !== null && delta < 0 ? 'var(--danger)' : 'var(--accent)'} />
+        <StatCard label={profitLabel} value={kes(pl.net)} hint={profitHint} accent={pl.costsComplete ? 'var(--accent)' : 'var(--gold)'} />
         <StatCard label="Fuel-to-sales" value={`${pl.fuelPct}%`} hint={`${kes(pl.fuel)} fuel`} accent={pl.fuelPct > 32 ? 'var(--gold)' : 'var(--accent)'} />
-        <StatCard label={pl.hasCosts ? 'Costs logged' : 'Fuel cost'} value={pl.hasCosts ? kes(pl.fuel + pl.expenses) : kes(pl.fuel)} hint={pl.hasCosts ? 'fuel + expenses' : 'the only cost logged yet'} />
+        <StatCard label="Costs logged" value={kes(pl.costs)} hint={pl.costsComplete ? 'every cost behind the figure above' : 'wages still missing'} />
       </div>
 
       {/* Trend */}
       <div className="card" style={{ padding: 18 }}>
-        <SectionTitle>Revenue &amp; {pl.hasCosts ? 'net' : 'gross'} profit — last 6 months</SectionTitle>
+        <SectionTitle>Revenue &amp; {pl.costsComplete ? 'net' : 'before-wages'} profit — last 6 months</SectionTitle>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {trend.map((t, i) => {
             const max = Math.max(1, ...trend.map((x) => x.revenue))
@@ -47,7 +47,7 @@ export default function InsightsView({
               <div key={i}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 3 }}>
                   <span style={{ fontWeight: 500 }}>{t.label}</span>
-                  <span style={{ color: 'var(--ink2)' }}>{kes(t.revenue)} <span style={{ color: t.net >= 0 ? 'var(--accent)' : 'var(--danger)' }}>· gross {kes(t.net)} ({m}%)</span></span>
+                  <span style={{ color: 'var(--ink2)' }}>{kes(t.revenue)} <span style={{ color: t.net >= 0 ? 'var(--accent)' : 'var(--danger)' }}>· {kes(t.net)} ({m}%)</span></span>
                 </div>
                 <div style={{ height: 8, borderRadius: 6, background: 'var(--surface2)', overflow: 'hidden', position: 'relative' }}>
                   <div style={{ height: '100%', width: `${(t.revenue / max) * 100}%`, background: 'var(--accent-light)', position: 'absolute' }} />
@@ -57,7 +57,7 @@ export default function InsightsView({
             )
           })}
         </div>
-        <p style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 8 }}>Light bar = revenue · solid = {pl.hasCosts ? 'net profit (after all logged costs)' : 'gross profit (revenue − fuel; wages, insurance & loans not logged yet)'}.</p>
+        <p style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 8 }}>Light bar = revenue · solid = {pl.costsComplete ? 'net profit (after all logged costs)' : 'profit before wages (wages not logged yet)'}.</p>
       </div>
 
       {/* Rank toggle */}

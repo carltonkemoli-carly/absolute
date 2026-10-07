@@ -4,6 +4,7 @@ import QuarterNav from '@/components/QuarterNav'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listFuel, listServices, listExpenses, listTargets, listVehicles } from '@/lib/db'
 import { quarterRange, resolveQuarter, periodKey, quarterLabel } from '@/lib/format'
+import { periodPL, profitHeadline } from '@/lib/finance'
 import { COST_CATEGORIES } from '@/lib/types'
 import GoalsView, { type CostLine } from './GoalsView'
 
@@ -24,18 +25,20 @@ export default async function GoalsPage({
     listTrips(start, end), listFuel(start, end), listServices(), listExpenses(start, end), listTargets(period), listVehicles(),
   ])
 
-  const revenue = trips.reduce((a, t) => a + Number(t.amount), 0)
-  const fuelCost = fuel.reduce((a, f) => a + Number(f.amount), 0)
-  const serviceCost = services
-    .filter((s) => s.service_date >= start && s.service_date <= end)
-    .reduce((a, s) => a + Number(s.cost), 0)
-
-  // Vehicle hire = monthly fees (for months elapsed in the quarter) + casual trip hire
+  // Canonical P&L, costed month by month across the quarter so a monthly hire fee
+  // is counted once per month — same engine as the dashboard and Reports.
   const now = new Date()
-  const monthsElapsed = [0, 1, 2].filter((i) => new Date(year, (quarter - 1) * 3 + i, 1) <= now).length
-  const monthlyHire = vehicles.filter((v) => v.ownership === 'monthly_hire').reduce((a, v) => a + Number(v.monthly_fee), 0)
-  const tripHire = trips.reduce((a, t) => a + Number(t.hire_cost || 0), 0)
-  const hireCost = monthlyHire * monthsElapsed + tripHire
+  const months = [0, 1, 2]
+    .map((i) => new Date(year, (quarter - 1) * 3 + i, 1))
+    .filter((d) => d <= now)
+    .map((d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  const pl = periodPL({ trips, fuel, expenses, services, vehicles }, months)
+  const headline = profitHeadline(pl)
+
+  const revenue = pl.revenue
+  const fuelCost = pl.fuel
+  const serviceCost = pl.servicing
+  const hireCost = pl.hire
 
   const expByCat = new Map<string, number>()
   for (const e of expenses) expByCat.set(e.category, (expByCat.get(e.category) ?? 0) + Number(e.amount))
@@ -69,6 +72,9 @@ export default async function GoalsPage({
         costs={costs}
         revenueTarget={revenueTarget}
         profitTarget={profitTarget}
+        profitLabel={headline.label}
+        profitHint={headline.hint}
+        costsComplete={pl.costsComplete}
       />
     </>
   )

@@ -35,7 +35,12 @@ export default async function PaybackPage() {
   const totalTrips = trips.length
   const attributedTrips = trips.filter((t) => t.vehicle_id).length
   const coverage = totalTrips > 0 ? attributedTrips / totalTrips : 0
-  const totalAttrRevenue = sum(trips.filter((t) => t.vehicle_id), (t) => Number(t.amount) || 0)
+  // Fuel is shared out against ALL revenue, not just the attributed slice. Using
+  // attributed revenue as the denominator would push the entire company fuel bill
+  // onto whatever fraction of trips happens to be tagged, making those cars look
+  // far less profitable than they are. The fuel belonging to untagged trips stays
+  // unallocated instead.
+  const totalRevenue = sum(trips, (t) => Number(t.amount) || 0)
   const companyFuel = sum(fuel, (f) => Number(f.amount) || 0)
 
   const owned = vehicles.filter((v) => v.ownership === 'owned')
@@ -44,8 +49,8 @@ export default async function PaybackPage() {
     const ve = expenses.filter((e) => e.vehicle_id === v.id)
     const vs = services.filter((s) => s.vehicle_id === v.id)
     const revenue = sum(vt, (t) => Number(t.amount) || 0)
-    // Fuel allocated by this car's share of all attributed revenue.
-    const fuelC = totalAttrRevenue > 0 ? companyFuel * (revenue / totalAttrRevenue) : 0
+    // Fuel allocated by this car's share of total revenue.
+    const fuelC = totalRevenue > 0 ? companyFuel * (revenue / totalRevenue) : 0
     const expC = sum(ve, (e) => Number(e.amount) || 0)
     const svcC = sum(vs, (s) => Number(s.cost) || 0)
     const contribution = revenue - fuelC - expC - svcC
@@ -115,7 +120,7 @@ export default async function PaybackPage() {
       </Section>
 
       <p style={{ fontSize: 12.5, color: 'var(--ink3)', margin: '0 0 16px' }}>
-        Fuel is paid company-wide (M-Pesa), so it&rsquo;s allocated to each car by its share of attributed revenue. Projections assume each car keeps earning at its recorded monthly average — the more trips you tag, the sharper these get.
+        Fuel is paid company-wide (M-Pesa), so it&rsquo;s allocated to each car by its share of <strong>total</strong> revenue — fuel for untagged trips stays unallocated rather than being loaded onto the cars you have tagged. {coverage < 0.9 && <>At {Math.round(coverage * 100)}% coverage these figures therefore show <strong>only the work you have tagged so far</strong>, not everything a car has earned. </>}Projections assume each car keeps earning at its recorded monthly average.
       </p>
 
       {attributedTrips === 0 && (

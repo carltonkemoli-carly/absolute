@@ -17,13 +17,11 @@ export interface MonthRow {
   trips: number
 }
 
-export default function ReportsView({ months, hasCosts = false }: { months: MonthRow[]; hasCosts?: boolean }) {
+export default function ReportsView({ months, costsComplete = false, delta = null, deltaLabel = 'vs prior month' }: { months: MonthRow[]; costsComplete?: boolean; delta?: number | null; deltaLabel?: string }) {
   const maxRevenue = Math.max(1, ...months.map((m) => m.revenue))
   const latest = months[months.length - 1]
-  const prev = months[months.length - 2]
-  const delta = latest && prev && prev.revenue ? ((latest.revenue - prev.revenue) / prev.revenue) * 100 : null
-  const profitLabel = hasCosts ? 'Net profit' : 'Gross profit'
-  const profitNote = hasCosts ? 'after all logged costs' : 'before wages/insurance/loans'
+  const profitLabel = costsComplete ? 'Net profit' : 'Profit before wages'
+  const profitNote = costsComplete ? 'after all logged costs' : 'wages not logged yet'
 
   return (
     <div>
@@ -35,7 +33,7 @@ export default function ReportsView({ months, hasCosts = false }: { months: Mont
 
       <Section title="Latest month">
         <div className="grid-stats">
-          <Stat label="Revenue" value={kes(latest?.revenue ?? 0)} hint={delta === null ? latest?.label : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(0)}% vs prior`} tone={delta !== null && delta < 0 ? 'var(--danger)' : 'var(--accent)'} />
+          <Stat label="Revenue" value={kes(latest?.revenue ?? 0)} hint={delta === null ? latest?.label : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(0)}% ${deltaLabel}`} tone={delta !== null && delta < 0 ? 'var(--danger)' : 'var(--accent)'} />
           <Stat label={profitLabel} value={kes(latest?.profit ?? 0)} hint={`${((latest?.margin ?? 0) * 100).toFixed(0)}% · ${profitNote}`} tone={(latest?.profit ?? 0) < 0 ? 'var(--danger)' : 'var(--accent)'} />
           <Stat label="Fuel index" value={`${((latest?.index ?? 0) * 100).toFixed(1)}%`} tone={(latest?.index ?? 0) > 0.3 ? 'var(--danger)' : 'var(--accent)'} />
           <Stat label="6-month revenue" value={kes(months.reduce((a, m) => a + m.revenue, 0))} />
@@ -58,7 +56,7 @@ export default function ReportsView({ months, hasCosts = false }: { months: Mont
         </div>
         <div style={{ display: 'flex', gap: 18, marginTop: 8, fontSize: 12.5, color: 'var(--ink2)' }}>
           <Legend color="var(--accent-mid)" text="Revenue" />
-          <Legend color="var(--gold)" text={hasCosts ? 'Net profit (after all costs)' : 'Gross profit (revenue − fuel)'} />
+          <Legend color="var(--gold)" text={costsComplete ? 'Net profit (after all logged costs)' : 'Profit before wages (wages not logged yet)'} />
         </div>
       </div>
 

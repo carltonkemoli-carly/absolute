@@ -10,7 +10,7 @@ import { listTrips, listFuel, listVehicles, listDrivers, listContractors, listOr
 import { OWNERSHIP_LABELS, type Invoice } from '@/lib/types'
 import { buildAttention } from '@/lib/attention'
 import { buildAlerts } from '@/lib/alerts'
-import { monthRange, kes, kesPlain, MONTH_NAMES, isoDate } from '@/lib/format'
+import { monthRange, kes, kesPlain, MONTH_NAMES, isoDate, addDays } from '@/lib/format'
 import { stickyPeriod } from '@/lib/period'
 import { monthlyPL, profitHeadline } from '@/lib/finance'
 import type { Trip } from '@/lib/types'
@@ -32,7 +32,7 @@ export default async function DashboardPage({
   const attention = buildAttention(documents, services, vehicles, drivers)
   const alerts = buildAlerts({ vehicles, trips, fuel, expenses, services: services.filter((s) => s.service_date >= start && s.service_date <= end), invoices, contractors, today: isoDate(new Date()), monthLabel: `${MONTH_NAMES[month]} ${year}`, monthStart: start, monthEnd: end })
 
-  // ---- Financial headlines (canonical P&L: gross until real costs logged) ----
+  // ---- Financial headlines (canonical P&L: "net" only once wages are logged) ----
   const pl = monthlyPL({ trips, fuel, expenses, services: services.filter((s) => s.service_date >= start && s.service_date <= end), vehicles })
   const headline = profitHeadline(pl)
   const revenue = pl.revenue
@@ -76,7 +76,7 @@ export default async function DashboardPage({
   ]
 
   // Compliance status (count donut) — by document expiry
-  const in30 = isoDate(new Date(Date.now() + 30 * 864e5))
+  const in30 = isoDate(addDays(new Date(), 30))
   let okN = 0, expiringN = 0, expiredN = 0
   for (const d of documents) {
     if (d.expiry_date && d.expiry_date < today) expiredN++
@@ -105,14 +105,16 @@ export default async function DashboardPage({
         <div className="grid-stats" style={{ marginBottom: 16 }}>
           <StatCard label="Revenue billed" value={kes(revenue)} hint={`net ${kes(netRevenue)} (excl. expressway)`} accent="var(--accent)" />
           <StatCard label={headline.label} value={kes(headline.value)}
-            hint={revenue > 0 ? `${pct(headline.margin)} margin · ${headline.hint}` : 'revenue − fuel'}
-            accent="var(--accent)" />
+            hint={revenue > 0 ? `${pct(headline.margin)} margin · ${headline.hint}` : headline.hint}
+            accent={pl.costsComplete ? 'var(--accent)' : 'var(--gold)'} />
           <StatCard label="Fuel-to-sales index" value={pct(index)}
             hint={index > 0.3 ? 'High — check fuel use' : 'Healthy'} accent={index > 0.3 ? 'var(--danger)' : 'var(--accent)'} />
           <StatCard label="Expressway charges" value={kes(express)} hint="reimbursable" accent="var(--gold)" />
           <Link href="/receivables" style={{ textDecoration: 'none', color: 'inherit' }}>
+            {/* A balance, not a monthly flow — say so, since every other card
+                in this row moves with the month picker. */}
             <StatCard label="Outstanding" value={kes(outstanding)}
-              hint={overdue > 0 ? `${kes(overdue)} overdue →` : outstanding > 0 ? 'owed to you →' : 'all collected'}
+              hint={overdue > 0 ? `${kes(overdue)} overdue · any month →` : outstanding > 0 ? 'owed to you · any month →' : 'all collected'}
               accent={overdue > 0 ? 'var(--danger)' : outstanding > 0 ? 'var(--gold)' : 'var(--accent)'} />
           </Link>
           <StatCard label="Trips" value={String(trips.length)} hint="this month" />

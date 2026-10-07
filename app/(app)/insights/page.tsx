@@ -4,9 +4,10 @@ import MonthNav from '@/components/MonthNav'
 import PrintButton from '@/components/PrintButton'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listFuel, listExpenses, listServices, listDrivers, listVehicles, listOrganizations, listContractors, listRoutes } from '@/lib/db'
-import { monthRange, MONTH_NAMES } from '@/lib/format'
+import { monthRange, MONTH_NAMES, isoDate } from '@/lib/format'
+import { periodPL, profitHeadline } from '@/lib/finance'
 import { stickyPeriod } from '@/lib/period'
-import type { Trip, FuelEntry, Expense, Route } from '@/lib/types'
+import type { Trip, Route } from '@/lib/types'
 import InsightsView from './InsightsView'
 import PricingCheck from './PricingCheck'
 
@@ -32,9 +33,6 @@ export default async function InsightsPage({
 
   const inMonth = (d: string) => d >= start && d <= end
   const trips = winTrips.filter((t) => inMonth(t.trip_date))
-  const fuel = winFuel.filter((f) => inMonth(f.fuel_date))
-  const exp = winExp.filter((e) => inMonth(e.expense_date))
-  const svc = winSvc.filter((s) => inMonth(s.service_date))
 
   const orgName = (id: string | null) => organizations.find((o) => o.id === id)?.name ?? 'Direct / none'
   const conName = (id: string | null) => contractors.find((c) => c.id === id)?.name ?? '—'
@@ -43,31 +41,33 @@ export default async function InsightsPage({
 
   const sum = <T,>(a: T[], f: (x: T) => number) => a.reduce((s, x) => s + f(x), 0)
 
-  // ---- headline P&L ----
-  const monthlyHireFees = sum(vehicles.filter((v) => v.ownership === 'monthly_hire'), (v) => Number(v.monthly_fee) || 0)
-  const hireOf = (ts: typeof trips) => monthlyHireFees + sum(ts, (t) => Number(t.hire_cost) || 0)
+  // ---- headline P&L (canonical — same numbers and wording as the dashboard) ----
+  const ym = start.slice(0, 7)
+  const pl = periodPL({ trips: winTrips, fuel: winFuel, expenses: winExp, services: winSvc, vehicles }, [ym])
+  const headline = profitHeadline(pl)
+  const revenue = pl.revenue
+  const fuelTotal = pl.fuel
 
-  const revenue = sum(trips, amt)
-  const fuelTotal = sum(fuel, (f) => Number(f.amount) || 0)
-  const expTotal = sum(exp, (e) => Number(e.amount) || 0)
-  const svcTotal = sum(svc, (s) => Number(s.cost) || 0)
-  const hireTotal = hireOf(trips)
-  const net = revenue - fuelTotal - expTotal - svcTotal - hireTotal
+  // Comparing a month still in progress against a whole month always reads as a
+  // crash. When the selected month is the current one, measure last month only up
+  // to the same day, so it is like-for-like.
   const prev = monthRange(year, month - 1)
-  const prevRev = sum(winTrips.filter((t) => t.trip_date >= prev.start && t.trip_date <= prev.end), amt)
+  const todayIso = isoDate(new Date())
+  const partial = todayIso >= start && todayIso <= end
+  const prevCutoff = partial ? prev.start.slice(0, 8) + todayIso.slice(8, 10) : prev.end
+  const prevRev = sum(
+    winTrips.filter((t) => t.trip_date >= prev.start && t.trip_date <= prevCutoff),
+    amt,
+  )
+  const prevLabel = partial ? 'vs same point last month' : 'vs last month'
 
   // ---- 6-month trend (revenue + net) ----
   const trend: { label: string; revenue: number; net: number }[] = []
   for (let i = 5; i >= 0; i--) {
     const r = monthRange(year, month - i)
-    const mt = winTrips.filter((t) => t.trip_date >= r.start && t.trip_date <= r.end)
-    const mf = winFuel.filter((f) => f.fuel_date >= r.start && f.fuel_date <= r.end)
-    const me = winExp.filter((e) => e.expense_date >= r.start && e.expense_date <= r.end)
-    const ms = winSvc.filter((s) => s.service_date >= r.start && s.service_date <= r.end)
-    const rev = sum(mt, amt)
+    const mpl = periodPL({ trips: winTrips, fuel: winFuel, expenses: winExp, services: winSvc, vehicles }, [r.start.slice(0, 7)])
     const d = new Date(r.start + 'T12:00:00Z')
-    const mnet = rev - sum(mf, (x) => Number(x.amount) || 0) - sum(me, (x) => Number(x.amount) || 0) - sum(ms, (x) => Number(x.cost) || 0) - hireOf(mt)
-    trend.push({ label: `${MONTH_NAMES[d.getUTCMonth()].slice(0, 3)} ${String(d.getUTCFullYear()).slice(2)}`, revenue: rev, net: mnet })
+    trend.push({ label: `${MONTH_NAMES[d.getUTCMonth()].slice(0, 3)} ${String(d.getUTCFullYear()).slice(2)}`, revenue: mpl.revenue, net: mpl.net })
   }
 
   // ---- revenue leaderboards ----
@@ -101,7 +101,6 @@ export default async function InsightsPage({
   const byDriver = revGroupOf(trips.filter((t) => t.driver_id), (t) => t.driver_id as string, driverName)
   const attrCoverage = trips.length ? trips.filter((t) => t.vehicle_id).length / trips.length : 0
 
-  const hasCosts = expTotal + svcTotal + hireTotal > 0
   const fleetFuelPct = revenue > 0 ? fuelTotal / revenue : 0
 
   // ---- rate-card pricing check ----
@@ -153,7 +152,7 @@ export default async function InsightsPage({
       <PageHeader title="Business insights" subtitle="Where the money comes from, which vehicles earn, and where it leaks" action={<div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><MonthNav year={year} month={month} /><PrintButton /></div>} />
       <InsightsView
         period={`${MONTH_NAMES[month]} ${year}`}
-        pl={{ revenue, fuel: fuelTotal, expenses: expTotal, net, prevRev, fuelPct: Math.round(fleetFuelPct * 100), hasCosts }}
+        pl={{ revenue, fuel: fuelTotal, costs: pl.costs, net: pl.net, prevRev, prevLabel, fuelPct: Math.round(fleetFuelPct * 100), costsComplete: pl.costsComplete, profitLabel: headline.label, profitHint: headline.hint }}
         trend={trend}
         byClient={byClient} byRoute={byRoute} byContractor={byContractor} dow={dowMap}
         byVehicle={byVehicle} byDriver={byDriver} attrCoverage={attrCoverage}

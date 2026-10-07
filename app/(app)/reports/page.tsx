@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/ui'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listFuel, listServices, listExpenses, listVehicles, latestTripMonth } from '@/lib/db'
 import { monthRange, MONTH_NAMES, isoDate } from '@/lib/format'
+import { periodPL, combinePL, type PL } from '@/lib/finance'
 import ReportsView, { type MonthRow } from './ReportsView'
 
 export const dynamic = 'force-dynamic'
@@ -23,44 +24,58 @@ export default async function ReportsPage() {
   const [trips, fuel, services, expenses, vehicles] = await Promise.all([
     listTrips(start, end), listFuel(start, end), listServices(), listExpenses(start, end), listVehicles(),
   ])
-  const monthlyHireFees = vehicles.filter((v) => v.ownership === 'monthly_hire').reduce((a, v) => a + (Number(v.monthly_fee) || 0), 0)
+  const input = { trips, fuel, expenses, services, vehicles }
 
-  let hasCosts = false
+  // Every figure here comes from the canonical P&L — one per month, then combined
+  // for the period headline, so Reports can never drift from the dashboard.
   const months: MonthRow[] = []
+  const parts: PL[] = []
   for (let i = MONTHS_BACK - 1; i >= 0; i--) {
     const d = new Date(base.getFullYear(), base.getMonth() - i, 1)
     const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    const mt = trips.filter((t) => t.trip_date.slice(0, 7) === ym)
-    const mf = fuel.filter((f) => f.fuel_date.slice(0, 7) === ym)
-    const ms = services.filter((s) => s.service_date.slice(0, 7) === ym)
-    const me = expenses.filter((e) => e.expense_date.slice(0, 7) === ym)
-    const revenue = mt.reduce((a, t) => a + Number(t.amount), 0)
-    const fuelCost = mf.reduce((a, f) => a + Number(f.amount), 0)
-    const serviceCost = ms.reduce((a, s) => a + Number(s.cost), 0)
-    const expenseCost = me.reduce((a, e) => a + Number(e.amount), 0)
-    const hireCost = monthlyHireFees + mt.reduce((a, t) => a + (Number(t.hire_cost) || 0), 0)
-    if (serviceCost + expenseCost + hireCost > 0) hasCosts = true
-    const express = mt.reduce((a, t) => a + Number(t.express_charges), 0)
-    const profit = revenue - fuelCost - serviceCost - expenseCost - hireCost
+    const pl = periodPL(input, [ym])
+    parts.push(pl)
     months.push({
       ym,
       label: `${MONTH_NAMES[d.getMonth()].slice(0, 3)} ${String(d.getFullYear()).slice(2)}`,
-      revenue,
-      fuel: fuelCost,
-      service: serviceCost,
-      expenses: expenseCost,
-      express,
-      profit,
-      margin: revenue > 0 ? profit / revenue : 0,
-      index: revenue > 0 ? fuelCost / revenue : 0,
-      trips: mt.length,
+      revenue: pl.revenue,
+      fuel: pl.fuel,
+      service: pl.servicing,
+      expenses: pl.wages + pl.otherExpenses,
+      express: pl.express,
+      profit: pl.net,
+      margin: pl.margin,
+      index: pl.revenue > 0 ? pl.fuel / pl.revenue : 0,
+      trips: trips.filter((t) => t.trip_date.slice(0, 7) === ym).length,
     })
+  }
+  const period = combinePL(parts)
+
+  // Month-over-month, like-for-like. If the latest month is still running,
+  // measure the one before it only up to the same day — otherwise a part month
+  // always reads as a collapse.
+  const todayIso = isoDate(new Date())
+  const latestRow = months[months.length - 1]
+  const previous = months[months.length - 2]
+  const partial = latestRow ? todayIso.slice(0, 7) === latestRow.ym : false
+  let delta: number | null = null
+  if (latestRow && previous) {
+    const cutoff = partial ? `${previous.ym}-${todayIso.slice(8, 10)}` : `${previous.ym}-31`
+    const prevRev = trips
+      .filter((t) => t.trip_date.slice(0, 7) === previous.ym && t.trip_date <= cutoff)
+      .reduce((a, t) => a + Number(t.amount), 0)
+    if (prevRev > 0) delta = ((latestRow.revenue - prevRev) / prevRev) * 100
   }
 
   return (
     <>
       <PageHeader title="Reports & Trends" subtitle="How money is moving — last 6 months of activity" />
-      <ReportsView months={months} hasCosts={hasCosts} />
+      <ReportsView
+        months={months}
+        costsComplete={period.costsComplete}
+        delta={delta}
+        deltaLabel={partial ? 'vs same point last month' : 'vs prior month'}
+      />
     </>
   )
 }
