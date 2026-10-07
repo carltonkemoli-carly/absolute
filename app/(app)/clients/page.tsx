@@ -1,10 +1,12 @@
 import { redirect } from 'next/navigation'
-import { PageHeader, StatCard } from '@/components/ui'
+import { PageHeader, StatCard, Card, Section } from '@/components/ui'
 import PrintButton from '@/components/PrintButton'
 import { Bars } from '@/components/Bars'
+import SegmentDonut from '@/components/SegmentDonut'
+import { topSegments } from '@/lib/chart'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listOrganizations } from '@/lib/db'
-import { kes, fmtDate, isoDate } from '@/lib/format'
+import { kes, kesPlain, fmtDate, isoDate } from '@/lib/format'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,12 +44,14 @@ export default async function ClientsPage() {
     <>
       <PageHeader title="Clients" subtitle="Who your revenue depends on — and how concentrated it is" action={<PrintButton />} />
 
-      <div className="grid-stats" style={{ marginBottom: 16 }}>
-        <StatCard label="Active clients" value={String(clients.length)} hint="with logged trips" />
-        <StatCard label="Top client" value={top?.name ?? '—'} hint={top ? `${Math.round(top.share * 100)}% of revenue` : undefined} accent={concentrated ? 'var(--gold)' : 'var(--accent)'} />
-        <StatCard label="Top 3 share" value={`${Math.round(top3 * 100)}%`} hint="of all revenue" accent={top3 > 0.6 ? 'var(--gold)' : 'var(--accent)'} />
-        <StatCard label="Total revenue" value={kes(totalRev)} hint="all clients" />
-      </div>
+      <Section title="Overview">
+        <div className="grid-stats">
+          <StatCard label="Active clients" value={String(clients.length)} hint="with logged trips" />
+          <StatCard label="Top client" value={top?.name ?? '—'} hint={top ? `${Math.round(top.share * 100)}% of revenue` : undefined} accent={concentrated ? 'var(--gold)' : 'var(--accent)'} />
+          <StatCard label="Top 3 share" value={`${Math.round(top3 * 100)}%`} hint="of all revenue" accent={top3 > 0.6 ? 'var(--gold)' : 'var(--accent)'} />
+          <StatCard label="Total revenue" value={kes(totalRev)} hint="all clients" />
+        </div>
+      </Section>
 
       {concentrated && (
         <div className="card" style={{ padding: '13px 16px', marginBottom: 16, background: 'var(--gold-light)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -58,12 +62,20 @@ export default async function ClientsPage() {
         </div>
       )}
 
-      <div className="card" style={{ padding: 18, marginBottom: 16 }}>
-        <div className="font-display" style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Revenue by client (all-time)</div>
-        <Bars
-          items={clients.slice(0, 12).map((c) => ({ label: c.name, value: c.revenue, sub: `${Math.round(c.share * 100)}%` }))}
-          max={Math.max(1, ...clients.map((c) => c.revenue))} format={kes} accent="var(--accent)" />
-      </div>
+      <Section title="Revenue by client (all-time)">
+        <div className="grid-2">
+          <Card title="Revenue concentration">
+            {clients.length === 0
+              ? <p style={{ fontSize: 13.5, color: 'var(--ink3)' }}>No client revenue yet.</p>
+              : <SegmentDonut data={topSegments(clients.map((c) => ({ label: c.name, value: c.revenue })), 6)} centerValue={kesPlain(totalRev)} centerLabel="Ksh total" centerSize={18} money />}
+          </Card>
+          <Card title="Top clients">
+            <Bars
+              items={clients.slice(0, 10).map((c) => ({ label: c.name, value: c.revenue, sub: `${Math.round(c.share * 100)}%` }))}
+              max={Math.max(1, ...clients.map((c) => c.revenue))} format={kes} accent="var(--accent)" />
+          </Card>
+        </div>
+      </Section>
 
       <div className="card" style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>

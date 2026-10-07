@@ -1,8 +1,10 @@
-import { PageHeader, StatCard } from '@/components/ui'
+import { PageHeader, StatCard, Card, Section } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
 import { Bars, SectionTitle } from '@/components/Bars'
+import SegmentDonut from '@/components/SegmentDonut'
+import { topSegments } from '@/lib/chart'
 import { listFuel, listTrips, listVehicles, listDrivers } from '@/lib/db'
-import { monthRange, isoDate, kes, MONTH_NAMES } from '@/lib/format'
+import { monthRange, isoDate, kes, kesPlain, MONTH_NAMES } from '@/lib/format'
 import { stickyPeriod } from '@/lib/period'
 import ExcelImport from '@/components/ExcelImport'
 import type { FieldSpec } from '@/lib/import-types'
@@ -61,13 +63,15 @@ export default async function FuelPage({
     <>
       <PageHeader title="Fuel" subtitle="What you spend on fuel — and how it tracks against revenue" action={<MonthNav year={year} month={month} />} />
 
-      <div className="grid-stats" style={{ marginBottom: 18 }}>
-        <StatCard label="Fuel this month" value={kes(totalFuel)} hint={`${entries.length} payments`} accent="var(--gold)" />
-        <StatCard label="Fuel-to-sales" value={fuelPct === null ? '—' : `${Math.round(fuelPct * 100)}%`}
-          hint={fuelPct !== null && fuelPct > 0.32 ? 'High — watch fuel spend' : 'Healthy'}
-          accent={fuelPct !== null && fuelPct > 0.32 ? 'var(--danger)' : 'var(--accent)'} />
-        <StatCard label="Revenue this month" value={kes(revenue)} hint={`${monthTrips.length} trips`} />
-      </div>
+      <Section title={`${MONTH_NAMES[month]} ${year}`}>
+        <div className="grid-stats">
+          <StatCard label="Fuel this month" value={kes(totalFuel)} hint={`${entries.length} payments`} accent="var(--gold)" />
+          <StatCard label="Fuel-to-sales" value={fuelPct === null ? '—' : `${Math.round(fuelPct * 100)}%`}
+            hint={fuelPct !== null && fuelPct > 0.32 ? 'High — watch fuel spend' : 'Healthy'}
+            accent={fuelPct !== null && fuelPct > 0.32 ? 'var(--danger)' : 'var(--accent)'} />
+          <StatCard label="Revenue this month" value={kes(revenue)} hint={`${monthTrips.length} trips`} />
+        </div>
+      </Section>
 
       <div className="card" style={{ padding: 18, marginBottom: 16 }}>
         <SectionTitle>Fuel spend & fuel-to-sales — last 6 months</SectionTitle>
@@ -75,14 +79,22 @@ export default async function FuelPage({
           max={Math.max(1, ...trend.map((t) => t.fuel))} format={kes} accent="var(--gold)" emptyText="No fuel recorded yet." />
       </div>
 
-      <div className="card" style={{ padding: 18, marginBottom: 16 }}>
-        <SectionTitle>Where you fuel — by station ({MONTH_NAMES[month]})</SectionTitle>
-        <Bars items={stations.slice(0, 12).map((s) => ({ label: s.label, value: s.value, sub: `${s.count} fill${s.count === 1 ? '' : 's'}` }))}
-          max={Math.max(1, ...stations.map((s) => s.value))} format={kes} accent="var(--accent-mid)" emptyText="No fuel payments this month." />
+      <Section title={`Where you fuel — by station (${MONTH_NAMES[month]})`}>
+        <div className="grid-2">
+          <Card title="Share of fuel spend">
+            {stations.length === 0
+              ? <p style={{ fontSize: 13.5, color: 'var(--ink3)' }}>No fuel payments this month.</p>
+              : <SegmentDonut data={topSegments(stations.map((s) => ({ label: s.label, value: s.value })), 6)} centerValue={kesPlain(totalFuel)} centerLabel="Ksh fuel" centerSize={18} money />}
+          </Card>
+          <Card title="By station">
+            <Bars items={stations.slice(0, 10).map((s) => ({ label: s.label, value: s.value, sub: `${s.count} fill${s.count === 1 ? '' : 's'}` }))}
+              max={Math.max(1, ...stations.map((s) => s.value))} format={kes} accent="var(--accent-mid)" emptyText="No fuel payments this month." />
+          </Card>
+        </div>
         <p style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 10 }}>
           Fuel is paid straight to the station via M-Pesa, so it isn’t tied to a single car yet. Once drivers log the vehicle at fuelling, per-car fuel will appear here.
         </p>
-      </div>
+      </Section>
 
       <div style={{ margin: '18px 0' }}>
         <ExcelImport

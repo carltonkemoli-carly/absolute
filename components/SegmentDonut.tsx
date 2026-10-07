@@ -2,8 +2,11 @@
 
 import { useId } from 'react'
 import { kes } from '@/lib/format'
+import type { Seg } from '@/lib/chart'
 
-export type Seg = { label: string; value: number; color: string }
+// Re-exported so existing `import { type Seg } from '@/components/SegmentDonut'`
+// keeps working. Pure helpers (topSegments, CHART_COLORS) live in lib/chart.
+export type { Seg }
 
 // A segmented donut with a big center total and — optionally — small numbered
 // badges sitting on the ring at each segment (the "168 Total / 118 Working"

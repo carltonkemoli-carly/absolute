@@ -1,6 +1,7 @@
 'use client'
 
 import { kes } from '@/lib/format'
+import { Section } from '@/components/ui'
 
 export interface MonthRow {
   ym: string
@@ -16,11 +17,13 @@ export interface MonthRow {
   trips: number
 }
 
-export default function ReportsView({ months }: { months: MonthRow[] }) {
+export default function ReportsView({ months, hasCosts = false }: { months: MonthRow[]; hasCosts?: boolean }) {
   const maxRevenue = Math.max(1, ...months.map((m) => m.revenue))
   const latest = months[months.length - 1]
   const prev = months[months.length - 2]
   const delta = latest && prev && prev.revenue ? ((latest.revenue - prev.revenue) / prev.revenue) * 100 : null
+  const profitLabel = hasCosts ? 'Net profit' : 'Gross profit'
+  const profitNote = hasCosts ? 'after all logged costs' : 'before wages/insurance/loans'
 
   return (
     <div>
@@ -30,12 +33,14 @@ export default function ReportsView({ months }: { months: MonthRow[] }) {
         </button>
       </div>
 
-      <div className="grid-stats" style={{ marginBottom: 18 }}>
-        <Stat label="Latest month revenue" value={kes(latest?.revenue ?? 0)} hint={delta === null ? latest?.label : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(0)}% vs prior`} tone={delta !== null && delta < 0 ? 'var(--danger)' : 'var(--accent)'} />
-        <Stat label="Gross profit" value={kes(latest?.profit ?? 0)} hint={`${((latest?.margin ?? 0) * 100).toFixed(0)}% · before wages/insurance/loans`} tone={(latest?.profit ?? 0) < 0 ? 'var(--danger)' : 'var(--accent)'} />
-        <Stat label="Fuel index" value={`${((latest?.index ?? 0) * 100).toFixed(1)}%`} tone={(latest?.index ?? 0) > 0.3 ? 'var(--danger)' : 'var(--accent)'} />
-        <Stat label="6-month revenue" value={kes(months.reduce((a, m) => a + m.revenue, 0))} />
-      </div>
+      <Section title="Latest month">
+        <div className="grid-stats">
+          <Stat label="Revenue" value={kes(latest?.revenue ?? 0)} hint={delta === null ? latest?.label : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(0)}% vs prior`} tone={delta !== null && delta < 0 ? 'var(--danger)' : 'var(--accent)'} />
+          <Stat label={profitLabel} value={kes(latest?.profit ?? 0)} hint={`${((latest?.margin ?? 0) * 100).toFixed(0)}% · ${profitNote}`} tone={(latest?.profit ?? 0) < 0 ? 'var(--danger)' : 'var(--accent)'} />
+          <Stat label="Fuel index" value={`${((latest?.index ?? 0) * 100).toFixed(1)}%`} tone={(latest?.index ?? 0) > 0.3 ? 'var(--danger)' : 'var(--accent)'} />
+          <Stat label="6-month revenue" value={kes(months.reduce((a, m) => a + m.revenue, 0))} />
+        </div>
+      </Section>
 
       {/* Revenue vs profit bars */}
       <div className="card" style={{ padding: 18, marginBottom: 16 }}>
@@ -53,7 +58,7 @@ export default function ReportsView({ months }: { months: MonthRow[] }) {
         </div>
         <div style={{ display: 'flex', gap: 18, marginTop: 8, fontSize: 12.5, color: 'var(--ink2)' }}>
           <Legend color="var(--accent-mid)" text="Revenue" />
-          <Legend color="var(--gold)" text="Gross profit (revenue − fuel)" />
+          <Legend color="var(--gold)" text={hasCosts ? 'Net profit (after all costs)' : 'Gross profit (revenue − fuel)'} />
         </div>
       </div>
 
@@ -62,7 +67,7 @@ export default function ReportsView({ months }: { months: MonthRow[] }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
           <thead>
             <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>Month</Th><Th right>Trips</Th><Th right>Revenue</Th><Th right>Fuel</Th><Th right>Gross profit</Th><Th right>Margin</Th><Th right>Fuel index</Th>
+              <Th>Month</Th><Th right>Trips</Th><Th right>Revenue</Th><Th right>Fuel</Th><Th right>{profitLabel}</Th><Th right>Margin</Th><Th right>Fuel index</Th>
             </tr>
           </thead>
           <tbody>

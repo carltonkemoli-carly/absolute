@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { StatCard } from '@/components/ui'
+import { StatCard, Card, Section } from '@/components/ui'
 import { Bars, SectionTitle } from '@/components/Bars'
-import { kes } from '@/lib/format'
+import SegmentDonut, { type Seg } from '@/components/SegmentDonut'
+import { kes, kesPlain } from '@/lib/format'
 
 type Group = { key: string; label: string; count: number; toll: number; total: number }
 type Trend = { label: string; toll: number; count: number }
@@ -31,23 +32,37 @@ export default function ExpresswayInsights({
   const pct = stats.totalTrips ? Math.round((stats.expressCount / stats.totalTrips) * 100) : 0
   const delta = stats.prevToll > 0 ? Math.round(((stats.totalToll - stats.prevToll) / stats.prevToll) * 100) : null
 
+  const dirSegs: Seg[] = [
+    { label: 'To JKIA', value: direction.to.toll, color: '#2C7A53' },
+    { label: 'From JKIA', value: direction.from.toll, color: '#C9A227' },
+    { label: 'Other', value: direction.other.toll, color: '#2F9E8F' },
+  ].filter((s) => s.value > 0)
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {/* Overview */}
-      <div className="grid-stats">
-        <StatCard label="Expressway tolls" value={kes(stats.totalToll)}
-          hint={delta === null ? period : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% vs last month`}
-          accent={delta !== null && delta > 0 ? 'var(--gold)' : 'var(--accent)'} />
-        <StatCard label="Expressway trips" value={String(stats.expressCount)} hint={`${pct}% of ${stats.totalTrips} trips`} />
-        <StatCard label="Average toll" value={kes(stats.avgToll)} hint="per expressway trip" />
-        <StatCard label="Non-expressway" value={String(stats.totalTrips - stats.expressCount)} hint="trips with no toll" />
-      </div>
+      <Section title={`Overview · ${period}`}>
+        <div className="grid-stats">
+          <StatCard label="Expressway tolls" value={kes(stats.totalToll)}
+            hint={delta === null ? period : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% vs last month`}
+            accent={delta !== null && delta > 0 ? 'var(--gold)' : 'var(--accent)'} />
+          <StatCard label="Expressway trips" value={String(stats.expressCount)} hint={`${pct}% of ${stats.totalTrips} trips`} />
+          <StatCard label="Average toll" value={kes(stats.avgToll)} hint="per expressway trip" />
+          <StatCard label="Non-expressway" value={String(stats.totalTrips - stats.expressCount)} hint="trips with no toll" />
+        </div>
+      </Section>
 
-      {/* Trend */}
-      <div className="card" style={{ padding: 18 }}>
-        <SectionTitle>Toll spend — last 6 months</SectionTitle>
-        <Bars items={trend.map((t) => ({ label: t.label, value: t.toll, sub: `${t.count}` }))}
-          max={Math.max(1, ...trend.map((t) => t.toll))} format={kes} accent="var(--gold)" />
+      {/* Trend + direction */}
+      <div className={dirSegs.length > 0 ? 'grid-2' : undefined}>
+        <Card title="Toll spend — last 6 months">
+          <Bars items={trend.map((t) => ({ label: t.label, value: t.toll, sub: `${t.count}` }))}
+            max={Math.max(1, ...trend.map((t) => t.toll))} format={kes} accent="var(--gold)" />
+        </Card>
+        {dirSegs.length > 0 && (
+          <Card title="Tolls by direction">
+            <SegmentDonut data={dirSegs} centerValue={kesPlain(stats.totalToll)} centerLabel="Ksh tolls" centerSize={18} money />
+          </Card>
+        )}
       </div>
 
       {/* Rank toggle */}

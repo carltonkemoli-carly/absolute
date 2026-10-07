@@ -4,8 +4,9 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { StatCard } from '@/components/ui'
-import { kes, fmtDate } from '@/lib/format'
+import { StatCard, Card, Section } from '@/components/ui'
+import SegmentDonut, { type Seg } from '@/components/SegmentDonut'
+import { kes, kesPlain, fmtDate } from '@/lib/format'
 import type { Contractor, Invoice } from '@/lib/types'
 import { saveInvoice, recordPayment, markPaid, deleteInvoice, previewInvoiceFromTrips, generateInvoiceFromTrips, type InvoicePreview } from './actions'
 
@@ -72,31 +73,47 @@ export default function ReceivablesView({ invoices, contractors }: { invoices: I
 
   const sorted = [...invoices].sort((a, b) => (b.due_date ?? '').localeCompare(a.due_date ?? ''))
 
+  const statusSegs: Seg[] = [
+    { label: 'Collected', value: totalCollected, color: '#2C7A53' },
+    { label: 'Outstanding', value: Math.max(0, totalOutstanding - overdue), color: '#C9A227' },
+    { label: 'Overdue', value: overdue, color: '#BC3E22' },
+  ].filter((s) => s.value > 0)
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div className="grid-stats">
-        <StatCard label="Outstanding" value={kes(totalOutstanding)} hint="owed to you" accent={totalOutstanding > 0 ? 'var(--gold)' : 'var(--accent)'} />
-        <StatCard label="Overdue" value={kes(overdue)} hint="past due date" accent={overdue > 0 ? 'var(--danger)' : 'var(--accent)'} />
-        <StatCard label="Collected" value={kes(totalCollected)} hint={`of ${kes(totalBilled)} billed`} accent="var(--accent)" />
-        <StatCard label="Invoices" value={String(invoices.length)} />
-      </div>
+      <Section title="Overview">
+        <div className="grid-stats">
+          <StatCard label="Outstanding" value={kes(totalOutstanding)} hint="owed to you" accent={totalOutstanding > 0 ? 'var(--gold)' : 'var(--accent)'} />
+          <StatCard label="Overdue" value={kes(overdue)} hint="past due date" accent={overdue > 0 ? 'var(--danger)' : 'var(--accent)'} />
+          <StatCard label="Collected" value={kes(totalCollected)} hint={`of ${kes(totalBilled)} billed`} accent="var(--accent)" />
+          <StatCard label="Invoices" value={String(invoices.length)} />
+        </div>
+      </Section>
 
-      {byContractor.length > 0 && (
-        <div className="card" style={{ padding: 18 }}>
-          <div className="font-display" style={{ fontSize: 15, fontWeight: 600, marginBottom: 10 }}>Who owes you</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
-            {byContractor.map((c) => (
-              <div key={c.id} style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: c.od > 0 ? 'var(--danger-light)' : 'var(--surface2)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <strong>{c.name}</strong>
-                  <span className="font-display" style={{ fontWeight: 700 }}>{kes(c.out)}</span>
-                </div>
-                <div style={{ fontSize: 12, color: c.od > 0 ? 'var(--danger)' : 'var(--ink3)', marginTop: 3 }}>
-                  {c.od > 0 ? `${kes(c.od)} overdue · up to ${c.worst} days late` : 'within terms'}
-                </div>
+      {invoices.length > 0 && (
+        <div className={byContractor.length > 0 ? 'grid-2' : undefined}>
+          <Card title="Collection status">
+            {statusSegs.length === 0
+              ? <p style={{ fontSize: 13.5, color: 'var(--ink3)' }}>Nothing billed yet.</p>
+              : <SegmentDonut data={statusSegs} centerValue={kesPlain(totalBilled)} centerLabel="Ksh billed" centerSize={18} money />}
+          </Card>
+          {byContractor.length > 0 && (
+            <Card title="Who owes you">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+                {byContractor.map((c) => (
+                  <div key={c.id} style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: c.od > 0 ? 'var(--danger-light)' : 'var(--surface2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                      <strong>{c.name}</strong>
+                      <span className="font-display" style={{ fontWeight: 700 }}>{kes(c.out)}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: c.od > 0 ? 'var(--danger)' : 'var(--ink3)', marginTop: 3 }}>
+                      {c.od > 0 ? `${kes(c.od)} overdue · up to ${c.worst} days late` : 'within terms'}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </Card>
+          )}
         </div>
       )}
 

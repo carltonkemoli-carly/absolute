@@ -25,6 +25,7 @@ export default async function ReportsPage() {
   ])
   const monthlyHireFees = vehicles.filter((v) => v.ownership === 'monthly_hire').reduce((a, v) => a + (Number(v.monthly_fee) || 0), 0)
 
+  let hasCosts = false
   const months: MonthRow[] = []
   for (let i = MONTHS_BACK - 1; i >= 0; i--) {
     const d = new Date(base.getFullYear(), base.getMonth() - i, 1)
@@ -38,6 +39,7 @@ export default async function ReportsPage() {
     const serviceCost = ms.reduce((a, s) => a + Number(s.cost), 0)
     const expenseCost = me.reduce((a, e) => a + Number(e.amount), 0)
     const hireCost = monthlyHireFees + mt.reduce((a, t) => a + (Number(t.hire_cost) || 0), 0)
+    if (serviceCost + expenseCost + hireCost > 0) hasCosts = true
     const express = mt.reduce((a, t) => a + Number(t.express_charges), 0)
     const profit = revenue - fuelCost - serviceCost - expenseCost - hireCost
     months.push({
@@ -58,7 +60,7 @@ export default async function ReportsPage() {
   return (
     <>
       <PageHeader title="Reports & Trends" subtitle="How money is moving — last 6 months of activity" />
-      <ReportsView months={months} />
+      <ReportsView months={months} hasCosts={hasCosts} />
     </>
   )
 }
