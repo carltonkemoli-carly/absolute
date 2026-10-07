@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { saveRecord, deleteRecord, listContractorTrips } from '@/lib/db'
+import { isoDate, addDays } from '@/lib/format'
 
 // month is "YYYY-MM" → first/last day of that month.
 function monthRange(month: string): { start: string; end: string; label: string } | null {
@@ -50,8 +51,8 @@ export async function generateInvoiceFromTrips(formData: FormData) {
   const trips = await listContractorTrips(contractor_id, r.start, r.end)
   if (trips.length === 0) return
   const amount = trips.reduce((s, t) => s + Number(t.amount ?? 0), 0)
-  const issue = new Date().toISOString().slice(0, 10)
-  const due = new Date(Date.now() + dueDays * 86400000).toISOString().slice(0, 10)
+  const issue = isoDate(new Date())
+  const due = isoDate(addDays(new Date(), dueDays))
   await saveRecord('invoices', {
     contractor_id, invoice_no,
     period_label: r.label, period_start: r.start, period_end: r.end,
@@ -85,7 +86,7 @@ export async function recordPayment(formData: FormData) {
   const amount = num(formData.get('amount'))
   const amount_paid = num(formData.get('amount_paid'))
   const paid_date = amount_paid >= amount && amount > 0
-    ? (emptyToNull(formData.get('paid_date')) ?? new Date().toISOString().slice(0, 10))
+    ? (emptyToNull(formData.get('paid_date')) ?? isoDate(new Date()))
     : emptyToNull(formData.get('paid_date'))
   await saveRecord('invoices', { amount_paid, paid_date }, id)
   revalidatePath('/receivables')
@@ -96,7 +97,7 @@ export async function markPaid(formData: FormData) {
   const id = String(formData.get('id') || '')
   const amount = num(formData.get('amount'))
   if (!id) return
-  await saveRecord('invoices', { amount_paid: amount, paid_date: new Date().toISOString().slice(0, 10) }, id)
+  await saveRecord('invoices', { amount_paid: amount, paid_date: isoDate(new Date()) }, id)
   revalidatePath('/receivables')
 }
 

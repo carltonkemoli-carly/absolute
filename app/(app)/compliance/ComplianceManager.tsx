@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { fmtDate } from '@/lib/format'
+import { fmtDate, isoDate } from '@/lib/format'
 import {
   VEHICLE_DOC_TYPES, DRIVER_DOC_TYPES,
   type ComplianceDoc, type Driver, type Vehicle, type DocOwnerKind,
@@ -55,7 +55,7 @@ export default function ComplianceManager({
             <input type="hidden" name="id" value={attending.id} />
             <div className="grid-form">
               <label className="field"><span>Attended on *</span>
-                <input name="attended_on" type="date" className="input" required defaultValue={new Date().toISOString().slice(0, 10)} />
+                <input name="attended_on" type="date" className="input" required defaultValue={isoDate(new Date())} />
               </label>
               <label className="field" style={{ gridColumn: 'span 3' }}><span>What was done</span>
                 <input name="attended_note" className="input" placeholder="e.g. Renewal booked with Jubilee, awaiting certificate" />

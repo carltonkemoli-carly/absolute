@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { Section } from '@/components/ui'
-import { fmtTime, fmtDateTime, fmtDate, waNumber } from '@/lib/format'
+import { fmtTime, fmtDateTime, fmtDate, waNumber, isoDate, addDays } from '@/lib/format'
 import type { Contractor, Driver, Organization, Trip, Vehicle } from '@/lib/types'
 import { setTripStatus, clearPendingTrips } from './actions'
 import AssignForm from './AssignForm'
@@ -65,8 +65,11 @@ export default function DispatchBoard({ day, trips, pendingTrips = [], pendingTo
   }
 
   function shiftDay(delta: number) {
-    const d = new Date(day); d.setDate(d.getDate() + delta)
-    router.push(`/dispatch?d=${d.toISOString().slice(0, 10)}`)
+    // Build the date from local parts: `new Date('2026-10-07')` parses as UTC
+    // midnight, so mixing it with local getters only lands on the right day by
+    // luck of the timezone's sign.
+    const [y, m, d] = day.split('-').map(Number)
+    router.push(`/dispatch?d=${isoDate(addDays(new Date(y, m - 1, d), delta))}`)
   }
 
   return (

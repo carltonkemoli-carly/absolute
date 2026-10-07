@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { saveRecord, deleteRecord } from '@/lib/db'
+import { isoDate } from '@/lib/format'
 
 export async function saveDocument(formData: FormData) {
   const id = String(formData.get('id') || '')
@@ -35,7 +36,7 @@ export async function deleteDocument(formData: FormData) {
 export async function markAttended(formData: FormData) {
   const id = String(formData.get('id') || '')
   if (!id) return
-  const attended_on = String(formData.get('attended_on') || '').trim() || new Date().toISOString().slice(0, 10)
+  const attended_on = String(formData.get('attended_on') || '').trim() || isoDate(new Date())
   await saveRecord('documents', {
     attended: true,
     attended_on,

@@ -6,17 +6,20 @@ import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { StatCard, Card, Section } from '@/components/ui'
 import SegmentDonut, { type Seg } from '@/components/SegmentDonut'
-import { kes, kesPlain, fmtDate } from '@/lib/format'
+import { kes, kesPlain, fmtDate, isoDate } from '@/lib/format'
 import type { Contractor, Invoice } from '@/lib/types'
 import { saveInvoice, recordPayment, markPaid, deleteInvoice, previewInvoiceFromTrips, generateInvoiceFromTrips, type InvoicePreview } from './actions'
 
-const thisMonth = new Date().toISOString().slice(0, 7)
+// Read fresh on each call: as module-level constants these froze the date for the
+// life of the process, and took the UTC day — a day behind between midnight and
+// 3am in Nairobi, which is exactly when an invoice tips into "overdue".
+const todayIso = () => isoDate(new Date())
+const thisMonthIso = () => todayIso().slice(0, 7)
 
-const today = new Date().toISOString().slice(0, 10)
 function outstanding(i: Invoice) { return Math.max(0, Number(i.amount) - Number(i.amount_paid)) }
 function overdueDays(i: Invoice) {
   if (outstanding(i) <= 0 || !i.due_date) return 0
-  const d = Math.round((Date.parse(today) - Date.parse(i.due_date)) / 86400000)
+  const d = Math.round((Date.parse(todayIso()) - Date.parse(i.due_date)) / 86400000)
   return d > 0 ? d : 0
 }
 function statusOf(i: Invoice): { label: string; color: string } {
@@ -36,7 +39,7 @@ export default function ReceivablesView({ invoices, contractors }: { invoices: I
 
   // Generate-from-trips state
   const [genContractor, setGenContractor] = useState('')
-  const [genMonth, setGenMonth] = useState(thisMonth)
+  const [genMonth, setGenMonth] = useState(thisMonthIso())
   const [preview, setPreview] = useState<InvoicePreview | null>(null)
   const [busy, startBusy] = useTransition()
 
@@ -186,7 +189,7 @@ export default function ReceivablesView({ invoices, contractors }: { invoices: I
             <label className="field"><span>Period</span><input name="period_label" className="input" placeholder="e.g. June 2026" /></label>
             <label className="field"><span>Invoice no.</span><input name="invoice_no" className="input" placeholder="INV-1042" /></label>
             <label className="field"><span>Amount (KES) *</span><input name="amount" type="number" step="1" className="input" required /></label>
-            <label className="field"><span>Issue date</span><input name="issue_date" type="date" className="input" defaultValue={today} /></label>
+            <label className="field"><span>Issue date</span><input name="issue_date" type="date" className="input" defaultValue={todayIso()} /></label>
             <label className="field"><span>Due date</span><input name="due_date" type="date" className="input" /></label>
             <label className="field" style={{ gridColumn: 'span 2' }}><span>Notes</span><input name="notes" className="input" /></label>
           </div>
@@ -241,7 +244,7 @@ export default function ReceivablesView({ invoices, contractors }: { invoices: I
                       <form action={async (fd) => { await recordPayment(fd); setPayId(null) }} style={{ display: 'flex', gap: 6, marginTop: 8, justifyContent: 'flex-end' }}>
                         <input type="hidden" name="id" value={i.id} /><input type="hidden" name="amount" value={i.amount} />
                         <input name="amount_paid" type="number" step="1" className="input" defaultValue={i.amount_paid} style={{ width: 120, padding: '6px 9px' }} placeholder="Paid so far" />
-                        <input name="paid_date" type="date" className="input" defaultValue={today} style={{ width: 150, padding: '6px 9px' }} />
+                        <input name="paid_date" type="date" className="input" defaultValue={todayIso()} style={{ width: 150, padding: '6px 9px' }} />
                         <button type="submit" className="btn-primary" style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer' }}>Save</button>
                       </form>
                     )}
