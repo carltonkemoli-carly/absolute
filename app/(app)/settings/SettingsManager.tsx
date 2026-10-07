@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { Section } from '@/components/ui'
 import type { Contractor, Organization, Profile } from '@/lib/types'
 import { saveContractor, deleteContractor, saveOrganization, deleteOrganization } from './actions'
 import { setUserRole, createUser } from './user-actions'
@@ -23,7 +24,7 @@ export default function SettingsManager({
   canManageUsers: boolean
 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 26 }}>
+    <div>
       <ContractorSection contractors={contractors} />
       <OrganizationSection organizations={organizations} contractors={contractors} />
       {canManageUsers && <UsersSection profiles={profiles} />}
@@ -31,20 +32,20 @@ export default function SettingsManager({
   )
 }
 
-function Section({ title, desc, children }: { title: string; desc: string; children: React.ReactNode }) {
+// The shared Section band, plus the one-line description these blocks carry.
+function SettingsSection({ title, desc, children }: { title: string; desc: string; children: React.ReactNode }) {
   return (
-    <section>
-      <h2 className="font-display" style={{ fontSize: 17, fontWeight: 600, margin: '0 0 2px' }}>{title}</h2>
-      <p style={{ fontSize: 13.5, color: 'var(--ink2)', margin: '0 0 12px' }}>{desc}</p>
+    <Section title={title}>
+      <p style={{ fontSize: 13.5, color: 'var(--ink2)', margin: '-2px 0 12px' }}>{desc}</p>
       {children}
-    </section>
+    </Section>
   )
 }
 
 function ContractorSection({ contractors }: { contractors: Contractor[] }) {
   const [adding, setAdding] = useState(false)
   return (
-    <Section title="Contractors" desc="The companies that send you jobs (BCD, FCM, direct). Drives billing.">
+    <SettingsSection title="Contractors" desc="The companies that send you jobs (BCD, FCM, direct). Drives billing.">
       <div className="card" style={{ overflow: 'hidden' }}>
         {contractors.map((c) => (
           <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
@@ -66,7 +67,7 @@ function ContractorSection({ contractors }: { contractors: Contractor[] }) {
           <button onClick={() => setAdding(true)} style={{ ...addRow }}>+ Add contractor</button>
         )}
       </div>
-    </Section>
+    </SettingsSection>
   )
 }
 
@@ -74,7 +75,7 @@ function OrganizationSection({ organizations, contractors }: { organizations: Or
   const [adding, setAdding] = useState(false)
   const cname = (id: string | null) => contractors.find((c) => c.id === id)?.name ?? '—'
   return (
-    <Section title="Organizations" desc="The end clients you ferry (World Bank, Safaricom, AATF…). Used as a dropdown when logging trips.">
+    <SettingsSection title="Organizations" desc="The end clients you ferry (World Bank, Safaricom, AATF…). Used as a dropdown when logging trips.">
       <div className="card" style={{ overflow: 'hidden' }}>
         <div style={{ maxHeight: 320, overflowY: 'auto' }} className="scroll-thin">
           {organizations.map((o) => (
@@ -100,7 +101,7 @@ function OrganizationSection({ organizations, contractors }: { organizations: Or
           <button onClick={() => setAdding(true)} style={{ ...addRow }}>+ Add organization</button>
         )}
       </div>
-    </Section>
+    </SettingsSection>
   )
 }
 
@@ -117,7 +118,7 @@ function UsersSection({ profiles }: { profiles: Profile[] }) {
   }
 
   return (
-    <Section title="Users" desc="People with a login. Owner & accountant see finances; office is operations only.">
+    <SettingsSection title="Users" desc="People with a login. Owner & accountant see finances; office is operations only.">
       <div className="card" style={{ overflow: 'hidden' }}>
         {profiles.map((p) => (
           <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--border)', gap: 12 }}>
@@ -146,7 +147,7 @@ function UsersSection({ profiles }: { profiles: Profile[] }) {
           <button onClick={() => setAdding(true)} style={{ width: '100%', textAlign: 'left', padding: '13px 16px', background: 'none', border: 'none', color: 'var(--accent-mid)', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>+ Add a staff login</button>
         )}
       </div>
-    </Section>
+    </SettingsSection>
   )
 }
 

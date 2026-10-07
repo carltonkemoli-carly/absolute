@@ -41,6 +41,12 @@ export default function SegmentDonut({
   const c = 2 * Math.PI * r
   const gap = shown.length > 1 ? 10 : 0
 
+  // Math.cos/sin are allowed to differ in the last bit between JS engines, so the
+  // server (Node) and the browser can disagree ~1e-13 on a badge's position and
+  // React reports a hydration mismatch. Sub-pixel precision is meaningless here,
+  // so round to 2dp and both sides always agree.
+  const px = (n: number) => Math.round(n * 100) / 100
+
   let acc = 0
   const segs = shown.map((s) => {
     const frac = s.value / total
@@ -52,8 +58,8 @@ export default function SegmentDonut({
       ...s, frac, startFrac,
       len: Math.max(0.5, frac * c - gap),
       offset: startFrac * c,
-      bx: cx + r * Math.cos(midAngle),
-      by: cx + r * Math.sin(midAngle),
+      bx: px(cx + r * Math.cos(midAngle)),
+      by: px(cx + r * Math.sin(midAngle)),
     }
   })
 

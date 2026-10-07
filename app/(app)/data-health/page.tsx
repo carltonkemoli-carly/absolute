@@ -1,5 +1,7 @@
 import Link from 'next/link'
-import { PageHeader } from '@/components/ui'
+import { PageHeader, StatCard, Card, Section } from '@/components/ui'
+import SegmentDonut from '@/components/SegmentDonut'
+import type { Seg } from '@/lib/chart'
 import { requireProfile } from '@/lib/auth'
 import { listTrips, listVehicles, listFuel, listOrganizations, listContractors, listDrivers } from '@/lib/db'
 import { isoDate } from '@/lib/format'
@@ -60,31 +62,71 @@ export default async function DataHealthPage() {
     ? 'All clear — your data looks healthy.'
     : `${issues.length} issue${issues.length === 1 ? '' : 's'} to review across ${trips.length} trips.`
 
+  // Part-to-whole of the checks themselves — how much of the audit is clean.
+  const resultMix: Seg[] = [
+    { label: 'Healthy', value: clean.length, color: '#2C7A53' },
+    { label: 'Worth a look', value: infos.length, color: '#C9A227' },
+    { label: 'Needs attention', value: issues.length, color: '#BC3E22' },
+  ]
+
+  const covered: { label: string; value: number }[] = [
+    { label: 'Trips', value: trips.length },
+    { label: 'Vehicles', value: vehicles.length },
+    { label: 'Fuel entries', value: fuel.length },
+    { label: 'Clients', value: orgs.length },
+    { label: 'Contractors', value: contractors.length },
+    { label: 'Drivers', value: drivers.length },
+  ]
+
   return (
     <>
       <PageHeader title="Data health" subtitle="Catch bad data before it distorts your reports" />
 
-      <div className="card" style={{ padding: 16, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span style={{ fontSize: 20 }}>{issues.length === 0 ? '✅' : '🩺'}</span>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>{summary}</div>
-          <div style={{ fontSize: 12.5, color: 'var(--ink3)' }}>{trips.length} trips · {vehicles.length} vehicles · {fuel.length} fuel entries · {orgs.length} clients · {contractors.length} contractors · {drivers.length} drivers</div>
+      <Section title="Data health overview">
+        <div className="grid-stats" style={{ marginBottom: 16 }}>
+          <StatCard label="Checks run" value={String(checks.length)} hint="across every record" />
+          <StatCard label="Needs attention" value={String(issues.length)}
+            hint={issues.length > 0 ? 'fix these first' : 'nothing broken'}
+            accent={issues.length > 0 ? 'var(--danger)' : 'var(--accent)'} />
+          <StatCard label="Worth a look" value={String(infos.length)}
+            hint={infos.length > 0 ? 'not urgent' : 'nothing pending'}
+            accent={infos.length > 0 ? 'var(--gold)' : 'var(--accent)'} />
+          <StatCard label="Healthy" value={String(clean.length)} hint="passing cleanly" accent="var(--accent)" />
         </div>
-      </div>
 
-      {issues.length > 0 && <Section title="Needs attention">{issues.map((c, i) => <Row key={i} c={c} />)}</Section>}
-      {infos.length > 0 && <Section title="Worth a look">{infos.map((c, i) => <Row key={i} c={c} />)}</Section>}
-      {clean.length > 0 && <Section title="Healthy">{clean.map((c, i) => <Row key={i} c={c} />)}</Section>}
+        <div className="grid-2">
+          <Card title="Check results">
+            <SegmentDonut data={resultMix} centerValue={String(checks.length)} centerLabel="checks" badges />
+          </Card>
+          <Card title="What's covered">
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>
+              <span style={{ fontSize: 17, marginRight: 8 }}>{issues.length === 0 ? '✅' : '🩺'}</span>{summary}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {covered.map((c) => (
+                <div key={c.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, borderTop: '1px solid var(--border)', paddingTop: 7 }}>
+                  <span style={{ color: 'var(--ink2)' }}>{c.label}</span>
+                  <span style={{ fontWeight: 600 }}>{c.value.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </Section>
+
+      {issues.length > 0 && <CheckList title="Needs attention">{issues.map((c, i) => <Row key={i} c={c} />)}</CheckList>}
+      {infos.length > 0 && <CheckList title="Worth a look">{infos.map((c, i) => <Row key={i} c={c} />)}</CheckList>}
+      {clean.length > 0 && <CheckList title="Healthy">{clean.map((c, i) => <Row key={i} c={c} />)}</CheckList>}
     </>
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+// A Section band wrapping the checks as one flush-edged card.
+function CheckList({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div className="font-display" style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 8px 2px' }}>{title}</div>
+    <Section title={title}>
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>{children}</div>
-    </div>
+    </Section>
   )
 }
 function Row({ c }: { c: Check }) {

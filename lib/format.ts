@@ -56,6 +56,12 @@ export function isoDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+// Shift a date by whole days, staying on local calendar parts (so "in 30 days"
+// lands on the right day rather than drifting with millisecond arithmetic).
+export function addDays(d: Date, days: number): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + days)
+}
+
 // Resolve ?y= & ?m= search params into a year/month, defaulting to current month.
 export function resolvePeriod(y?: string, m?: string): { year: number; month: number } {
   const now = new Date()

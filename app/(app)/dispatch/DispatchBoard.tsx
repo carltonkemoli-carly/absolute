@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { Section } from '@/components/ui'
 import { fmtTime, fmtDateTime, fmtDate, waNumber } from '@/lib/format'
 import type { Contractor, Driver, Organization, Trip, Vehicle } from '@/lib/types'
 import { setTripStatus, clearPendingTrips } from './actions'
@@ -101,124 +102,128 @@ export default function DispatchBoard({ day, trips, pendingTrips = [], pendingTo
         </div>
       </div>
 
-      {sorted.length === 0 && <div className="card" style={{ padding: 36, textAlign: 'center', color: 'var(--ink3)' }}>{count('completed') > 0 ? 'All jobs for this day are completed. ✓' : 'No jobs for this day. Pick another date above, or expand the pending queue.'}</div>}
-
       {/* Expandable date-grouped pending queue */}
       {showQueue && otherPending.length > 0 && (
-        <div className="card animate-fadeup" style={{ marginBottom: 18, padding: 14 }}>
-          <div style={{ fontSize: 12.5, color: 'var(--ink2)', marginBottom: 10 }}>
-            Click a day to open it above and assign drivers.{pendingTrips.length < pendingTotal ? ` Showing the first ${pendingDays.length} days.` : ''}
+        <Section title="Waiting to be assigned">
+          <div className="card animate-fadeup" style={{ marginBottom: 18, padding: 14 }}>
+            <div style={{ fontSize: 12.5, color: 'var(--ink2)', marginBottom: 10 }}>
+              Click a day to open it above and assign drivers.{pendingTrips.length < pendingTotal ? ` Showing the first ${pendingDays.length} days.` : ''}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
+              {pendingDays.map(([date, jobs]) => (
+                <button key={date} className="card card-hover" onClick={() => { router.push(`/dispatch?d=${date}`); setShowQueue(false) }}
+                  style={{ padding: 14, textAlign: 'left', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontWeight: 700, fontSize: 14 }}>{fmtDate(date)}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gold)', background: 'var(--gold-light)', padding: '2px 8px', borderRadius: 'var(--radius-pill)', whiteSpace: 'nowrap' }}>{jobs.length} job{jobs.length > 1 ? 's' : ''}</span>
+                  </div>
+                  <div style={{ fontSize: 12.5, color: 'var(--ink3)', lineHeight: 1.5 }}>
+                    {jobs.slice(0, 3).map((j) => j.client_name).join(', ')}{jobs.length > 3 ? `, +${jobs.length - 3} more` : ''}
+                  </div>
+                  <div style={{ fontSize: 12.5, color: 'var(--accent)', fontWeight: 600, marginTop: 2 }}>Open & assign →</div>
+                </button>
+              ))}
+            </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
-            {pendingDays.map(([date, jobs]) => (
-              <button key={date} className="card card-hover" onClick={() => { router.push(`/dispatch?d=${date}`); setShowQueue(false) }}
-                style={{ padding: 14, textAlign: 'left', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                  <span style={{ fontWeight: 700, fontSize: 14 }}>{fmtDate(date)}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gold)', background: 'var(--gold-light)', padding: '2px 8px', borderRadius: 'var(--radius-pill)', whiteSpace: 'nowrap' }}>{jobs.length} job{jobs.length > 1 ? 's' : ''}</span>
-                </div>
-                <div style={{ fontSize: 12.5, color: 'var(--ink3)', lineHeight: 1.5 }}>
-                  {jobs.slice(0, 3).map((j) => j.client_name).join(', ')}{jobs.length > 3 ? `, +${jobs.length - 3} more` : ''}
-                </div>
-                <div style={{ fontSize: 12.5, color: 'var(--accent)', fontWeight: 600, marginTop: 2 }}>Open & assign →</div>
-              </button>
-            ))}
-          </div>
-        </div>
+        </Section>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 14 }}>
-        {sorted.map((t) => {
-          const d = driver(t.driver_id)
-          const doneCount = DONE[t.status] ?? 0
-          const msg = `Hi ${d?.name ?? ''}, trip for ${t.client_name}: ${t.pickup ?? ''} → ${t.dropoff ?? ''}${t.flight_time ? ` at ${fmtTime(t.flight_time)}` : ''}${t.flight_no ? ` (flight ${t.flight_no})` : ''}. Vehicle ${plate(t.vehicle_id) ?? ''}. Please confirm.`
+      <Section title={`Jobs — ${fmtDate(day)}`}>
+        {sorted.length === 0 && <div className="card" style={{ padding: 36, textAlign: 'center', color: 'var(--ink3)' }}>{count('completed') > 0 ? 'All jobs for this day are completed. ✓' : 'No jobs for this day. Pick another date above, or expand the pending queue.'}</div>}
 
-          return (
-            <div key={t.id} className="card card-hover animate-fadeup" style={{ padding: 0, overflow: 'hidden' }}>
-              {/* status accent bar */}
-              <div style={{ height: 3, background: STATUS_COLOR[t.status] }} />
-              <div style={{ padding: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 15.5 }}>{t.client_name}</div>
-                    <div style={{ fontSize: 13, color: 'var(--ink2)', marginTop: 2 }}>{(t.pickup || '—')} → {(t.dropoff || '—')}</div>
-                  </div>
-                  <span style={{ fontSize: 11.5, fontWeight: 700, color: STATUS_COLOR[t.status], background: 'var(--surface2)', padding: '3px 9px', borderRadius: 'var(--radius-pill)', whiteSpace: 'nowrap' }}>{STATUS_LABEL[t.status]}</span>
-                </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 14 }}>
+          {sorted.map((t) => {
+            const d = driver(t.driver_id)
+            const doneCount = DONE[t.status] ?? 0
+            const msg = `Hi ${d?.name ?? ''}, trip for ${t.client_name}: ${t.pickup ?? ''} → ${t.dropoff ?? ''}${t.flight_time ? ` at ${fmtTime(t.flight_time)}` : ''}${t.flight_no ? ` (flight ${t.flight_no})` : ''}. Vehicle ${plate(t.vehicle_id) ?? ''}. Please confirm.`
 
-                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12.5, color: 'var(--ink3)', margin: '9px 0 12px' }}>
-                  {t.flight_no && <span>✈ {t.flight_no} · {t.flight_time ? fmtTime(t.flight_time) : ''}</span>}
-                  <span>{conName(t.contractor_id)}{orgName(t.organization_id) ? ` · ${orgName(t.organization_id)}` : ''}</span>
-                </div>
-
-                {/* Stepper */}
-                <Stepper doneCount={doneCount} />
-
-                {/* Step-specific action area */}
-                <div style={{ marginTop: 14 }}>{renderAction()}</div>
-              </div>
-            </div>
-          )
-
-          function renderAction() {
-            if (t.status === 'booked') {
-              return (
-                <ActionBlock step="1" title="Assign a driver & vehicle" hint="Pick the driver — their usual vehicle fills in automatically.">
-                  <AssignForm tripId={t.id} drivers={drivers} vehicles={vehicles} busyDrivers={busyDrivers} busyVehicles={busyVehicles} />
-                </ActionBlock>
-              )
-            }
-            const who = <div style={{ fontSize: 13.5, marginBottom: 4 }}><strong>{plate(t.vehicle_id) ?? '—'}</strong> · {d?.name ?? 'No driver'}{t.assigned_by ? <span style={{ color: 'var(--ink3)' }}> · by {t.assigned_by}{t.assigned_at ? `, ${fmtDateTime(t.assigned_at)}` : ''}</span> : null}</div>
-            const contact = d?.phone ? (
-              <div style={{ display: 'flex', gap: 8, margin: '8px 0', flexWrap: 'wrap' }}>
-                <a href={`tel:${d.phone.replace(/\s/g, '')}`} className="btn-ghost" style={contactBtn}>📞 Call</a>
-                <a href={`https://wa.me/${waNumber(d.phone)}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" className="btn-ghost" style={{ ...contactBtn, color: '#1DA851', borderColor: '#1DA851' }}>💬 WhatsApp</a>
-                <a href={`sms:${d.phone.replace(/\s/g, '')}?body=${encodeURIComponent(msg)}`} className="btn-ghost" style={contactBtn}>✉ SMS</a>
-              </div>
-            ) : null
-
-            if (t.status === 'assigned') {
-              return (
-                <ActionBlock step="2" title="Dispatch to the driver" hint="Send the trip details, then mark it dispatched.">
-                  {who}{contact}
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <StatusBtn id={t.id} status="dispatched" label="Mark as dispatched →" primary />
-                    <StatusBtn id={t.id} status="booked" label="Unassign" />
-                  </div>
-                </ActionBlock>
-              )
-            }
-            if (t.status === 'dispatched') {
-              return (
-                <ActionBlock step="3" title={`Awaiting ${d?.name?.split(' ')[0] ?? 'driver'}'s confirmation`} hint="Sent. Mark confirmed once the driver accepts.">
-                  {who}{contact}
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <StatusBtn id={t.id} status="confirmed" label="✓ Driver confirmed" primary />
-                    <StatusBtn id={t.id} status="assigned" label="Back" />
-                  </div>
-                </ActionBlock>
-              )
-            }
-            if (t.status === 'confirmed') {
-              return (
-                <ActionBlock step="4" title="Ready to go" hint={`${d?.name?.split(' ')[0] ?? 'Driver'} confirmed. Start when the trip begins.`}>
-                  {who}
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <StatusBtn id={t.id} status="enroute" label="▶ Start trip" primary />
-                  </div>
-                </ActionBlock>
-              )
-            }
-            // enroute
             return (
-              <ActionBlock step="" title="On the road" hint="Close the job when the passenger is dropped off.">
-                {who}
-                <StatusBtn id={t.id} status="completed" label="✓ Complete trip" primary />
-              </ActionBlock>
+              <div key={t.id} className="card card-hover animate-fadeup" style={{ padding: 0, overflow: 'hidden' }}>
+                {/* status accent bar */}
+                <div style={{ height: 3, background: STATUS_COLOR[t.status] }} />
+                <div style={{ padding: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 15.5 }}>{t.client_name}</div>
+                      <div style={{ fontSize: 13, color: 'var(--ink2)', marginTop: 2 }}>{(t.pickup || '—')} → {(t.dropoff || '—')}</div>
+                    </div>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: STATUS_COLOR[t.status], background: 'var(--surface2)', padding: '3px 9px', borderRadius: 'var(--radius-pill)', whiteSpace: 'nowrap' }}>{STATUS_LABEL[t.status]}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12.5, color: 'var(--ink3)', margin: '9px 0 12px' }}>
+                    {t.flight_no && <span>✈ {t.flight_no} · {t.flight_time ? fmtTime(t.flight_time) : ''}</span>}
+                    <span>{conName(t.contractor_id)}{orgName(t.organization_id) ? ` · ${orgName(t.organization_id)}` : ''}</span>
+                  </div>
+
+                  {/* Stepper */}
+                  <Stepper doneCount={doneCount} />
+
+                  {/* Step-specific action area */}
+                  <div style={{ marginTop: 14 }}>{renderAction()}</div>
+                </div>
+              </div>
             )
-          }
-        })}
-      </div>
+
+            function renderAction() {
+              if (t.status === 'booked') {
+                return (
+                  <ActionBlock step="1" title="Assign a driver & vehicle" hint="Pick the driver — their usual vehicle fills in automatically.">
+                    <AssignForm tripId={t.id} drivers={drivers} vehicles={vehicles} busyDrivers={busyDrivers} busyVehicles={busyVehicles} />
+                  </ActionBlock>
+                )
+              }
+              const who = <div style={{ fontSize: 13.5, marginBottom: 4 }}><strong>{plate(t.vehicle_id) ?? '—'}</strong> · {d?.name ?? 'No driver'}{t.assigned_by ? <span style={{ color: 'var(--ink3)' }}> · by {t.assigned_by}{t.assigned_at ? `, ${fmtDateTime(t.assigned_at)}` : ''}</span> : null}</div>
+              const contact = d?.phone ? (
+                <div style={{ display: 'flex', gap: 8, margin: '8px 0', flexWrap: 'wrap' }}>
+                  <a href={`tel:${d.phone.replace(/\s/g, '')}`} className="btn-ghost" style={contactBtn}>📞 Call</a>
+                  <a href={`https://wa.me/${waNumber(d.phone)}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" className="btn-ghost" style={{ ...contactBtn, color: '#1DA851', borderColor: '#1DA851' }}>💬 WhatsApp</a>
+                  <a href={`sms:${d.phone.replace(/\s/g, '')}?body=${encodeURIComponent(msg)}`} className="btn-ghost" style={contactBtn}>✉ SMS</a>
+                </div>
+              ) : null
+
+              if (t.status === 'assigned') {
+                return (
+                  <ActionBlock step="2" title="Dispatch to the driver" hint="Send the trip details, then mark it dispatched.">
+                    {who}{contact}
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <StatusBtn id={t.id} status="dispatched" label="Mark as dispatched →" primary />
+                      <StatusBtn id={t.id} status="booked" label="Unassign" />
+                    </div>
+                  </ActionBlock>
+                )
+              }
+              if (t.status === 'dispatched') {
+                return (
+                  <ActionBlock step="3" title={`Awaiting ${d?.name?.split(' ')[0] ?? 'driver'}'s confirmation`} hint="Sent. Mark confirmed once the driver accepts.">
+                    {who}{contact}
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <StatusBtn id={t.id} status="confirmed" label="✓ Driver confirmed" primary />
+                      <StatusBtn id={t.id} status="assigned" label="Back" />
+                    </div>
+                  </ActionBlock>
+                )
+              }
+              if (t.status === 'confirmed') {
+                return (
+                  <ActionBlock step="4" title="Ready to go" hint={`${d?.name?.split(' ')[0] ?? 'Driver'} confirmed. Start when the trip begins.`}>
+                    {who}
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <StatusBtn id={t.id} status="enroute" label="▶ Start trip" primary />
+                    </div>
+                  </ActionBlock>
+                )
+              }
+              // enroute
+              return (
+                <ActionBlock step="" title="On the road" hint="Close the job when the passenger is dropped off.">
+                  {who}
+                  <StatusBtn id={t.id} status="completed" label="✓ Complete trip" primary />
+                </ActionBlock>
+              )
+            }
+          })}
+        </div>
+      </Section>
     </>
   )
 }
