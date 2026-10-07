@@ -32,3 +32,6 @@ next-env.d.ts
 
 # dev/demo in-memory data
 .devdata.json
+
+# local editor/preview config
+.claude/
