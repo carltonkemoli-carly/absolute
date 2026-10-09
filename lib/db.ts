@@ -317,15 +317,21 @@ export async function saveRecord(table: TableName, row: Row, id: string | null):
   return { error: error?.message ?? null }
 }
 
-// Targets are keyed by (period, kind, category) — upsert by that, not by id.
-export async function upsertTarget(period: string, kind: Target['kind'], category: string | null, amount: number): Promise<void> {
+// Targets are keyed by (period, kind, category, contractor) — upsert by that, not
+// by id. contractorId null = a company-wide target; set = that supplier's target.
+export async function upsertTarget(
+  period: string, kind: Target['kind'], category: string | null, amount: number, contractorId: string | null = null,
+): Promise<void> {
   if (DEV_MODE) {
     const data = loadStore()
-    const match = (t: Target) => t.period === period && t.kind === kind && (t.category ?? null) === (category ?? null)
+    const match = (t: Target) =>
+      t.period === period && t.kind === kind &&
+      (t.category ?? null) === (category ?? null) &&
+      (t.contractor_id ?? null) === (contractorId ?? null)
     const i = data.targets.findIndex(match)
     if (amount > 0) {
       if (i >= 0) data.targets[i] = { ...data.targets[i], amount }
-      else data.targets.unshift({ id: uid('tgt'), period, kind, category, amount, created_at: new Date().toISOString() })
+      else data.targets.unshift({ id: uid('tgt'), period, kind, category, contractor_id: contractorId, amount, created_at: new Date().toISOString() })
     } else if (i >= 0) {
       data.targets.splice(i, 1)
     }
@@ -335,10 +341,11 @@ export async function upsertTarget(period: string, kind: Target['kind'], categor
   const s = await sb()
   let q = s.from('targets').select('id').eq('period', period).eq('kind', kind)
   q = category === null ? q.is('category', null) : q.eq('category', category)
+  q = contractorId === null ? q.is('contractor_id', null) : q.eq('contractor_id', contractorId)
   const { data: existing } = await q.maybeSingle()
   if (amount > 0) {
     if (existing) await s.from('targets').update({ amount }).eq('id', existing.id)
-    else await s.from('targets').insert({ period, kind, category, amount })
+    else await s.from('targets').insert({ period, kind, category, contractor_id: contractorId, amount })
   } else if (existing) {
     await s.from('targets').delete().eq('id', existing.id)
   }

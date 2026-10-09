@@ -40,6 +40,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: 'Finance',
     items: [
       { href: '/insights', label: 'Insights', icon: 'insights', financeOnly: true },
+      { href: '/suppliers', label: 'Suppliers', icon: 'clients', financeOnly: true },
       { href: '/clients', label: 'Clients', icon: 'clients', financeOnly: true },
       { href: '/receivables', label: 'Receivables', icon: 'receivables', financeOnly: true },
       { href: '/expressway', label: 'Expressway', icon: 'expressway', financeOnly: true },

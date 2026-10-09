@@ -364,12 +364,22 @@ function seed(): StoreData {
   const q = Math.floor(now.getMonth() / 3) + 1
   const period = `${now.getFullYear()}-Q${q}`
   const targets: Target[] = [
-    { id: uid('tgt'), period, kind: 'revenue', category: null, amount: 1800000, created_at: '' },
-    { id: uid('tgt'), period, kind: 'profit', category: null, amount: 750000, created_at: '' },
-    { id: uid('tgt'), period, kind: 'spend_cap', category: 'Fuel', amount: 180000, created_at: '' },
-    { id: uid('tgt'), period, kind: 'spend_cap', category: 'Vehicle Hire', amount: 450000, created_at: '' },
-    { id: uid('tgt'), period, kind: 'spend_cap', category: 'Driver Wages', amount: 150000, created_at: '' },
+    { id: uid('tgt'), period, kind: 'revenue', category: null, contractor_id: null, amount: 1800000, created_at: '' },
+    { id: uid('tgt'), period, kind: 'profit', category: null, contractor_id: null, amount: 750000, created_at: '' },
+    { id: uid('tgt'), period, kind: 'spend_cap', category: 'Fuel', contractor_id: null, amount: 180000, created_at: '' },
+    { id: uid('tgt'), period, kind: 'spend_cap', category: 'Vehicle Hire', contractor_id: null, amount: 450000, created_at: '' },
+    { id: uid('tgt'), period, kind: 'spend_cap', category: 'Driver Wages', contractor_id: null, amount: 150000, created_at: '' },
   ]
+
+  // Per-supplier goals for the current month, so the Suppliers page has something
+  // to track against out of the box.
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  for (const [i, c] of contractors.entries()) {
+    // Pitched a little above what each has been sending (~200k / ~78 trips a
+    // month), so the demo shows targets being tracked rather than badly missed.
+    targets.push({ id: uid('tgt'), period: thisMonth, kind: 'revenue', category: null, contractor_id: c.id, amount: [230000, 220000, 210000][i] ?? 200000, created_at: '' })
+    targets.push({ id: uid('tgt'), period: thisMonth, kind: 'trips', category: null, contractor_id: c.id, amount: [88, 84, 80][i] ?? 75, created_at: '' })
+  }
 
   // Invoices (receivables) — a mix of paid, outstanding and overdue
   const invoices: Invoice[] = []
