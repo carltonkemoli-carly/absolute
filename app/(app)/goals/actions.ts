@@ -2,8 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { upsertTarget } from '@/lib/db'
+import { requireFinance } from '@/lib/auth'
 
 export async function saveTargets(formData: FormData) {
+  await requireFinance()
   const period = String(formData.get('period') || '').trim()
   if (!period) return
 

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { saveRecord, clearUnassignedTrips } from '@/lib/db'
-import { requireProfile } from '@/lib/auth'
+import { requireProfile, requireOwner } from '@/lib/auth'
 
 // Assign a driver + vehicle to a booking (moves it to "assigned").
 export async function assignTrip(formData: FormData) {
@@ -21,6 +21,7 @@ export async function assignTrip(formData: FormData) {
 
 // Move a booking along the workflow (confirmed / enroute / completed / cancelled).
 export async function setTripStatus(formData: FormData) {
+  await requireProfile()
   const id = String(formData.get('id') || '')
   const status = String(formData.get('status') || '')
   if (!id || !status) return
@@ -31,7 +32,8 @@ export async function setTripStatus(formData: FormData) {
 
 // Wipe all still-unassigned bookings (e.g. to clear out a bad/duplicate import).
 export async function clearPendingTrips() {
-  await requireProfile()
+  // Deletes every unassigned trip in the database — owner only.
+  await requireOwner()
   const n = await clearUnassignedTrips()
   revalidatePath('/dispatch')
   revalidatePath('/trips')

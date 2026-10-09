@@ -167,6 +167,87 @@ export async function getInvoice(id: string): Promise<Invoice | null> {
   const { data } = await (await sb()).from('invoices').select('*').eq('id', id).maybeSingle()
   return (data ?? null) as Invoice | null
 }
+// Is this contractor-period already invoiced? Stops the same month being billed
+// twice, which would silently double Outstanding on the dashboard.
+export async function findInvoiceForPeriod(contractorId: string, start: string, end: string): Promise<Invoice | null> {
+  if (DEV_MODE) {
+    return loadStore().invoices.find((i) =>
+      i.contractor_id === contractorId && i.period_start === start && i.period_end === end) ?? null
+  }
+  const { data } = await (await sb())
+    .from('invoices').select('*')
+    .eq('contractor_id', contractorId).eq('period_start', start).eq('period_end', end)
+    .limit(1)
+  return ((data ?? [])[0] ?? null) as Invoice | null
+}
+
+// Create an invoice and stamp it onto the trips it bills, so the two can never
+// drift apart. Returns the new invoice id.
+export async function createInvoiceForTrips(invoice: Row, tripIds: string[]): Promise<{ id: string | null; error: string | null }> {
+  if (DEV_MODE) {
+    const data = loadStore()
+    const id = uid('invoices')
+    data.invoices.unshift({ id, created_at: new Date().toISOString(), ...invoice } as unknown as Invoice)
+    const billed = new Set(tripIds)
+    for (const t of data.trips) if (billed.has(t.id)) t.invoice_id = id
+    saveStore(data)
+    return { id, error: null }
+  }
+  const s = await sb()
+  const { data: created, error } = await s.from('invoices').insert(invoice).select('id').single()
+  if (error) {
+    console.error(`[db] createInvoiceForTrips failed: ${error.message}`)
+    return { id: null, error: error.message }
+  }
+  const id = (created as { id: string }).id
+  await setTripsInvoice(tripIds, id)
+  return { id, error: null }
+}
+
+// Stamp (or clear) the invoice on a set of trips, in chunks so a long month
+// doesn't build an over-length request.
+export async function setTripsInvoice(tripIds: string[], invoiceId: string | null): Promise<void> {
+  if (!tripIds.length) return
+  if (DEV_MODE) {
+    const data = loadStore()
+    const ids = new Set(tripIds)
+    for (const t of data.trips) if (ids.has(t.id)) t.invoice_id = invoiceId
+    saveStore(data)
+    return
+  }
+  const s = await sb()
+  const CHUNK = 100
+  for (let i = 0; i < tripIds.length; i += CHUNK) {
+    const { error } = await s.from('trips').update({ invoice_id: invoiceId }).in('id', tripIds.slice(i, i + CHUNK))
+    // Before migration-invoice-trips.sql is run the column doesn't exist. The
+    // invoice itself is still valid, so log and carry on rather than failing.
+    if (error) { console.error(`[db] setTripsInvoice failed: ${error.message}`); return }
+  }
+}
+
+// The trips an invoice actually bills. Empty for invoices raised before trips
+// were linked, and for manual invoices — callers fall back to the period range.
+export async function listInvoiceTrips(invoiceId: string): Promise<Trip[]> {
+  if (DEV_MODE) {
+    return loadStore().trips.filter((t) => t.invoice_id === invoiceId).sort(byField('trip_date'))
+  }
+  const client = await sb()
+  return fetchAll<Trip>(`listInvoiceTrips(${invoiceId})`, () =>
+    client.from('trips').select('*').eq('invoice_id', invoiceId).order('trip_date'))
+}
+
+// Release every trip an invoice was billing — used when the invoice is deleted.
+export async function clearInvoiceTrips(invoiceId: string): Promise<void> {
+  if (DEV_MODE) {
+    const data = loadStore()
+    for (const t of data.trips) if (t.invoice_id === invoiceId) t.invoice_id = null
+    saveStore(data)
+    return
+  }
+  const { error } = await (await sb()).from('trips').update({ invoice_id: null }).eq('invoice_id', invoiceId)
+  if (error) console.error(`[db] clearInvoiceTrips failed: ${error.message}`)
+}
+
 export async function listInvoices(): Promise<Invoice[]> {
   if (DEV_MODE) return [...loadStore().invoices].sort(byField('due_date', -1))
   return rows<Invoice>('listInvoices', (await sb()).from('invoices').select('*').order('due_date', { ascending: false }))

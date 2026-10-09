@@ -166,6 +166,7 @@ function seed(): StoreData {
         const amount = AMOUNTS[n % AMOUNTS.length] + express
         trips.push({
           id: uid('trip'),
+          invoice_id: null,
           trip_date: iso(new Date(y, m, day)),
           client_name: CLIENTS[n % CLIENTS.length],
           slip_no: String(250000 + n),
@@ -242,6 +243,7 @@ function seed(): StoreData {
     const airport = b.from === 'JKIA' || b.to === 'JKIA'
     trips.push({
       id: uid('trip'),
+      invoice_id: null,
       trip_date: iso(at(b.d, 0)),
       client_name: b.client,
       slip_no: String(260000 + i),

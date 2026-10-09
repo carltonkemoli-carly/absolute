@@ -90,6 +90,7 @@ export interface Trip {
   amount: number
   distance_km: number | null
   hire_cost: number
+  invoice_id: string | null   // the invoice that billed this trip (null = unbilled)
   flight_no: string | null
   flight_time: string | null
   payment: PaymentType

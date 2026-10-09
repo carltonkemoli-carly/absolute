@@ -1,6 +1,7 @@
 'use server'
 
 import { gatherDatasets } from '@/lib/backup'
+import { requireOwner } from '@/lib/auth'
 
 export type PushResult = { ok: boolean; message: string }
 
@@ -8,6 +9,8 @@ export type PushResult = { ok: boolean; message: string }
 // Requires GOOGLE_SHEETS_WEBHOOK_URL (the Apps Script deployment URL).
 // Optionally BACKUP_WEBHOOK_SECRET, which the script checks.
 export async function backupToSheetNow(): Promise<PushResult> {
+  // Sends the entire database to an external endpoint — owner only.
+  await requireOwner()
   const url = process.env.GOOGLE_SHEETS_WEBHOOK_URL
   if (!url) {
     return {

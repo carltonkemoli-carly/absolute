@@ -30,7 +30,12 @@ function statusOf(i: Invoice): { label: string; color: string } {
   return { label: 'Unpaid', color: 'var(--gold)' }
 }
 
-export default function ReceivablesView({ invoices, contractors }: { invoices: Invoice[]; contractors: Contractor[] }) {
+export default function ReceivablesView({
+  invoices, contractors, unbilledValue = 0, unbilledCount = 0,
+}: {
+  invoices: Invoice[]; contractors: Contractor[]
+  unbilledValue?: number; unbilledCount?: number
+}) {
   const router = useRouter()
   const [creating, setCreating] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -46,9 +51,9 @@ export default function ReceivablesView({ invoices, contractors }: { invoices: I
   function doPreview() {
     setPreview(null)
     startBusy(async () => {
-      const p = await previewInvoiceFromTrips(genContractor, genMonth)
-      setPreview(p)
-      if (!p.ok && p.message) toast.error(p.message)
+      // The outcome renders inline below the form and stays put — a duplicate
+      // warning is a decision point, not something to flash for four seconds.
+      setPreview(await previewInvoiceFromTrips(genContractor, genMonth))
     })
   }
   function doGenerate(fd: FormData) {
@@ -89,6 +94,9 @@ export default function ReceivablesView({ invoices, contractors }: { invoices: I
           <StatCard label="Outstanding" value={kes(totalOutstanding)} hint="owed to you" accent={totalOutstanding > 0 ? 'var(--gold)' : 'var(--accent)'} />
           <StatCard label="Overdue" value={kes(overdue)} hint="past due date" accent={overdue > 0 ? 'var(--danger)' : 'var(--accent)'} />
           <StatCard label="Collected" value={kes(totalCollected)} hint={`of ${kes(totalBilled)} billed`} accent="var(--accent)" />
+          <StatCard label="Not yet invoiced" value={kes(unbilledValue)}
+            hint={unbilledCount > 0 ? `${unbilledCount} completed trip${unbilledCount === 1 ? '' : 's'}, last 60 days` : 'all recent work billed'}
+            accent={unbilledValue > 0 ? 'var(--gold)' : 'var(--accent)'} />
           <StatCard label="Invoices" value={String(invoices.length)} />
         </div>
       </Section>
@@ -154,7 +162,12 @@ export default function ReceivablesView({ invoices, contractors }: { invoices: I
               <input type="hidden" name="month" value={genMonth} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
                 <div style={{ fontSize: 14 }}>
-                  <strong>{cname(genContractor)}</strong> · {preview.label} — <strong>{preview.count}</strong> trip{preview.count === 1 ? '' : 's'}
+                  <strong>{cname(genContractor)}</strong> · {preview.label} — <strong>{preview.count}</strong> un-billed trip{preview.count === 1 ? '' : 's'}
+                  {preview.alreadyBilled ? (
+                    <div style={{ fontSize: 12.5, color: 'var(--ink3)', marginTop: 2 }}>
+                      {preview.alreadyBilled} further trip{preview.alreadyBilled === 1 ? '' : 's'} in this period {preview.alreadyBilled === 1 ? 'is' : 'are'} already on an invoice and {preview.alreadyBilled === 1 ? 'has' : 'have'} been left out.
+                    </div>
+                  ) : null}
                 </div>
                 <div className="font-display" style={{ fontSize: 22, fontWeight: 700 }}>{kes(preview.total)}</div>
               </div>
@@ -173,6 +186,19 @@ export default function ReceivablesView({ invoices, contractors }: { invoices: I
                 </button>
               </div>
             </form>
+          )}
+
+          {/* Nothing to bill, or already billed — say so plainly instead of
+              appearing to do nothing when Preview is pressed. */}
+          {preview && !preview.ok && preview.message && (
+            <div className="animate-fadeup" style={{
+              marginTop: 16, padding: '13px 16px', borderRadius: 'var(--radius-sm)',
+              background: preview.duplicate ? 'var(--gold-light)' : 'var(--surface2)',
+              display: 'flex', gap: 10, alignItems: 'flex-start',
+            }}>
+              <span style={{ fontSize: 15 }}>{preview.duplicate ? '⚠' : 'ℹ'}</span>
+              <div style={{ fontSize: 13.5, color: 'var(--ink)' }}>{preview.message}</div>
+            </div>
           )}
         </div>
       )}

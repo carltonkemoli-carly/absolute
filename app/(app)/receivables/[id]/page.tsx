@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
-import { getInvoice, listContractors, listContractorTrips, getCompany } from '@/lib/db'
+import { getInvoice, listContractors, listContractorTrips, listInvoiceTrips, getCompany } from '@/lib/db'
 import { kes, fmtDate } from '@/lib/format'
 import PrintBar from './PrintButton'
 
@@ -17,10 +17,15 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
   const [contractors, COMPANY] = await Promise.all([listContractors(), getCompany()])
   const contractor = contractors.find((c) => c.id === invoice.contractor_id) ?? null
 
-  // Line items: the trips this invoice was generated from (if it has a billed range).
-  const trips = invoice.contractor_id && invoice.period_start && invoice.period_end
-    ? await listContractorTrips(invoice.contractor_id, invoice.period_start, invoice.period_end)
-    : []
+  // Line items: exactly the trips this invoice bills. Older invoices (raised before
+  // trips carried an invoice link) fall back to the billed date range — otherwise a
+  // trip added to the month after invoicing would be printed but not charged.
+  const linked = await listInvoiceTrips(invoice.id)
+  const trips = linked.length > 0
+    ? linked
+    : invoice.contractor_id && invoice.period_start && invoice.period_end
+      ? await listContractorTrips(invoice.contractor_id, invoice.period_start, invoice.period_end)
+      : []
 
   const outstanding = Math.max(0, Number(invoice.amount) - Number(invoice.amount_paid))
   const paid = Number(invoice.amount_paid)
