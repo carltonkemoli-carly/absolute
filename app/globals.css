@@ -209,6 +209,64 @@ label.field > span { display: block; font-size: 12px; font-weight: 500; color: v
 .grid-form { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
+/* Data tables — a real table on a laptop, stacked record cards on a phone.
+   The rows render once; only the layout changes, so nothing is ever cut off
+   and there is no sideways scrolling to discover. */
+.data-table {
+  width: 100%; overflow-x: auto;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.data-table table {
+  width: 100%; min-width: var(--dt-min, 0);
+  border-collapse: collapse; font-size: 13.5px;
+}
+.data-table thead tr { background: var(--surface2); }
+.data-table th {
+  padding: 11px 14px; text-align: left;
+  font-size: 11.5px; font-weight: 600; color: var(--ink2);
+  text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
+}
+.data-table td { padding: 11px 14px; vertical-align: top; }
+.data-table tbody tr { border-top: 1px solid var(--border); }
+.data-table th.dt-num, .data-table td.dt-num { text-align: right; }
+.data-table td.dt-num, .data-table td.dt-nowrap { white-space: nowrap; }
+
+@media (max-width: 860px) {
+  /* Every row becomes its own card, so the container steps out of the way. */
+  .data-table { overflow-x: visible; background: none; border: 0; border-radius: 0; }
+  .data-table thead { display: none; }
+  .data-table table { min-width: 0; }
+  .data-table table, .data-table tbody, .data-table tr, .data-table td { display: block; }
+  .data-table tbody tr {
+    display: flex; flex-direction: column;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--surface); padding: 12px 14px; margin-bottom: 10px;
+  }
+  .data-table tbody tr:last-child { margin-bottom: 0; }
+  /* Each row is its own bordered card here, so the zebra stripe from the wide
+     table would only read as "this one is different". */
+  .data-table tbody tr:nth-child(even) { background: var(--surface); }
+  .data-table td {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 14px; padding: 5px 0; white-space: normal;
+  }
+  .data-table td::before {
+    content: attr(data-label);
+    flex: 0 0 auto; color: var(--ink3); font-size: 12.5px; font-weight: 500;
+  }
+  .data-table td > .dt-v { text-align: right; min-width: 0; }
+  /* The identifying column is the card's headline — it leads, whatever its
+     position in the wide table, and carries no label. */
+  .data-table td[data-role="primary"] { order: -1; display: block; padding: 0 0 8px; font-size: 15px; }
+  /* Row actions sit at the foot of the card, also unlabelled. */
+  .data-table td[data-role="actions"] { order: 1; padding: 10px 0 0; justify-content: flex-start; }
+  .data-table td[data-role="primary"]::before,
+  .data-table td[data-role="actions"]::before { content: none; }
+  .data-table td[data-role="primary"] > .dt-v,
+  .data-table td[data-role="actions"] > .dt-v { text-align: left; }
+}
+
 @media (max-width: 860px) {
   .app-main { max-height: none; overflow: visible; width: 100%; }
   .page-pad { padding: 16px 16px 96px; }

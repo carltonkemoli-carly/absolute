@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { Badge } from '@/components/ui'
-import { kes, fmtDate } from '@/lib/format'
+import DataTable, { type Column } from '@/components/DataTable'
+import { kes, kesPlain, fmtDate } from '@/lib/format'
 import type { Contractor, Driver, Organization, Trip, Vehicle } from '@/lib/types'
 import { saveTrip, deleteTrip, attributeTrip } from './actions'
 
@@ -38,6 +39,43 @@ export default function TripManager({
   const attributed = trips.filter((t) => t.vehicle_id && t.driver_id).length
   const coverage = trips.length > 0 ? attributed / trips.length : 0
 
+  const columns: Column<Trip>[] = [
+    { label: 'Date', nowrap: true, render: (t) => fmtDate(t.trip_date) },
+    { label: 'Client', role: 'primary', render: (t) => (
+      <>
+        <strong>{t.client_name}</strong>
+        {isRecent(t.created_at) && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, color: 'var(--gold)', background: 'var(--gold-light)', padding: '1px 6px', borderRadius: 99, verticalAlign: 'middle' }}>NEW</span>}
+        {t.slip_no && <div style={{ fontSize: 12, color: 'var(--ink3)', fontWeight: 400 }}>#{t.slip_no}</div>}
+      </>
+    ) },
+    { label: 'Route', render: (t) => (
+      <>
+        {(t.pickup || '—')} → {(t.dropoff || '—')}
+        {t.notes && <div style={{ fontSize: 12, color: 'var(--ink3)' }}>{t.notes}</div>}
+      </>
+    ) },
+    { label: 'Organization', render: (t) => name(organizations, t.organization_id) },
+    { label: 'Via', render: (t) => name(contractors, t.contractor_id) },
+    { label: 'Assigned to', render: (t) => <InlineAssign trip={t} vehicles={vehicles} drivers={drivers} /> },
+    { label: 'Express', align: 'right', render: (t) => (t.express_charges ? kes(t.express_charges) : '—') },
+    { label: 'Amount', align: 'right', render: (t) => (
+      <>
+        <strong>{kes(t.amount)}</strong>
+        {t.express_charges > 0 && <div style={{ fontSize: 11.5, color: 'var(--ink3)', whiteSpace: 'normal' }}>fare {kesPlain(t.amount - t.express_charges)} · exp {kesPlain(t.express_charges)}</div>}
+        {t.payment === 'cash' && <div><Badge tone="gold">cash</Badge></div>}
+      </>
+    ) },
+    { label: '', role: 'actions', render: (t) => (
+      <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+        <button onClick={() => setEditing(t)} style={linkBtn}>Edit</button>
+        <form action={deleteTrip} onSubmit={(e) => { if (!confirm('Delete this trip?')) e.preventDefault() }}>
+          <input type="hidden" name="id" value={t.id} />
+          <button type="submit" style={{ ...linkBtn, color: 'var(--danger)' }}>Delete</button>
+        </form>
+      </div>
+    ) },
+  ]
+
   return (
     <>
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
@@ -70,52 +108,12 @@ export default function TripManager({
         />
       )}
 
-      <div className="card" style={{ overflowX: 'auto' }} >
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5, minWidth: 980 }}>
-          <thead>
-            <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>Date</Th><Th>Client</Th><Th>Route</Th><Th>Organization</Th><Th>Via</Th>
-              <Th>Assigned to</Th><Th right>Express</Th><Th right>Amount</Th><Th></Th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 && (
-              <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: 'var(--ink3)' }}>No trips for this month.</td></tr>
-            )}
-            {filtered.map((t) => {
-              const isNew = isRecent(t.created_at)
-              return (
-              <tr key={t.id} className={isNew ? 'row-new' : undefined} style={{ borderTop: '1px solid var(--border)' }}>
-                <Td>{fmtDate(t.trip_date)}</Td>
-                <Td>
-                  <strong>{t.client_name}</strong>
-                  {isNew && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, color: 'var(--gold)', background: 'var(--gold-light)', padding: '1px 6px', borderRadius: 99, verticalAlign: 'middle' }}>NEW</span>}
-                  {t.slip_no && <div style={{ fontSize: 12, color: 'var(--ink3)' }}>#{t.slip_no}</div>}
-                </Td>
-                <Td>{(t.pickup || '—')} → {(t.dropoff || '—')}{t.notes && <div style={{ fontSize: 12, color: 'var(--ink3)' }}>{t.notes}</div>}</Td>
-                <Td>{name(organizations, t.organization_id)}</Td>
-                <Td>{name(contractors, t.contractor_id)}</Td>
-                <Td><InlineAssign trip={t} vehicles={vehicles} drivers={drivers} /></Td>
-                <Td right>{t.express_charges ? kes(t.express_charges) : '—'}</Td>
-                <Td right>
-                  <strong>{kes(t.amount)}</strong>
-                  {t.express_charges > 0 && <div style={{ fontSize: 11.5, color: 'var(--ink3)' }}>fare {kes(t.amount - t.express_charges)} + exp {kes(t.express_charges)}</div>}
-                  {t.payment === 'cash' && <div><Badge tone="gold">cash</Badge></div>}
-                </Td>
-                <Td>
-                  <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                    <button onClick={() => setEditing(t)} style={linkBtn}>Edit</button>
-                    <form action={deleteTrip} onSubmit={(e) => { if (!confirm('Delete this trip?')) e.preventDefault() }}>
-                      <input type="hidden" name="id" value={t.id} />
-                      <button type="submit" style={{ ...linkBtn, color: 'var(--danger)' }}>Delete</button>
-                    </form>
-                  </div>
-                </Td>
-              </tr>
-            )})}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        rows={filtered} rowKey={(t) => t.id} minWidth={900}
+        empty="No trips for this month."
+        rowClass={(t) => (isRecent(t.created_at) ? 'row-new' : undefined)}
+        columns={columns}
+      />
     </>
   )
 }
@@ -244,9 +242,3 @@ function TripForm({ trip, lookups, defaultDate, onDone }: { trip: Trip | null; l
 
 const linkBtn: React.CSSProperties = { background: 'none', border: 'none', color: 'var(--accent-mid)', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }
 const assignSel: React.CSSProperties = { fontSize: 12.5, padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 7, background: 'var(--surface)', color: 'var(--ink2)', cursor: 'pointer', maxWidth: 160 }
-function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <th style={{ padding: '11px 14px', fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: right ? 'right' : 'left' }}>{children}</th>
-}
-function Td({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <td style={{ padding: '11px 14px', textAlign: right ? 'right' : 'left', verticalAlign: 'top' }}>{children}</td>
-}

@@ -5,6 +5,7 @@ import MonthNav from '@/components/MonthNav'
 import PrintButton from '@/components/PrintButton'
 import SegmentDonut from '@/components/SegmentDonut'
 import { Bars } from '@/components/Bars'
+import DataTable, { type Column } from '@/components/DataTable'
 import { topSegments } from '@/lib/chart'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listContractors, listOrganizations, listInvoices, listTargets } from '@/lib/db'
@@ -177,35 +178,7 @@ function AllSuppliers({ rows, periodLabel, pace }: { rows: SupplierRow[]; period
       </Section>
 
       <Section title="Side by side">
-        <div className="card" style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 820 }}>
-            <thead>
-              <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-                <Th>Supplier</Th><Th right>Trips</Th><Th right>Revenue</Th><Th right>Target</Th>
-                <Th right>Avg fare</Th><Th right>Outstanding</Th><Th right>Overdue</Th><Th right>Days to pay</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {ranked.map((r) => {
-                const pct = r.revenueTarget > 0 ? r.revenue / r.revenueTarget : null
-                return (
-                  <tr key={r.contractor.id} style={{ borderTop: '1px solid var(--border)' }}>
-                    <Td><Link href={`/suppliers?c=${r.contractor.id}`} style={{ fontWeight: 700, color: 'var(--accent-mid)' }}>{r.contractor.name}</Link></Td>
-                    <Td right>{r.trips}</Td>
-                    <Td right><strong>{kes(r.revenue)}</strong></Td>
-                    <Td right>{pct === null ? <span style={{ color: 'var(--ink3)' }}>—</span>
-                      : <span style={{ fontWeight: 700, color: pct >= 1 || pct >= pace ? 'var(--accent)' : pct >= pace * 0.7 ? 'var(--gold)' : 'var(--danger)' }}>{Math.round(pct * 100)}%</span>}</Td>
-                    <Td right>{kes(r.avgFare)}</Td>
-                    <Td right>{kes(r.outstanding)}</Td>
-                    <Td right>{r.overdue > 0 ? <span style={{ color: 'var(--danger)', fontWeight: 600 }}>{kes(r.overdue)}</span> : '—'}</Td>
-                    <Td right>{r.daysToPay === null ? <span style={{ color: 'var(--ink3)' }}>—</span>
-                      : <span style={{ color: r.daysToPay > 45 ? 'var(--danger)' : r.daysToPay > 30 ? 'var(--gold)' : 'var(--ink)' }}>{r.daysToPay}d</span>}</Td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <DataTable rows={ranked} rowKey={(r) => r.contractor.id} minWidth={820} empty="No suppliers yet." columns={supplierColumns(pace)} />
         <p style={{ fontSize: 12.5, color: 'var(--ink3)', marginTop: 10 }}>
           Trips, revenue and target are for {periodLabel}. Outstanding, overdue and days to pay are running positions across every month.
           {pace < 1 && <> Targets are judged against the <strong>{Math.round(pace * 100)}%</strong> of the month that has passed, not the whole of it.</>}
@@ -213,6 +186,32 @@ function AllSuppliers({ rows, periodLabel, pace }: { rows: SupplierRow[]; period
       </Section>
     </>
   )
+}
+
+// Judged against the part of the month that has actually happened, so a healthy
+// account part-way through the month does not show up red.
+function supplierColumns(pace: number): Column<SupplierRow>[] {
+  return [
+    { label: 'Supplier', role: 'primary', render: (r) => (
+      <Link href={`/suppliers?c=${r.contractor.id}`} style={{ fontWeight: 700, color: 'var(--accent-mid)' }}>{r.contractor.name}</Link>
+    ) },
+    { label: 'Trips', align: 'right', render: (r) => r.trips },
+    { label: 'Revenue', align: 'right', render: (r) => <strong>{kes(r.revenue)}</strong> },
+    { label: 'Target', align: 'right', render: (r) => {
+      const pct = r.revenueTarget > 0 ? r.revenue / r.revenueTarget : null
+      if (pct === null) return <span style={{ color: 'var(--ink3)' }}>—</span>
+      return <span style={{ fontWeight: 700, color: pct >= 1 || pct >= pace ? 'var(--accent)' : pct >= pace * 0.7 ? 'var(--gold)' : 'var(--danger)' }}>{Math.round(pct * 100)}%</span>
+    } },
+    { label: 'Avg fare', align: 'right', render: (r) => kes(r.avgFare) },
+    { label: 'Outstanding', align: 'right', render: (r) => kes(r.outstanding) },
+    { label: 'Overdue', align: 'right', render: (r) => (
+      r.overdue > 0 ? <span style={{ color: 'var(--danger)', fontWeight: 600 }}>{kes(r.overdue)}</span> : '—'
+    ) },
+    { label: 'Days to pay', align: 'right', render: (r) => (
+      r.daysToPay === null ? <span style={{ color: 'var(--ink3)' }}>—</span>
+        : <span style={{ color: r.daysToPay > 45 ? 'var(--danger)' : r.daysToPay > 30 ? 'var(--gold)' : 'var(--ink)' }}>{r.daysToPay}d</span>
+    ) },
+  ]
 }
 
 // ---------- One supplier ----------
@@ -290,38 +289,31 @@ function SupplierDetail({
       )}
 
       <Section title="Open invoices" action={<Link href="/receivables" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--accent-mid)' }}>All receivables →</Link>}>
-        <div className="card" style={{ overflowX: 'auto' }}>
-          {openInvoices.length === 0 ? (
-            <EmptyState message={`Nothing outstanding from ${row.contractor.name}.`} />
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-                  <Th>Invoice</Th><Th>Period</Th><Th>Due</Th><Th right>Amount</Th><Th right>Paid</Th><Th right>Outstanding</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {openInvoices.map((i) => {
-                  const out = Math.max(0, Number(i.amount) - Number(i.amount_paid))
-                  const late = i.due_date && i.due_date < isoDate(new Date())
-                  return (
-                    <tr key={i.id} style={{ borderTop: '1px solid var(--border)' }}>
-                      <Td><Link href={`/receivables/${i.id}`} style={{ fontWeight: 600, color: 'var(--accent-mid)' }}>{i.invoice_no ?? 'View'}</Link></Td>
-                      <Td>{i.period_label ?? '—'}</Td>
-                      <Td><span style={{ color: late ? 'var(--danger)' : 'var(--ink2)' }}>{i.due_date ? fmtDate(i.due_date) : '—'}</span></Td>
-                      <Td right>{kes(i.amount)}</Td>
-                      <Td right>{kes(i.amount_paid)}</Td>
-                      <Td right><strong>{kes(out)}</strong></Td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <DataTable
+          rows={openInvoices} rowKey={(i) => i.id}
+          empty={`Nothing outstanding from ${row.contractor.name}.`}
+          columns={invoiceColumns()}
+        />
       </Section>
     </>
   )
+}
+
+function invoiceColumns(): Column<Invoice>[] {
+  const today = isoDate(new Date())
+  const out = (i: Invoice) => Math.max(0, Number(i.amount) - Number(i.amount_paid))
+  return [
+    { label: 'Invoice', role: 'primary', render: (i) => (
+      <Link href={`/receivables/${i.id}`} style={{ fontWeight: 600, color: 'var(--accent-mid)' }}>{i.invoice_no ?? 'View'}</Link>
+    ) },
+    { label: 'Period', render: (i) => i.period_label ?? '—' },
+    { label: 'Due', render: (i) => (
+      <span style={{ color: i.due_date && i.due_date < today ? 'var(--danger)' : 'var(--ink2)' }}>{i.due_date ? fmtDate(i.due_date) : '—'}</span>
+    ) },
+    { label: 'Amount', align: 'right', render: (i) => kes(i.amount) },
+    { label: 'Paid', align: 'right', render: (i) => kes(i.amount_paid) },
+    { label: 'Outstanding', align: 'right', render: (i) => <strong>{kes(out(i))}</strong> },
+  ]
 }
 
 function groupRevenue(trips: Trip[], keyOf: (t: Trip) => string): { label: string; value: number; sub: string }[] {
@@ -348,11 +340,4 @@ function Chip({ href, active, children }: { href: string; active: boolean; child
       textDecoration: 'none', whiteSpace: 'nowrap',
     }}>{children}</Link>
   )
-}
-
-function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <th style={{ padding: '10px 12px', fontSize: 11.5, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.03em', textAlign: right ? 'right' : 'left' }}>{children}</th>
-}
-function Td({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <td style={{ padding: '10px 12px', textAlign: right ? 'right' : 'left', whiteSpace: 'nowrap' }}>{children}</td>
 }
