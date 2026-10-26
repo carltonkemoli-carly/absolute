@@ -86,11 +86,8 @@ export default function AppShell({
 
       <aside className={`app-sidebar${open ? ' open' : ''}`}>
         <div style={{ padding: '22px 20px 18px' }}>
-          <div className="font-display" style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.14em', color: 'var(--accent-mid)', textTransform: 'uppercase' }}>
+          <div className="font-display" style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.015em' }}>
             Absolute Comfort
-          </div>
-          <div className="font-display" style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', marginTop: 2 }}>
-            Travel Ops
           </div>
         </div>
 
@@ -131,10 +128,8 @@ export default function AppShell({
             <Bar /><Bar /><Bar />
           </button>
           <div style={{ minWidth: 0 }}>
-            <div className="font-display" style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '0.12em', color: 'var(--accent-mid)', textTransform: 'uppercase' }}>
-              Absolute Comfort
-            </div>
             <div className="font-display" style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{activeLabel}</div>
+            <div className="font-display" style={{ fontSize: 10.5, color: 'var(--ink3)', fontWeight: 500, marginTop: 1 }}>Absolute Comfort</div>
           </div>
         </div>
 
@@ -143,7 +138,7 @@ export default function AppShell({
             background: 'var(--gold-light)', color: 'var(--gold)', fontSize: 13, fontWeight: 600,
             textAlign: 'center', padding: '7px 16px', borderBottom: '1px solid var(--border)',
           }}>
-            Demo mode — sample data, not saved.
+            Demo data · nothing is saved.
           </div>
         )}
 

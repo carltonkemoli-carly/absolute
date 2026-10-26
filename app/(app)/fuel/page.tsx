@@ -61,25 +61,25 @@ export default async function FuelPage({
 
   return (
     <>
-      <PageHeader title="Fuel" subtitle="What you spend on fuel — and how it tracks against revenue" action={<MonthNav year={year} month={month} />} />
+      <PageHeader title="Fuel" action={<MonthNav year={year} month={month} />} />
 
       <Section title={`${MONTH_NAMES[month]} ${year}`}>
         <div className="grid-stats">
           <StatCard label="Fuel this month" value={kes(totalFuel)} hint={`${entries.length} payments`} accent="var(--gold)" />
           <StatCard label="Fuel-to-sales" value={fuelPct === null ? '—' : `${Math.round(fuelPct * 100)}%`}
-            hint={fuelPct !== null && fuelPct > 0.32 ? 'High — watch fuel spend' : 'Healthy'}
+            hint={fuelPct !== null && fuelPct > 0.32 ? 'watch fuel spend' : undefined}
             accent={fuelPct !== null && fuelPct > 0.32 ? 'var(--danger)' : 'var(--accent)'} />
           <StatCard label="Revenue this month" value={kes(revenue)} hint={`${monthTrips.length} trips`} />
         </div>
       </Section>
 
       <div className="card" style={{ padding: 18, marginBottom: 16 }}>
-        <SectionTitle>Fuel spend & fuel-to-sales — last 6 months</SectionTitle>
+        <SectionTitle>Fuel spend · last 6 months</SectionTitle>
         <Bars items={trend.map((t) => ({ label: t.label, value: t.fuel, sub: `${Math.round(t.pct * 100)}% of sales` }))}
           max={Math.max(1, ...trend.map((t) => t.fuel))} format={kes} accent="var(--gold)" emptyText="No fuel recorded yet." />
       </div>
 
-      <Section title={`Where you fuel — by station (${MONTH_NAMES[month]})`}>
+      <Section title="By station">
         <div className="grid-2">
           <Card title="Share of fuel spend">
             {stations.length === 0

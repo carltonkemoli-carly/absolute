@@ -41,7 +41,7 @@ export default function ExpresswayInsights({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {/* Overview */}
-      <Section title={`Overview · ${period}`}>
+      <Section title="At a glance">
         <div className="grid-stats">
           <StatCard label="Expressway tolls" value={kes(stats.totalToll)}
             hint={delta === null ? period : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% vs last month`}
@@ -54,7 +54,7 @@ export default function ExpresswayInsights({
 
       {/* Trend + direction */}
       <div className={dirSegs.length > 0 ? 'grid-2' : undefined}>
-        <Card title="Toll spend — last 6 months">
+        <Card title="Toll spend · last 6 months">
           <Bars items={trend.map((t) => ({ label: t.label, value: t.toll, sub: `${t.count}` }))}
             max={Math.max(1, ...trend.map((t) => t.toll))} format={kes} accent="var(--gold)" />
         </Card>
@@ -83,7 +83,7 @@ export default function ExpresswayInsights({
       <div className="grid-2">
         <div className="card" style={{ padding: 18 }}>
           <SectionTitle>By client (reimbursable)</SectionTitle>
-          <p style={tip}>These tolls are billed back — make sure each client is invoiced for them.</p>
+          <p style={tip}>These tolls are billed back. Make sure each client is invoiced for them.</p>
           <Bars items={[...byOrg].sort(sortG).slice(0, 10).map((g) => ({ label: g.label, value: metric(g), sub: `${g.count} trips` }))}
             max={Math.max(1, ...byOrg.map(metric))} format={fmt} accent="var(--accent-mid)" />
         </div>
@@ -135,7 +135,7 @@ export default function ExpresswayInsights({
               <div style={{ textAlign: 'right' }}>
                 <div className="font-display" style={{ fontWeight: 700 }}>{kes(r.toll)}</div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: r.billed ? 'var(--accent)' : 'var(--danger)' }}>
-                  {r.billed ? '✓ invoiced' : '⚠ not invoiced'}
+                  {r.billed ? 'invoiced' : 'not invoiced'}
                 </div>
               </div>
             </div>
@@ -155,7 +155,7 @@ export default function ExpresswayInsights({
           </>
         ) : (
           <p style={{ fontSize: 13.5, color: 'var(--ink3)' }}>
-            No pickup times recorded yet. Add a <strong>Pickup time</strong> when logging trips (it’s on the trip form now) or include a time column in your import — this chart fills in automatically.
+            No pickup times recorded yet. Add a <strong>Pickup time</strong> when logging trips, or include a time column in your import.
           </p>
         )}
       </div>

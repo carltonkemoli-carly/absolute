@@ -149,7 +149,7 @@ export default async function InsightsPage({
 
   return (
     <>
-      <PageHeader title="Business insights" subtitle="Where the money comes from, which vehicles earn, and where it leaks" action={<div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><MonthNav year={year} month={month} /><PrintButton /></div>} />
+      <PageHeader title="Insights" subtitle={`${MONTH_NAMES[month]} ${year}`} action={<div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><MonthNav year={year} month={month} /><PrintButton /></div>} />
       <InsightsView
         period={`${MONTH_NAMES[month]} ${year}`}
         pl={{ revenue, fuel: fuelTotal, costs: pl.costs, net: pl.net, prevRev, prevLabel, fuelPct: Math.round(fleetFuelPct * 100), costsComplete: pl.costsComplete, profitLabel: headline.label, profitHint: headline.hint }}

@@ -49,10 +49,10 @@ export default function AssignForm({
       <button type="submit" className="btn-primary" style={btn}>Assign →</button>
       {(warnDriver || warnVehicle) && (
         <span style={{ fontSize: 11.5, color: 'var(--danger)', width: '100%' }}>
-          ⚠ {warnDriver && warnVehicle ? 'This driver and vehicle are' : warnDriver ? 'This driver is' : 'This vehicle is'} already on another job today — double-check before assigning.
+          {warnDriver && warnVehicle ? 'Both are' : warnDriver ? 'This driver is' : 'This vehicle is'} already on another job today.
         </span>
       )}
-      {autofilled && !warnVehicle && <span style={{ fontSize: 11.5, color: 'var(--accent)', width: '100%' }}>↳ auto-filled their usual vehicle — change it if needed</span>}
+      {autofilled && !warnVehicle && <span style={{ fontSize: 11.5, color: 'var(--accent)', width: '100%' }}>Autofilled their usual vehicle. Change if needed.</span>}
     </form>
   )
 }

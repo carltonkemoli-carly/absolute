@@ -24,7 +24,7 @@ export default async function ReceivablesPage() {
   const [invoices, contractors] = await Promise.all([listInvoices(), listContractors()])
   return (
     <>
-      <PageHeader title="Receivables" subtitle="What you've invoiced vs paid — and who owes you" />
+      <PageHeader title="Receivables" />
       <ReceivablesView
         invoices={invoices as Invoice[]} contractors={contractors as Contractor[]}
         unbilledValue={unbilledValue} unbilledCount={unbilled.length}

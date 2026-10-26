@@ -89,32 +89,25 @@ export default async function DashboardPage({
     { label: 'Expired', value: expiredN, color: RED },
   ]
 
-  const hour = Number(new Date().toLocaleString('en-GB', { timeZone: 'Africa/Nairobi', hour: '2-digit', hour12: false }))
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
-  const firstName = profile.full_name?.split(' ')[0] ?? ''
 
   return (
     <>
-      <PageHeader
-        title="Dashboard"
-        subtitle={`${greeting}${firstName ? `, ${firstName}` : ''} · here's how the company is doing`}
-        action={<MonthNav year={year} month={month} />}
-      />
+      <PageHeader title="Dashboard" action={<MonthNav year={year} month={month} />} />
 
-      <Section title="My business">
+      <Section title="This month">
         <div className="grid-stats" style={{ marginBottom: 16 }}>
-          <StatCard label="Revenue billed" value={kes(revenue)} hint={`net ${kes(netRevenue)} (excl. expressway)`} accent="var(--accent)" />
+          <StatCard label="Revenue" value={kes(revenue)} hint={express > 0 ? `fare ${kes(netRevenue)} + expressway ${kes(express)}` : undefined} accent="var(--accent)" />
           <StatCard label={headline.label} value={kes(headline.value)}
-            hint={revenue > 0 ? `${pct(headline.margin)} margin · ${headline.hint}` : headline.hint}
-            accent={pl.costsComplete ? 'var(--accent)' : 'var(--gold)'} />
+            hint={revenue > 0 ? `${pct(headline.margin)} margin` : headline.hint}
+            accent={headline.value < 0 ? 'var(--danger)' : pl.costsComplete ? 'var(--accent)' : 'var(--gold)'} />
           <StatCard label="Fuel-to-sales index" value={pct(index)}
-            hint={index > 0.3 ? 'High — check fuel use' : 'Healthy'} accent={index > 0.3 ? 'var(--danger)' : 'var(--accent)'} />
-          <StatCard label="Expressway charges" value={kes(express)} hint="reimbursable" accent="var(--gold)" />
+            hint={index > 0.3 ? 'watch fuel use' : undefined} accent={index > 0.3 ? 'var(--danger)' : 'var(--accent)'} />
+          <StatCard label="Expressway" value={kes(express)} hint="billed through to the client" accent="var(--gold)" />
           <Link href="/receivables" style={{ textDecoration: 'none', color: 'inherit' }}>
             {/* A balance, not a monthly flow — say so, since every other card
                 in this row moves with the month picker. */}
             <StatCard label="Outstanding" value={kes(outstanding)}
-              hint={overdue > 0 ? `${kes(overdue)} overdue · any month →` : outstanding > 0 ? 'owed to you · any month →' : 'all collected'}
+              hint={overdue > 0 ? `${kes(overdue)} overdue · all time` : outstanding > 0 ? 'all time' : 'all collected'}
               accent={overdue > 0 ? 'var(--danger)' : outstanding > 0 ? 'var(--gold)' : 'var(--accent)'} />
           </Link>
           <StatCard label="Trips" value={String(trips.length)} hint="this month" />
@@ -138,7 +131,7 @@ export default async function DashboardPage({
       <NotificationsCard attention={attention} alerts={alerts} />
       <QuickActions />
 
-      <Section title="Operations">
+      <Section title="Where the work comes from">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
           <Card title="Trips by contractor">
             {tripsByContractor.length === 0 ? <Empty /> : (
@@ -173,5 +166,5 @@ function pct(x: number): string {
 }
 
 function Empty({ msg }: { msg?: string }) {
-  return <EmptyState message={msg ?? 'No data this month — pick another month above, or log some trips.'} />
+  return <EmptyState message={msg ?? 'No data this month. Pick another month, or log some trips.'} />
 }

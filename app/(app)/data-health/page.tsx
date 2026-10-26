@@ -35,7 +35,7 @@ export default async function DataHealthPage() {
 
   // Date anomalies
   const badDates = trips.filter((t) => t.trip_date < '2015-01-01' || t.trip_date > today).length
-  add('Trips with an impossible date', badDates, trips.length, 'Before 2015 or in the future — usually an import date bug.', '/trips')
+  add('Trips with an impossible date', badDates, trips.length, 'Before 2015 or in the future.', '/trips')
 
   // True duplicate trips (same slip + date + client) — the real double-import signal.
   // (Slip numbers alone repeat legitimately across months, so don't flag those.)
@@ -45,7 +45,7 @@ export default async function DataHealthPage() {
     sig.set(k, (sig.get(k) ?? 0) + 1)
   }
   const trueDup = [...sig.values()].filter((n) => n > 1).length
-  add('Duplicate trips (same slip, date & client)', trueDup, trips.length, 'Almost always a double import — remove the extras.', '/trips')
+  add('Duplicate trips (same slip, date & client)', trueDup, trips.length, 'Likely double import.', '/trips')
 
   // Vehicles
   const owned = vehicles.filter((v) => v.ownership === 'owned')
@@ -59,7 +59,7 @@ export default async function DataHealthPage() {
   const clean = checks.filter((c) => c.level === 'ok')
 
   const summary = issues.length === 0
-    ? 'All clear — your data looks healthy.'
+    ? 'All clear.'
     : `${issues.length} issue${issues.length === 1 ? '' : 's'} to review across ${trips.length} trips.`
 
   // Part-to-whole of the checks themselves — how much of the audit is clean.
@@ -80,9 +80,9 @@ export default async function DataHealthPage() {
 
   return (
     <>
-      <PageHeader title="Data health" subtitle="Catch bad data before it distorts your reports" />
+      <PageHeader title="Data health" />
 
-      <Section title="Data health overview">
+      <Section title="Summary">
         <div className="grid-stats" style={{ marginBottom: 16 }}>
           <StatCard label="Checks run" value={String(checks.length)} hint="across every record" />
           <StatCard label="Needs attention" value={String(issues.length)}
@@ -100,7 +100,7 @@ export default async function DataHealthPage() {
           </Card>
           <Card title="What's covered">
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>
-              <span style={{ fontSize: 17, marginRight: 8 }}>{issues.length === 0 ? '✅' : '🩺'}</span>{summary}
+              {summary}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
               {covered.map((c) => (

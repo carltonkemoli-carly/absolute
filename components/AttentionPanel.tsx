@@ -14,7 +14,7 @@ export default function AttentionPanel({ items }: { items: AttentionItem[] }) {
         <Link href="/compliance" className="btn-ghost" style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent-mid)', padding: '6px 13px', whiteSpace: 'nowrap' }}>Manage →</Link>
       </div>
       {items.length === 0 ? (
-        <div style={{ padding: 18, fontSize: 14, color: 'var(--ink2)' }}>✓ Nothing expiring soon. All documents and services are up to date.</div>
+        <div style={{ padding: 18, fontSize: 14, color: 'var(--ink2)' }}>Nothing expiring soon.</div>
       ) : (
         <div>
           {items.slice(0, 8).map((i, idx) => {

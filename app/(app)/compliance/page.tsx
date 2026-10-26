@@ -58,9 +58,9 @@ export default async function CompliancePage() {
 
   return (
     <>
-      <PageHeader title="Compliance" subtitle="Insurance, inspection & licence tracking with reminders" />
+      <PageHeader title="Compliance" />
 
-      <Section title="Compliance overview">
+      <Section title="Status">
         <div className="grid-stats" style={{ marginBottom: documents.length > 0 ? 16 : 2 }}>
           <StatCard label="Documents tracked" value={String(documents.length)} hint={`${vehicles.length} vehicles · ${drivers.length} drivers`} />
           <StatCard label="Expired" value={String(n('expired'))}
@@ -82,7 +82,7 @@ export default async function CompliancePage() {
                 items={byType} max={Math.max(1, ...byType.map((t) => t.value))}
                 format={(v) => `${v} to renew`}
                 accent="var(--gold)"
-                emptyText="Every document is valid — nothing falling due." />
+                emptyText="Nothing falling due." />
             </Card>
           </div>
         )}

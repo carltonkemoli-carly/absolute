@@ -42,9 +42,9 @@ export default async function ClientsPage() {
 
   return (
     <>
-      <PageHeader title="Clients" subtitle="Who your revenue depends on — and how concentrated it is" action={<PrintButton />} />
+      <PageHeader title="Clients" action={<PrintButton />} />
 
-      <Section title="Overview">
+      <Section title="This month">
         <div className="grid-stats">
           <StatCard label="Active clients" value={String(clients.length)} hint="with logged trips" />
           <StatCard label="Top client" value={top?.name ?? '—'} hint={top ? `${Math.round(top.share * 100)}% of revenue` : undefined} accent={concentrated ? 'var(--gold)' : 'var(--accent)'} />
@@ -57,12 +57,12 @@ export default async function ClientsPage() {
         <div className="card" style={{ padding: '13px 16px', marginBottom: 16, background: 'var(--gold-light)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <span style={{ fontSize: 16 }}>⚠</span>
           <div style={{ fontSize: 13.5, color: 'var(--ink)' }}>
-            <strong>Concentration risk:</strong> {Math.round((top?.share ?? 0) * 100)}% of your revenue comes from <strong>{top?.name}</strong>. Losing this account would hit hard — worth building up the next tier of clients.
+            <strong>Concentration risk.</strong> {Math.round((top?.share ?? 0) * 100)}% of your revenue comes from <strong>{top?.name}</strong>. Worth building up the next tier of clients.
           </div>
         </div>
       )}
 
-      <Section title="Revenue by client (all-time)">
+      <Section title="All time">
         <div className="grid-2">
           <Card title="Revenue concentration">
             {clients.length === 0
@@ -103,7 +103,7 @@ export default async function ClientsPage() {
           </tbody>
         </table>
       </div>
-      <p style={{ fontSize: 12.5, color: 'var(--ink3)', marginTop: 10 }}>Clients with no trip in 45+ days are flagged red — a nudge to check in before they lapse.</p>
+      <p style={{ fontSize: 12.5, color: 'var(--ink3)', marginTop: 10 }}>Red = no trip in 45+ days.</p>
     </>
   )
 }

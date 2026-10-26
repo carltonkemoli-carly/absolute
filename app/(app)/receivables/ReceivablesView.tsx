@@ -89,13 +89,13 @@ export default function ReceivablesView({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <Section title="Overview">
+      <Section title="Current position">
         <div className="grid-stats">
           <StatCard label="Outstanding" value={kes(totalOutstanding)} hint="owed to you" accent={totalOutstanding > 0 ? 'var(--gold)' : 'var(--accent)'} />
           <StatCard label="Overdue" value={kes(overdue)} hint="past due date" accent={overdue > 0 ? 'var(--danger)' : 'var(--accent)'} />
           <StatCard label="Collected" value={kes(totalCollected)} hint={`of ${kes(totalBilled)} billed`} accent="var(--accent)" />
           <StatCard label="Not yet invoiced" value={kes(unbilledValue)}
-            hint={unbilledCount > 0 ? `${unbilledCount} completed trip${unbilledCount === 1 ? '' : 's'}, last 60 days` : 'all recent work billed'}
+            hint={unbilledCount > 0 ? `${unbilledCount} trip${unbilledCount === 1 ? '' : 's'} ready to bill` : 'all recent work billed'}
             accent={unbilledValue > 0 ? 'var(--gold)' : 'var(--accent)'} />
           <StatCard label="Invoices" value={String(invoices.length)} />
         </div>
@@ -130,7 +130,7 @@ export default function ReceivablesView({
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
         <button className="btn-primary" style={{ padding: '9px 16px', fontSize: 14, cursor: 'pointer' }} onClick={() => { setGenerating((v) => !v); setCreating(false); setPreview(null) }}>
-          {generating ? 'Close' : '⚡ Generate from trips'}
+          {generating ? 'Close' : 'Generate invoices'}
         </button>
         <button className="btn-ghost" style={{ padding: '9px 16px', fontSize: 14, cursor: 'pointer' }} onClick={() => { setCreating((v) => !v); setGenerating(false) }}>
           {creating ? 'Close' : '+ Manual invoice'}
@@ -140,7 +140,7 @@ export default function ReceivablesView({
       {generating && (
         <div className="card" style={{ padding: 20 }}>
           <div className="font-display" style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Generate an invoice from logged trips</div>
-          <p style={{ fontSize: 13, color: 'var(--ink2)', margin: '0 0 14px' }}>Pick a contractor and month — we’ll total every trip you logged for them and build the invoice.</p>
+          <p style={{ fontSize: 13, color: 'var(--ink2)', margin: '0 0 14px' }}>Pick a contractor and month. The invoice totals every logged trip for them.</p>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <label className="field" style={{ minWidth: 200 }}><span>Contractor *</span>
               <select className="input" value={genContractor} onChange={(e) => { setGenContractor(e.target.value); setPreview(null) }}>
@@ -162,7 +162,7 @@ export default function ReceivablesView({
               <input type="hidden" name="month" value={genMonth} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
                 <div style={{ fontSize: 14 }}>
-                  <strong>{cname(genContractor)}</strong> · {preview.label} — <strong>{preview.count}</strong> un-billed trip{preview.count === 1 ? '' : 's'}
+                  <strong>{cname(genContractor)}</strong> · {preview.label} · <strong>{preview.count}</strong> un-billed trip{preview.count === 1 ? '' : 's'}
                   {preview.alreadyBilled ? (
                     <div style={{ fontSize: 12.5, color: 'var(--ink3)', marginTop: 2 }}>
                       {preview.alreadyBilled} further trip{preview.alreadyBilled === 1 ? '' : 's'} in this period {preview.alreadyBilled === 1 ? 'is' : 'are'} already on an invoice and {preview.alreadyBilled === 1 ? 'has' : 'have'} been left out.
@@ -237,7 +237,7 @@ export default function ReceivablesView({
               <tr><td colSpan={8} style={{ padding: '30px 18px', textAlign: 'center' }}>
                 <div style={{ fontSize: 26, opacity: 0.6 }}>🧾</div>
                 <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink2)', marginTop: 6 }}>No invoices yet</div>
-                <div style={{ fontSize: 13, color: 'var(--ink3)', marginTop: 4 }}>Use <strong>⚡ Generate from trips</strong> above to bill a contractor for a month in one click, or add a manual invoice.</div>
+                <div style={{ fontSize: 13, color: 'var(--ink3)', marginTop: 4 }}>Use <strong>Generate invoices</strong> above to bill a contractor for a month, or add a manual invoice.</div>
               </td></tr>
             )}
             {sorted.map((i) => {

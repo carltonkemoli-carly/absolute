@@ -18,7 +18,7 @@ export default async function DispatchPage({
 
   return (
     <>
-      <PageHeader title="Dispatch" subtitle="Assign drivers, confirm jobs, and contact the team" />
+      <PageHeader title="Dispatch" />
       <DispatchBoard
         day={day}
         trips={(trips as Trip[])}

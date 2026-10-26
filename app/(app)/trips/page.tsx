@@ -36,19 +36,17 @@ export default async function TripsPage({
     listTrips(start, end), listContractors(), listOrganizations(), listVehicles(), listDrivers(),
   ])
   const total = rows.reduce((s, t) => s + Number(t.amount), 0)
-  const expressTotal = rows.reduce((s, t) => s + Number(t.express_charges), 0)
-  const netTotal = total - expressTotal
 
   return (
     <>
       <PageHeader
         title="Trips"
-        subtitle={`${rows.length} trip${rows.length === 1 ? '' : 's'} · ${kes(total)} billed · ${kes(netTotal)} net fare · ${kes(expressTotal)} expressway`}
+        subtitle={`${rows.length} trip${rows.length === 1 ? '' : 's'} · ${kes(total)} billed`}
         action={<MonthNav year={year} month={month} />}
       />
       <div style={{ marginBottom: 14 }}>
         <ExcelImport
-          label="Import trips from Excel (BCD / FCM / any)"
+          label="Import trips from Excel"
           spec={TRIP_SPEC}
           importAction={importTrips}
           options={[{

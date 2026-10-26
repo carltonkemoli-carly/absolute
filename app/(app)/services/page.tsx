@@ -36,9 +36,9 @@ export default async function ServicesPage() {
 
   return (
     <>
-      <PageHeader title="Servicing" subtitle="Maintenance log for every vehicle" />
+      <PageHeader title="Servicing" />
 
-      <Section title="Servicing overview">
+      <Section title="This year">
         <div className="grid-stats" style={{ marginBottom: ytdCost > 0 ? 16 : 2 }}>
           <StatCard label="Service cost this month" value={kes(monthCost)} />
           <StatCard label="Service cost this year" value={kes(ytdCost)} />

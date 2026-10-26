@@ -44,7 +44,7 @@ export default async function BackupPage() {
   const PushToSheetButton = (await import('./PushToSheetButton')).default
   return (
     <>
-      <PageHeader title="Backup" subtitle="Download copies of all your data" />
+      <PageHeader title="Backup" />
 
       <div className="card" style={{ padding: 18, marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
@@ -52,7 +52,7 @@ export default async function BackupPage() {
           <PushToSheetButton />
         </div>
         <div style={{ fontSize: 13.5, color: 'var(--ink2)', marginTop: 8, marginBottom: 10, maxWidth: 760 }}>
-          Mirror everything into a Google Sheet so a full copy always lives in your Google Drive — even if the system ever has a problem.
+          Mirror everything into a Google Sheet so a full copy always lives in your Google Drive.
           Use the button for an on-demand snapshot, or set up the <strong>daily automatic</strong> backup. No API keys or payment needed.
           Full steps in <strong>GOOGLE_SHEETS_BACKUP.md</strong>.
         </div>

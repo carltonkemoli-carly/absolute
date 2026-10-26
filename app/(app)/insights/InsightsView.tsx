@@ -24,21 +24,21 @@ export default function InsightsView({
   const delta = pl.prevRev > 0 ? Math.round(((pl.revenue - pl.prevRev) / pl.prevRev) * 100) : null
   const margin = pl.revenue > 0 ? Math.round((pl.net / pl.revenue) * 100) : 0
   const profitLabel = pl.profitLabel
-  const profitHint = `${margin}% · ${pl.profitHint}`
+  const profitHint = pl.profitHint ? `${margin}% · ${pl.profitHint}` : `${margin}%`
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {/* Headline P&L */}
       <div className="grid-stats">
         <StatCard label="Revenue" value={kes(pl.revenue)} hint={delta === null ? period : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% ${pl.prevLabel}`} accent={delta !== null && delta < 0 ? 'var(--danger)' : 'var(--accent)'} />
-        <StatCard label={profitLabel} value={kes(pl.net)} hint={profitHint} accent={pl.costsComplete ? 'var(--accent)' : 'var(--gold)'} />
+        <StatCard label={profitLabel} value={kes(pl.net)} hint={profitHint} accent={pl.net < 0 ? 'var(--danger)' : pl.costsComplete ? 'var(--accent)' : 'var(--gold)'} />
         <StatCard label="Fuel-to-sales" value={`${pl.fuelPct}%`} hint={`${kes(pl.fuel)} fuel`} accent={pl.fuelPct > 32 ? 'var(--gold)' : 'var(--accent)'} />
-        <StatCard label="Costs logged" value={kes(pl.costs)} hint={pl.costsComplete ? 'every cost behind the figure above' : 'wages still missing'} />
+        <StatCard label="Costs logged" value={kes(pl.costs)} hint={pl.costsComplete ? undefined : 'wages still missing'} />
       </div>
 
       {/* Trend */}
       <div className="card" style={{ padding: 18 }}>
-        <SectionTitle>Revenue &amp; {pl.costsComplete ? 'net' : 'before-wages'} profit — last 6 months</SectionTitle>
+        <SectionTitle>Revenue vs {pl.costsComplete ? 'net' : 'before-wages'} profit · last 6 months</SectionTitle>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {trend.map((t, i) => {
             const max = Math.max(1, ...trend.map((x) => x.revenue))
@@ -57,7 +57,7 @@ export default function InsightsView({
             )
           })}
         </div>
-        <p style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 8 }}>Light bar = revenue · solid = {pl.costsComplete ? 'net profit (after all logged costs)' : 'profit before wages (wages not logged yet)'}.</p>
+        
       </div>
 
       {/* Rank toggle */}

@@ -99,7 +99,7 @@ export default async function SuppliersPage({
     <>
       <PageHeader
         title="Suppliers"
-        subtitle={selected ? `${selected.contractor.name} — the work they send and what it's worth` : 'Who sends you work, how much, and whether they pay'}
+        subtitle={selected ? `${periodLabel} activity` : `${rows.length} suppliers · ${periodLabel}`}
         action={<div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><MonthNav year={year} month={month} /><PrintButton /></div>}
       />
 
@@ -124,7 +124,7 @@ export default async function SuppliersPage({
           invoices={invoices.filter((i) => i.contractor_id === selected.contractor.id)}
         />
       ) : (
-        <AllSuppliers rows={rows} periodLabel={periodLabel} pace={pace} />
+        <AllSuppliers rows={rows} pace={pace} />
       )}
     </>
   )
@@ -132,7 +132,7 @@ export default async function SuppliersPage({
 
 // ---------- All suppliers ----------
 
-function AllSuppliers({ rows, periodLabel, pace }: { rows: SupplierRow[]; periodLabel: string; pace: number }) {
+function AllSuppliers({ rows, pace }: { rows: SupplierRow[]; pace: number }) {
   const total = (f: (r: SupplierRow) => number) => rows.reduce((s, r) => s + f(r), 0)
   const revenue = total((r) => r.revenue)
   const trips = total((r) => r.trips)
@@ -148,14 +148,14 @@ function AllSuppliers({ rows, periodLabel, pace }: { rows: SupplierRow[]; period
 
   return (
     <>
-      <Section title={`All suppliers · ${periodLabel}`}>
+      <Section title="This month">
         <div className="grid-stats" style={{ marginBottom: revenue > 0 ? 16 : 2 }}>
           <StatCard label="Revenue" value={kes(revenue)}
             hint={revenueTarget > 0 ? `${Math.round((revenue / revenueTarget) * 100)}% of ${kes(revenueTarget)} target` : `${rows.length} supplier${rows.length === 1 ? '' : 's'}`}
             accent="var(--accent)" />
           <StatCard label="Trips" value={String(trips)} hint="this month" />
-          <StatCard label="Outstanding" value={kes(outstanding)} hint="owed to you · any month" accent={outstanding > 0 ? 'var(--gold)' : 'var(--accent)'} />
-          <StatCard label="Overdue" value={kes(overdue)} hint="past due date · any month" accent={overdue > 0 ? 'var(--danger)' : 'var(--accent)'} />
+          <StatCard label="Outstanding" value={kes(outstanding)} hint="owed · all time" accent={outstanding > 0 ? 'var(--gold)' : 'var(--accent)'} />
+          <StatCard label="Overdue" value={kes(overdue)} hint="past due · all time" accent={overdue > 0 ? 'var(--danger)' : 'var(--accent)'} />
           <StatCard label="Average days to pay" value={avgDays === null ? '—' : `${avgDays}`}
             hint={avgDays === null ? 'no settled invoices yet' : 'from issue to settled'}
             accent={avgDays !== null && avgDays > 45 ? 'var(--danger)' : avgDays !== null && avgDays > 30 ? 'var(--gold)' : 'var(--accent)'} />
@@ -180,8 +180,8 @@ function AllSuppliers({ rows, periodLabel, pace }: { rows: SupplierRow[]; period
       <Section title="Side by side">
         <DataTable rows={ranked} rowKey={(r) => r.contractor.id} minWidth={820} empty="No suppliers yet." columns={supplierColumns(pace)} />
         <p style={{ fontSize: 12.5, color: 'var(--ink3)', marginTop: 10 }}>
-          Trips, revenue and target are for {periodLabel}. Outstanding, overdue and days to pay are running positions across every month.
-          {pace < 1 && <> Targets are judged against the <strong>{Math.round(pace * 100)}%</strong> of the month that has passed, not the whole of it.</>}
+          Trips, revenue and target are this month. Outstanding and days-to-pay are running positions.
+          {pace < 1 && <> Targets scale to the {Math.round(pace * 100)}% of the month that has passed.</>}
         </p>
       </Section>
     </>
@@ -255,7 +255,7 @@ function SupplierDetail({
         <div className="grid-stats" style={{ marginBottom: 16 }}>
           <StatCard label="Revenue" value={kes(row.revenue)} hint={`net ${kes(row.netFare)} (excl. expressway)`} accent="var(--accent)" />
           <StatCard label="Trips" value={String(row.trips)} hint={row.trips > 0 ? `avg fare ${kes(row.avgFare)}` : 'none this month'} />
-          <StatCard label="Outstanding" value={kes(row.outstanding)} hint={`${row.invoices} invoice${row.invoices === 1 ? '' : 's'} · any month`} accent={row.outstanding > 0 ? 'var(--gold)' : 'var(--accent)'} />
+          <StatCard label="Outstanding" value={kes(row.outstanding)} hint={`${row.invoices} invoice${row.invoices === 1 ? '' : 's'} · all time`} accent={row.outstanding > 0 ? 'var(--gold)' : 'var(--accent)'} />
           <StatCard label="Overdue" value={kes(row.overdue)} hint={row.overdue > 0 ? 'chase this' : 'nothing late'} accent={row.overdue > 0 ? 'var(--danger)' : 'var(--accent)'} />
           <StatCard label="Days to pay" value={row.daysToPay === null ? '—' : `${row.daysToPay}`}
             hint={row.daysToPay === null ? 'no settled invoices yet' : 'average, issue to settled'}
@@ -268,7 +268,7 @@ function SupplierDetail({
             revenueTarget={row.revenueTarget} revenueActual={row.revenue}
             tripsTarget={row.tripsTarget} tripsActual={row.trips}
           />
-          <Card title="Revenue — last 6 months">
+          <Card title="Revenue · last 6 months">
             <Bars items={trend} max={Math.max(1, ...trend.map((t) => t.value))} format={kes} accent="var(--accent)"
               emptyText="No work from this supplier in the last six months." />
           </Card>

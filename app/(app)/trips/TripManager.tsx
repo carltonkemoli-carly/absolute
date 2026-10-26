@@ -89,12 +89,12 @@ export default function TripManager({
       {trips.length > 0 && (
         <div className="card" style={{ padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 13.5 }}>
-            <strong>{attributed}</strong> of <strong>{trips.length}</strong> trips assigned a vehicle &amp; driver
+            <strong>{attributed}</strong> of <strong>{trips.length}</strong> trips tagged with vehicle & driver
           </span>
           <div style={{ flex: 1, minWidth: 140, height: 7, background: 'var(--surface2)', borderRadius: 99, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${Math.round(coverage * 100)}%`, background: coverage >= 0.9 ? 'var(--accent)' : 'var(--gold)', borderRadius: 99, transition: 'width .3s' }} />
           </div>
-          <span style={{ fontSize: 12.5, color: 'var(--ink3)' }}>{Math.round(coverage * 100)}% · tag each trip below to unlock per-car & per-driver insights</span>
+          <span style={{ fontSize: 12.5, color: 'var(--ink3)' }}>{Math.round(coverage * 100)}% tagged with vehicle &amp; driver</span>
         </div>
       )}
 
@@ -142,7 +142,6 @@ function InlineAssign({ trip, vehicles, drivers }: { trip: Trip; vehicles: Vehic
     setVeh(v); persist(v, drv)
   }
 
-  const done = veh && drv
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 150, opacity: pending ? 0.55 : 1 }}>
       <select value={drv} onChange={onDriver} style={assignSel} aria-label="Driver">
@@ -153,7 +152,7 @@ function InlineAssign({ trip, vehicles, drivers }: { trip: Trip; vehicles: Vehic
         <option value="">+ vehicle…</option>
         {vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate}</option>)}
       </select>
-      {done && <span style={{ fontSize: 10.5, color: 'var(--accent)', fontWeight: 600 }}>✓ assigned</span>}
+      
     </div>
   )
 }

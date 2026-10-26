@@ -21,7 +21,7 @@ export default function ReportsView({ months, costsComplete = false, delta = nul
   const maxRevenue = Math.max(1, ...months.map((m) => m.revenue))
   const latest = months[months.length - 1]
   const profitLabel = costsComplete ? 'Net profit' : 'Profit before wages'
-  const profitNote = costsComplete ? 'after all logged costs' : 'wages not logged yet'
+  const profitNote = costsComplete ? 'after all costs' : 'wages not logged yet'
 
   return (
     <div>
@@ -42,7 +42,7 @@ export default function ReportsView({ months, costsComplete = false, delta = nul
 
       {/* Revenue vs profit bars */}
       <div className="card" style={{ padding: 18, marginBottom: 16 }}>
-        <div className="font-display" style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Revenue &amp; profit — last {months.length} months</div>
+        <div className="font-display" style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Revenue vs profit · last {months.length} months</div>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 18, height: 220, paddingBottom: 8 }}>
           {months.map((m) => (
             <div key={m.ym} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, height: '100%', justifyContent: 'flex-end' }}>
@@ -56,7 +56,7 @@ export default function ReportsView({ months, costsComplete = false, delta = nul
         </div>
         <div style={{ display: 'flex', gap: 18, marginTop: 8, fontSize: 12.5, color: 'var(--ink2)' }}>
           <Legend color="var(--accent-mid)" text="Revenue" />
-          <Legend color="var(--gold)" text={costsComplete ? 'Net profit (after all logged costs)' : 'Profit before wages (wages not logged yet)'} />
+          <Legend color="var(--gold)" text={costsComplete ? 'Net profit (after all costs)' : 'Profit before wages (wages not logged yet)'} />
         </div>
       </div>
 

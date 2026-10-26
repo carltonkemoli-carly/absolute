@@ -34,7 +34,7 @@ export async function backupToSheetNow(): Promise<PushResult> {
 
     const text = (await res.text()).slice(0, 300)
     if (!res.ok) return { ok: false, message: `Google Sheet rejected the backup (${res.status}). ${text}` }
-    if (/unauthorized|invalid secret/i.test(text)) return { ok: false, message: 'The Sheet rejected the secret — check BACKUP_WEBHOOK_SECRET matches the script.' }
+    if (/unauthorized|invalid secret/i.test(text)) return { ok: false, message: 'The Sheet rejected the secret. Check BACKUP_WEBHOOK_SECRET matches the script.' }
 
     const total = Object.values(datasets).reduce((n, rows) => n + rows.length, 0)
     return { ok: true, message: `Backed up ${total} records to your Google Sheet.` }

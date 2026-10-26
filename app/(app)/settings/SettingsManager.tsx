@@ -9,10 +9,10 @@ import { saveContractor, deleteContractor, saveOrganization, deleteOrganization 
 import { setUserRole, createUser } from './user-actions'
 
 const ROLE_OPTIONS = [
-  { value: 'owner', label: 'Owner — full access' },
-  { value: 'accountant', label: 'Accountant — sees finance' },
-  { value: 'office', label: 'Office — operations only' },
-  { value: 'driver', label: 'Driver — limited' },
+  { value: 'owner', label: 'Owner (full access)' },
+  { value: 'accountant', label: 'Accountant (finance)' },
+  { value: 'office', label: 'Office (operations)' },
+  { value: 'driver', label: 'Driver (limited)' },
 ]
 
 export default function SettingsManager({
@@ -45,7 +45,7 @@ function SettingsSection({ title, desc, children }: { title: string; desc: strin
 function ContractorSection({ contractors }: { contractors: Contractor[] }) {
   const [adding, setAdding] = useState(false)
   return (
-    <SettingsSection title="Contractors" desc="The companies that send you jobs (BCD, FCM, direct). Drives billing.">
+    <SettingsSection title="Contractors" desc="Companies that send you jobs. Used in billing.">
       <div className="card" style={{ overflow: 'hidden' }}>
         {contractors.map((c) => (
           <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>

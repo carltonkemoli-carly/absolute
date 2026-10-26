@@ -76,7 +76,7 @@ function Goal({ label, actual, target, pace, format }: {
   const note = pct >= 1 ? 'Target met'
     : partial
       ? actual >= expected
-        ? `Ahead of pace — ${format(expected)} expected by today`
+        ? `Ahead of pace · ${format(expected)} expected by today`
         : `${format(expected - actual)} behind today's pace of ${format(expected)}`
       : `${format(target - actual)} short`
 

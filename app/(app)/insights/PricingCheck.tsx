@@ -19,7 +19,7 @@ export default function PricingCheck({
       <div className="font-display" style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Rate-card pricing check</div>
       <p style={{ fontSize: 12.5, color: 'var(--ink3)', margin: '0 0 14px' }}>
         Each airport trip’s net fare (amount − expressway) vs your JKIA rate card for that area &amp; vehicle class.
-        Contract rates can legitimately differ — treat this as a review, not a rule.
+        Contract rates can legitimately differ. Treat this as a review, not a rule.
       </p>
 
       {matched === 0 ? (
@@ -30,7 +30,7 @@ export default function PricingCheck({
         <>
           <div className="grid-stats" style={{ marginBottom: 14 }}>
             <Mini label="Trips checked" value={String(matched)} />
-            <Mini label="Under-charged" value={kes(underRecovery)} tone={underRecovery > 0 ? 'var(--danger)' : 'var(--accent)'} hint="below card — possible lost revenue" />
+            <Mini label="Under-charged" value={kes(underRecovery)} tone={underRecovery > 0 ? 'var(--danger)' : 'var(--accent)'} hint="below card rate" />
             <Mini label="Over card" value={kes(overCharge)} tone="var(--ink)" hint="charged above card" />
           </div>
 
@@ -63,7 +63,7 @@ export default function PricingCheck({
 
           {unmatched.length > 0 && (
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink2)', margin: '2px 0 8px' }}>Busy areas not on your rate card — add a price</div>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink2)', margin: '2px 0 8px' }}>Busy areas not on your rate card</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {unmatched.map((u) => (
                   <Link key={u.area} href="/routes" style={{ fontSize: 12.5, padding: '5px 11px', borderRadius: 'var(--radius-pill)', background: 'var(--surface2)' }}>

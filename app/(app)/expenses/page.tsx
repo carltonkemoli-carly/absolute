@@ -34,14 +34,14 @@ export default async function ExpensesPage({
 
   return (
     <>
-      <PageHeader title="Expenses" subtitle="Running costs beyond fuel — wages, insurance, parking & more" action={<MonthNav year={year} month={month} />} />
+      <PageHeader title="Expenses" action={<MonthNav year={year} month={month} />} />
 
       <Section title={monthLabel}>
         <div className="grid-stats" style={{ marginBottom: 2 }}>
           <StatCard label="Total expenses" value={kes(total)} hint={`${expenses.length} entr${expenses.length === 1 ? 'y' : 'ies'}`} />
           <StatCard label="Biggest category" value={top ? top[0] : '—'} hint={top ? kes(top[1]) : 'nothing logged yet'} />
           <StatCard label="Categories used" value={String(byCat.size)} />
-          <StatCard label="Wage budget" value={kes(wageBudget)} hint="active drivers / month" accent="var(--gold)" />
+          <StatCard label="Wage budget" value={kes(wageBudget)} hint="drivers · monthly" accent="var(--gold)" />
         </div>
       </Section>
 

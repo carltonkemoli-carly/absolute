@@ -48,7 +48,7 @@ export default function ComplianceManager({
       {attending && (
         <div className="card animate-fadeup" style={{ padding: 20, marginBottom: 18, borderColor: 'var(--gold)' }}>
           <div className="font-display" style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>
-            Mark attended — {subject(attending)} · {attending.doc_type}
+            Mark attended · {subject(attending)} · {attending.doc_type}
           </div>
           <div style={{ fontSize: 13, color: 'var(--ink2)', marginBottom: 14 }}>Record that this overdue/expiring item has been actioned (renewed, booked, paid…).</div>
           <form action={async (fd) => { await markAttended(fd); setAttending(null) }}>
@@ -91,7 +91,7 @@ export default function ComplianceManager({
                   <Td>
                     {d.attended ? (
                       <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>✓ {d.attended_on ? fmtDate(d.attended_on) : 'done'}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>Done · {d.attended_on ? fmtDate(d.attended_on) : 'today'}</div>
                         {d.attended_note && <div style={{ fontSize: 12, color: 'var(--ink3)', maxWidth: 220 }}>{d.attended_note}</div>}
                       </div>
                     ) : needsAttention(d) ? (

@@ -75,9 +75,9 @@ export default function GoalsView({
       </Card>
 
       {/* What-if */}
-      <Card title="What-if — model a spend cut">
+      <Card title="What if you cut spending">
         <div style={{ fontSize: 13.5, color: 'var(--ink2)', marginBottom: 14 }}>
-          Drag a slider to see what happens to profit if you reduce spend on an item. Nothing is saved — it’s just for planning.
+          Drag a slider to see what happens to profit if you reduce spend on an item. Nothing is saved; it is for planning.
         </div>
         <div className="grid-2" style={{ gap: 24 }}>
           <div>

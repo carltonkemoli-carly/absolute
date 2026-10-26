@@ -65,7 +65,7 @@ export default async function GoalsPage({
 
   return (
     <>
-      <PageHeader title="Targets & P&L" subtitle={`How money moved in ${quarterLabel(year, quarter)} — and how you're tracking to goal`} action={<QuarterNav year={year} quarter={quarter} />} />
+      <PageHeader title="Targets & P&L" subtitle={quarterLabel(year, quarter)} action={<QuarterNav year={year} quarter={quarter} />} />
       <GoalsView
         period={period}
         revenue={revenue}

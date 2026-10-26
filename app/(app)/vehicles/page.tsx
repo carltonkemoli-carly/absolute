@@ -39,14 +39,14 @@ export default async function VehiclesPage() {
     <>
       <PageHeader title="Fleet" subtitle={`${vehicles.length} vehicle${vehicles.length === 1 ? '' : 's'}`} />
 
-      <Section title="Fleet overview">
+      <Section title="At a glance">
         <div className="grid-stats" style={{ marginBottom: 16 }}>
           <StatCard label="Vehicles" value={String(vehicles.length)} hint={`${owned} owned · ${vehicles.length - owned} hired`} />
           <StatCard label="On the road" value={String(active)}
-            hint={inShop > 0 ? `${inShop} in the shop` : 'all available'}
+            hint={inShop > 0 ? `${inShop} in the shop` : undefined}
             accent={inShop > 0 ? 'var(--gold)' : 'var(--accent)'} />
-          <StatCard label="Monthly hire cost" value={kes(hireCost)} hint="fixed, every month" accent={hireCost > 0 ? 'var(--gold)' : undefined} />
-          <StatCard label="Loan repayments" value={kes(loanMonthly)} hint="per month" accent={loanMonthly > 0 ? 'var(--gold)' : undefined} />
+          <StatCard label="Monthly hire" value={kes(hireCost)} accent={hireCost > 0 ? 'var(--gold)' : undefined} />
+          <StatCard label="Loan repayment" value={kes(loanMonthly)} hint="monthly" accent={loanMonthly > 0 ? 'var(--gold)' : undefined} />
         </div>
 
         <div className="grid-2">
@@ -69,5 +69,5 @@ export default async function VehiclesPage() {
 }
 
 function Empty() {
-  return <p style={{ fontSize: 13.5, color: 'var(--ink3)' }}>No vehicles yet — add your first one below.</p>
+  return <p style={{ fontSize: 13.5, color: 'var(--ink3)' }}>No vehicles yet. Add your first one below.</p>
 }

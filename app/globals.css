@@ -205,7 +205,7 @@ label.field > span { display: block; font-size: 12px; font-weight: 500; color: v
 .sidebar-backdrop { display: none; }
 
 /* Responsive grids (used across pages) */
-.grid-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
+.grid-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 14px; }
 .grid-form { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 

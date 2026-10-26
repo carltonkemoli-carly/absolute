@@ -125,12 +125,12 @@ export function listCosts(items: string[]): string {
 // data supports, and the hint names exactly which costs are behind the number.
 export function profitHeadline(pl: PL): { label: string; value: number; margin: number; hint: string } {
   if (pl.costsComplete) {
-    return { label: 'Net profit', value: pl.net, margin: pl.margin, hint: `after ${listCosts(pl.loggedCosts)}` }
+    return { label: 'Net profit', value: pl.net, margin: pl.margin, hint: 'after all costs' }
   }
   return {
     label: 'Profit before wages',
     value: pl.net,
     margin: pl.margin,
-    hint: `after ${listCosts(pl.loggedCosts)} · wages not logged yet`,
+    hint: 'wages not logged yet',
   }
 }

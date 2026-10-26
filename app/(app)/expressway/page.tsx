@@ -116,8 +116,8 @@ export default async function ExpresswayPage({
   return (
     <>
       <PageHeader
-        title="Expressway insights"
-        subtitle="Who uses the expressway, on which routes, and how the toll bill is trending"
+        title="Expressway"
+        subtitle={`${MONTH_NAMES[month]} ${year}`}
         action={<MonthNav year={year} month={month} />}
       />
       <ExpresswayInsights

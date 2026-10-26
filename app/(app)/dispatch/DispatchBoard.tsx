@@ -131,8 +131,8 @@ export default function DispatchBoard({ day, trips, pendingTrips = [], pendingTo
         </Section>
       )}
 
-      <Section title={`Jobs — ${fmtDate(day)}`}>
-        {sorted.length === 0 && <div className="card" style={{ padding: 36, textAlign: 'center', color: 'var(--ink3)' }}>{count('completed') > 0 ? 'All jobs for this day are completed. ✓' : 'No jobs for this day. Pick another date above, or expand the pending queue.'}</div>}
+      <Section title={`Jobs · ${fmtDate(day)}`}>
+        {sorted.length === 0 && <div className="card" style={{ padding: 36, textAlign: 'center', color: 'var(--ink3)' }}>{count('completed') > 0 ? 'All jobs for this day are completed.' : 'No jobs for this day. Pick another date above, or expand the pending queue.'}</div>}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 14 }}>
           {sorted.map((t) => {
@@ -170,7 +170,7 @@ export default function DispatchBoard({ day, trips, pendingTrips = [], pendingTo
             function renderAction() {
               if (t.status === 'booked') {
                 return (
-                  <ActionBlock step="1" title="Assign a driver & vehicle" hint="Pick the driver — their usual vehicle fills in automatically.">
+                  <ActionBlock step="1" title="Assign a driver & vehicle" hint="Pick the driver. Their usual vehicle fills in automatically.">
                     <AssignForm tripId={t.id} drivers={drivers} vehicles={vehicles} busyDrivers={busyDrivers} busyVehicles={busyVehicles} />
                   </ActionBlock>
                 )
@@ -200,7 +200,7 @@ export default function DispatchBoard({ day, trips, pendingTrips = [], pendingTo
                   <ActionBlock step="3" title={`Awaiting ${d?.name?.split(' ')[0] ?? 'driver'}'s confirmation`} hint="Sent. Mark confirmed once the driver accepts.">
                     {who}{contact}
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <StatusBtn id={t.id} status="confirmed" label="✓ Driver confirmed" primary />
+                      <StatusBtn id={t.id} status="confirmed" label="Driver confirmed" primary />
                       <StatusBtn id={t.id} status="assigned" label="Back" />
                     </div>
                   </ActionBlock>
@@ -220,7 +220,7 @@ export default function DispatchBoard({ day, trips, pendingTrips = [], pendingTo
               return (
                 <ActionBlock step="" title="On the road" hint="Close the job when the passenger is dropped off.">
                   {who}
-                  <StatusBtn id={t.id} status="completed" label="✓ Complete trip" primary />
+                  <StatusBtn id={t.id} status="completed" label="Complete trip" primary />
                 </ActionBlock>
               )
             }

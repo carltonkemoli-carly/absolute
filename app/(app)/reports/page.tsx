@@ -69,7 +69,7 @@ export default async function ReportsPage() {
 
   return (
     <>
-      <PageHeader title="Reports & Trends" subtitle="How money is moving — last 6 months of activity" />
+      <PageHeader title="Reports" subtitle="Last 6 months" />
       <ReportsView
         months={months}
         costsComplete={period.costsComplete}

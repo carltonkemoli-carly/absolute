@@ -52,9 +52,9 @@ export default async function RoutesPage() {
 
   return (
     <>
-      <PageHeader title="Routes & rate card" subtitle="Standard routes priced per vehicle class" />
+      <PageHeader title="Routes & rates" />
 
-      <Section title="Rate card overview">
+      <Section title="Rate card">
         <div className="grid-stats" style={{ marginBottom: gaps > 0 ? 16 : 2 }}>
           <StatCard label="Routes" value={String(routes.length)} hint={`${active.length} active`} />
           <StatCard label="Fully priced" value={String(full)} hint="all four classes" accent="var(--accent)" />
