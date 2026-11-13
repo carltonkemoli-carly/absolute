@@ -47,11 +47,9 @@ export default function SegmentDonut({
   // so round to 2dp and both sides always agree.
   const px = (n: number) => Math.round(n * 100) / 100
 
-  let acc = 0
-  const segs = shown.map((s) => {
+  const segs = shown.map((s, index) => {
     const frac = s.value / total
-    const startFrac = acc
-    acc += frac
+    const startFrac = shown.slice(0, index).reduce((sum, previous) => sum + previous.value / total, 0)
     // Badge sits at the segment's mid-angle, measured from the top (−90°).
     const midAngle = (startFrac + frac / 2) * 2 * Math.PI - Math.PI / 2
     return {
@@ -64,7 +62,7 @@ export default function SegmentDonut({
   })
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, minWidth: 0 }}>
       <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
           <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--surface2)" strokeWidth={thickness} />
@@ -99,11 +97,11 @@ export default function SegmentDonut({
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: shown.length > 3 ? '1fr 1fr' : '1fr', gap: '6px 18px', width: '100%' }}>
+      <div className="segment-donut-legend" style={{ display: 'grid', gridTemplateColumns: shown.length > 3 ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr)', gap: '6px 18px', width: '100%', minWidth: 0 }}>
         {segs.map((s, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, minWidth: 0 }}>
             <span style={{ width: 9, height: 9, borderRadius: 3, background: s.color, flexShrink: 0 }} />
-            <span style={{ flex: 1, color: 'var(--ink2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.label}</span>
+            <span style={{ flex: 1, minWidth: 0, color: 'var(--ink2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.label}</span>
             <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{format(s.value)}</span>
             <span style={{ color: 'var(--ink3)', fontSize: 12, width: 34, textAlign: 'right' }}>{Math.round(s.frac * 100)}%</span>
           </div>

@@ -199,15 +199,19 @@ label.field > span { display: block; font-size: 12px; font-weight: 500; color: v
   border-right: 1px solid var(--border); height: 100vh;
   position: sticky; top: 0; display: flex; flex-direction: column; z-index: 40;
 }
-.app-main { flex: 1; max-height: 100vh; overflow-y: auto; }
-.page-pad { max-width: 1180px; margin: 0 auto; padding: 28px 32px 64px; }
+.app-main { flex: 1; min-width: 0; max-height: 100vh; overflow-y: auto; }
+.page-pad { max-width: 1180px; min-width: 0; margin: 0 auto; padding: 28px 32px 64px; }
 .mobile-topbar { display: none; }
 .sidebar-backdrop { display: none; }
 
 /* Responsive grids (used across pages) */
 .grid-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 14px; }
 .grid-form { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.grid-2 > * { min-width: 0; }
+@media (max-width: 600px) {
+  .segment-donut-legend { grid-template-columns: minmax(0, 1fr) !important; }
+}
 
 /* Data tables — a real table on a laptop, stacked record cards on a phone.
    The rows render once; only the layout changes, so nothing is ever cut off
@@ -293,7 +297,7 @@ label.field > span { display: block; font-size: 12px; font-weight: 500; color: v
 
   .grid-form { grid-template-columns: 1fr; }
   .grid-form > * { grid-column: 1 / -1 !important; }
-  .grid-2 { grid-template-columns: 1fr; }
+  .grid-2 { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (min-width: 861px) {

@@ -23,15 +23,7 @@ export async function requireProfile(): Promise<Profile> {
     .eq('id', user.id)
     .single()
 
-  if (!profile) {
-    // Profile row missing (trigger not run yet) — fall back to a minimal one.
-    return {
-      id: user.id,
-      full_name: user.email ?? null,
-      role: 'office',
-      created_at: new Date().toISOString(),
-    }
-  }
+  if (!profile) throw new Error('Staff profile required')
   return profile as Profile
 }
 
@@ -52,5 +44,12 @@ export async function requireFinance(): Promise<Profile> {
 export async function requireOwner(): Promise<Profile> {
   const profile = await requireProfile()
   if (profile.role !== 'owner') throw new Error('Not authorized')
+  return profile
+}
+
+// Drivers have no auth-user-to-driver mapping yet; deny staff operations.
+export async function requireOperations(): Promise<Profile> {
+  const profile = await requireProfile()
+  if (!['owner', 'accountant', 'office'].includes(profile.role)) throw new Error('Not authorized')
   return profile
 }

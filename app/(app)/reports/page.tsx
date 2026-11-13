@@ -3,7 +3,7 @@ import { PageHeader } from '@/components/ui'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listFuel, listServices, listExpenses, listVehicles, latestTripMonth } from '@/lib/db'
 import { monthRange, MONTH_NAMES, isoDate } from '@/lib/format'
-import { periodPL, combinePL, type PL } from '@/lib/finance'
+import { isEarnedTrip, periodPL, combinePL, type PL } from '@/lib/finance'
 import ReportsView, { type MonthRow } from './ReportsView'
 
 export const dynamic = 'force-dynamic'
@@ -45,8 +45,8 @@ export default async function ReportsPage() {
       express: pl.express,
       profit: pl.net,
       margin: pl.margin,
-      index: pl.revenue > 0 ? pl.fuel / pl.revenue : 0,
-      trips: trips.filter((t) => t.trip_date.slice(0, 7) === ym).length,
+      index: pl.netRevenue > 0 ? pl.fuel / pl.netRevenue : 0,
+      trips: trips.filter((t) => isEarnedTrip(t) && t.trip_date.slice(0, 7) === ym).length,
     })
   }
   const period = combinePL(parts)
@@ -62,7 +62,7 @@ export default async function ReportsPage() {
   if (latestRow && previous) {
     const cutoff = partial ? `${previous.ym}-${todayIso.slice(8, 10)}` : `${previous.ym}-31`
     const prevRev = trips
-      .filter((t) => t.trip_date.slice(0, 7) === previous.ym && t.trip_date <= cutoff)
+      .filter((t) => isEarnedTrip(t) && t.trip_date.slice(0, 7) === previous.ym && t.trip_date <= cutoff)
       .reduce((a, t) => a + Number(t.amount), 0)
     if (prevRev > 0) delta = ((latestRow.revenue - prevRev) / prevRev) * 100
   }

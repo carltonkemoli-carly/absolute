@@ -2,13 +2,15 @@
 // Reports and Goals can never drift apart. Every finance surface goes through
 // monthlyPL() or periodPL() — nothing recomputes revenue or profit by hand.
 //
-// Honesty rule: we only claim "net profit" once the costs we know are missing
-// have actually been logged. Driver wages are the test, because they are the
-// largest recurring cost and the one most often left unrecorded — and a profit
-// figure that silently omits them flatters the business. Until wages exist for
-// the period we report "profit before wages" and name what is still missing.
+// Honesty rule: wages are the largest recurring cost often left unrecorded.
+// Even when wages exist, this is only a result after costs entered into the
+// system; it is not an attested accounting net profit.
 // Callers pass data already filtered to the period.
 import type { Trip, FuelEntry, Expense, VehicleService, Vehicle } from '@/lib/types'
+
+// Booked, assigned, travelling and cancelled jobs are operational work, not
+// earned transport revenue. Complete the job before it enters P&L reporting.
+export const isEarnedTrip = (trip: Trip): boolean => trip.status === 'completed'
 
 // Expenses posted by the monthly wage run carry this category.
 export const WAGES_CATEGORY = 'Driver Wages'
@@ -23,9 +25,9 @@ export interface PL {
   servicing: number
   hire: number
   costs: number // fuel + wages + otherExpenses + servicing + hire
-  net: number // revenue − costs logged so far
-  margin: number // net / revenue
-  costsComplete: boolean // are wages logged? controls "net" vs "before wages"
+  net: number // fare revenue − costs logged so far; tolls are pass-through
+  margin: number // net / fare revenue
+  costsComplete: boolean // legacy flag: wages logged, not proof every cost is present
   loggedCosts: string[] // which cost kinds actually have figures
 }
 
@@ -41,15 +43,16 @@ export interface PLInput {
 }
 
 export function monthlyPL(args: PLInput): PL {
-  const revenue = sum(args.trips, (t) => t.amount)
-  const express = sum(args.trips, (t) => t.express_charges)
+  const earnedTrips = args.trips.filter(isEarnedTrip)
+  const revenue = sum(earnedTrips, (t) => t.amount)
+  const express = sum(earnedTrips, (t) => t.express_charges)
   const fuel = sum(args.fuel, (f) => f.amount)
   const wages = sum(args.expenses.filter((e) => e.category === WAGES_CATEGORY), (e) => e.amount)
   const otherExpenses = sum(args.expenses.filter((e) => e.category !== WAGES_CATEGORY), (e) => e.amount)
   const servicing = sum(args.services, (s) => s.cost)
   // Monthly-hire vehicles cost a flat fee each month; casual hire is per trip.
   const monthlyHire = sum(args.vehicles.filter((v) => v.ownership === 'monthly_hire'), (v) => v.monthly_fee)
-  const hire = monthlyHire + sum(args.trips, (t) => t.hire_cost)
+  const hire = monthlyHire + sum(earnedTrips, (t) => t.hire_cost)
 
   return finalise({ revenue, express, fuel, wages, otherExpenses, servicing, hire })
 }
@@ -96,7 +99,10 @@ function finalise(v: {
   wages: number; otherExpenses: number; servicing: number; hire: number
 }): PL {
   const costs = v.fuel + v.wages + v.otherExpenses + v.servicing + v.hire
-  const net = v.revenue - costs
+  // Expressway charges reimburse a toll paid on the client's behalf. They
+  // belong in gross billings, but do not create transport margin.
+  const netRevenue = v.revenue - v.express
+  const net = netRevenue - costs
   const loggedCosts: string[] = []
   if (v.fuel > 0) loggedCosts.push('fuel')
   if (v.hire > 0) loggedCosts.push('hire')
@@ -105,10 +111,10 @@ function finalise(v: {
   if (v.wages > 0) loggedCosts.push('wages')
   return {
     ...v,
-    netRevenue: v.revenue - v.express,
+    netRevenue,
     costs,
     net,
-    margin: v.revenue > 0 ? net / v.revenue : 0,
+    margin: netRevenue > 0 ? net / netRevenue : 0,
     costsComplete: v.wages > 0,
     loggedCosts,
   }
@@ -121,14 +127,13 @@ export function listCosts(items: string[]): string {
   return `${items.slice(0, -1).join(', ')} & ${items[items.length - 1]}`
 }
 
-// What to headline on a dashboard/report. The label never claims more than the
-// data supports, and the hint names exactly which costs are behind the number.
+// What to headline on a dashboard/report. Never claim all costs are present.
 export function profitHeadline(pl: PL): { label: string; value: number; margin: number; hint: string } {
   if (pl.costsComplete) {
-    return { label: 'Net profit', value: pl.net, margin: pl.margin, hint: 'after all costs' }
+    return { label: 'Profit after recorded costs', value: pl.net, margin: pl.margin, hint: 'unrecorded costs may still change this' }
   }
   return {
-    label: 'Profit before wages',
+    label: 'Profit before unrecorded wages',
     value: pl.net,
     margin: pl.margin,
     hint: 'wages not logged yet',

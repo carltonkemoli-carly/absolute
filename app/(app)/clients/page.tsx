@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { PageHeader, StatCard, Card, Section } from '@/components/ui'
 import PrintButton from '@/components/PrintButton'
 import { Bars } from '@/components/Bars'
@@ -7,6 +8,7 @@ import { topSegments } from '@/lib/chart'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listOrganizations } from '@/lib/db'
 import { kes, kesPlain, fmtDate, isoDate } from '@/lib/format'
+import { isEarnedTrip } from '@/lib/finance'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,7 +17,8 @@ export default async function ClientsPage() {
   if (!canSeeFinance(profile.role)) redirect('/trips')
 
   const today = isoDate(new Date())
-  const [trips, orgs] = await Promise.all([listTrips('2000-01-01', today), listOrganizations()])
+  const [allTrips, orgs] = await Promise.all([listTrips('2000-01-01', today), listOrganizations()])
+  const trips = allTrips.filter(isEarnedTrip)
   const sum = <T,>(a: T[], f: (x: T) => number) => a.reduce((s, x) => s + f(x), 0)
   const totalRev = sum(trips, (t) => Number(t.amount) || 0)
 
@@ -90,7 +93,7 @@ export default async function ClientsPage() {
               const stale = ds != null && ds > 45
               return (
                 <tr key={c.id} style={{ borderTop: '1px solid var(--border)' }}>
-                  <Td><strong>{c.name}</strong></Td>
+                  <Td><Link href={`/clients/${encodeURIComponent(c.id)}`} className="client-record-link"><strong>{c.name}</strong><span aria-hidden="true"> ↗</span></Link></Td>
                   <Td right>{kes(c.revenue)}</Td>
                   <Td right>{Math.round(c.share * 100)}%</Td>
                   <Td right>{c.trips}</Td>

@@ -1,288 +1,156 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
+import type { FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { Section } from '@/components/ui'
+import RecordToolbar from '@/components/RecordToolbar'
+import { nairobiToday } from '@/lib/nairobi-date'
 import { fmtTime, fmtDateTime, fmtDate, waNumber, isoDate, addDays } from '@/lib/format'
-import type { Contractor, Driver, Organization, Trip, Vehicle } from '@/lib/types'
+import type { Contractor, Driver, Organization, Trip, TripStatus, Vehicle } from '@/lib/types'
+import { dispatchColumns, filterDispatchTrips, type DispatchStatusFilter } from '@/lib/dispatch-view'
 import { setTripStatus, clearPendingTrips } from './actions'
 import AssignForm from './AssignForm'
+import './dispatch-workspace.css'
 
 type Lookups = { drivers: Driver[]; vehicles: Vehicle[]; organizations: Organization[]; contractors: Contractor[] }
+const LABELS: Record<TripStatus, string> = { booked: 'Unassigned', assigned: 'Assigned', dispatched: 'Dispatched', confirmed: 'Confirmed', enroute: 'En route', completed: 'Completed', cancelled: 'Cancelled' }
+const HINTS: Record<TripStatus, string> = { booked: 'Choose driver and vehicle', assigned: 'Send the journey details', dispatched: 'Await driver confirmation', confirmed: 'Ready to set off', enroute: 'Journey in progress', completed: 'Closed jobs', cancelled: 'Not travelling' }
+const STAGE_COLORS: Record<TripStatus, string> = { booked: 'var(--danger)', assigned: 'var(--gold)', dispatched: 'var(--accent-mid)', confirmed: 'var(--accent)', enroute: 'var(--accent)', completed: 'var(--ink3)', cancelled: 'var(--ink3)' }
 
-// The 5-stage workflow. doneCount = how many stages a status has completed.
-const FLOW = ['Assign', 'Dispatch', 'Confirm', 'En route', 'Done'] as const
-const DONE: Record<string, number> = {
-  booked: 0, assigned: 1, dispatched: 2, confirmed: 3, enroute: 4, completed: 5, cancelled: 0,
-}
-const STATUS_LABEL: Record<string, string> = {
-  booked: 'Unassigned', assigned: 'Assigned', dispatched: 'Dispatched', confirmed: 'Confirmed',
-  enroute: 'En route', completed: 'Completed', cancelled: 'Cancelled',
-}
-const STATUS_COLOR: Record<string, string> = {
-  booked: 'var(--danger)', assigned: 'var(--gold)', dispatched: 'var(--accent-mid)',
-  confirmed: 'var(--accent)', enroute: 'var(--accent)', completed: 'var(--ink3)', cancelled: 'var(--ink3)',
-}
-
-export default function DispatchBoard({ day, trips, pendingTrips = [], pendingTotal = 0, lookups }: { day: string; trips: Trip[]; pendingTrips?: Trip[]; pendingTotal?: number; lookups: Lookups }) {
+export default function DispatchBoard({ day, trips, pendingTrips = [], pendingTotal = 0, lookups, canClearPending = false }: {
+  day: string; trips: Trip[]; pendingTrips?: Trip[]; pendingTotal?: number; lookups: Lookups; canClearPending?: boolean
+}) {
   const router = useRouter()
   const [showQueue, setShowQueue] = useState(false)
-  const { drivers, vehicles, organizations, contractors } = lookups
-  const driver = (id: string | null) => drivers.find((d) => d.id === id) ?? null
-  const plate = (id: string | null) => vehicles.find((v) => v.id === id)?.plate ?? null
-  const orgName = (id: string | null) => organizations.find((o) => o.id === id)?.name ?? ''
-  const conName = (id: string | null) => contractors.find((c) => c.id === id)?.name ?? ''
-
-  const active = trips.filter((t) => t.status !== 'completed' && t.status !== 'cancelled')
-  const sorted = [...active].sort((a, b) => (DONE[a.status] - DONE[b.status]) || (a.flight_time ?? a.trip_date).localeCompare(b.flight_time ?? b.trip_date))
-  const count = (s: string) => trips.filter((t) => t.status === s).length
-
-  // Drivers/vehicles already on another job today → warn to avoid double-booking.
-  const assignedActive = active.filter((t) => t.status !== 'booked')
-  const busyDrivers = assignedActive.map((t) => t.driver_id).filter(Boolean) as string[]
-  const busyVehicles = assignedActive.map((t) => t.vehicle_id).filter(Boolean) as string[]
-
+  const [query, setQuery] = useState('')
+  const [status, setStatus] = useState<DispatchStatusFilter>('all')
+  const [view, setView] = useState('board')
+  const [queueError, setQueueError] = useState<string | null>(null)
   const [clearing, startClear] = useTransition()
-
-  // Unassigned trips on OTHER dates — shown above the day view so imports are always visible.
-  // Grouped by date so a large import (e.g. a full BCD month) stays readable.
-  const otherPending = pendingTrips.filter((t) => t.trip_date !== day)
-  const byDate = new Map<string, Trip[]>()
-  for (const t of otherPending) {
-    const arr = byDate.get(t.trip_date) ?? []
-    arr.push(t); byDate.set(t.trip_date, arr)
-  }
-  const pendingDays = [...byDate.entries()].sort((a, b) => a[0].localeCompare(b[0]))
-
-  function onClearPending() {
-    if (!confirm(`Delete all ${pendingTotal} unassigned job(s)? This cannot be undone. Use this to clear out a bad or duplicated import, then re-import cleanly.`)) return
-    startClear(async () => {
-      const n = await clearPendingTrips()
-      toast.success(`Cleared ${n} unassigned job${n === 1 ? '' : 's'}.`)
-      router.refresh()
-    })
-  }
+  const { drivers, vehicles, organizations, contractors } = lookups
+  const driverName = (id: string | null) => drivers.find(driver => driver.id === id)?.name ?? ''
+  const plate = (id: string | null) => vehicles.find(vehicle => vehicle.id === id)?.plate ?? ''
+  const orgName = (id: string | null) => organizations.find(organization => organization.id === id)?.name ?? ''
+  const contractorName = (id: string | null) => contractors.find(contractor => contractor.id === id)?.name ?? ''
+  const visible = filterDispatchTrips(trips, query, status, trip => [driverName(trip.driver_id), plate(trip.vehicle_id), contractorName(trip.contractor_id), orgName(trip.organization_id)].join(' '))
+  const columns = dispatchColumns(visible, status)
+  const active = trips.filter(trip => !['completed', 'cancelled', 'booked'].includes(trip.status))
+  // Advisory day-level hints only. Actual resource overlaps are checked server-side.
+  const busyDrivers = active.flatMap(trip => trip.driver_id ? [trip.driver_id] : [])
+  const busyVehicles = active.flatMap(trip => trip.vehicle_id ? [trip.vehicle_id] : [])
+  const activeCount = trips.filter(trip => trip.status !== 'completed' && trip.status !== 'cancelled').length
+  const completedCount = trips.filter(trip => trip.status === 'completed').length
+  const pendingDays = useMemo(() => {
+    const byDate = new Map<string, Trip[]>()
+    for (const trip of pendingTrips.filter(trip => trip.trip_date !== day)) {
+      const jobs = byDate.get(trip.trip_date) ?? []
+      jobs.push(trip); byDate.set(trip.trip_date, jobs)
+    }
+    return [...byDate.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  }, [pendingTrips, day])
 
   function shiftDay(delta: number) {
-    // Build the date from local parts: `new Date('2026-10-07')` parses as UTC
-    // midnight, so mixing it with local getters only lands on the right day by
-    // luck of the timezone's sign.
-    const [y, m, d] = day.split('-').map(Number)
-    router.push(`/dispatch?d=${isoDate(addDays(new Date(y, m - 1, d), delta))}`)
+    const [year, month, date] = day.split('-').map(Number)
+    router.push(`/dispatch?d=${isoDate(addDays(new Date(year, month - 1, date), delta))}`)
   }
+  function openToday() {
+    const today = nairobiToday()
+    router.push(`/dispatch?d=${today}`)
+  }
+  function onClearPending() {
+    if (!confirm(`Delete all ${pendingTotal} unassigned jobs across every date? This cannot be undone. Check the queue before continuing.`)) return
+    setQueueError(null)
+    startClear(async () => {
+      try {
+        const count = await clearPendingTrips()
+        toast.success(`Cleared ${count} unassigned job${count === 1 ? '' : 's'}.`)
+        router.refresh()
+      } catch (failure) {
+        const message = failure instanceof Error ? failure.message : 'Could not clear the queue. Please try again.'
+        setQueueError(message)
+        toast.error(message)
+      }
+    })
+  }
+  function resetFilters() { setQuery(''); setStatus('all') }
+  const hasFilters = !!query.trim() || status !== 'all'
+  const commonActions = { lookups, busyDrivers, busyVehicles }
 
-  return (
-    <>
-      {/* Compact pending banner — one line so the day's work stays at the top.
-          Expand to see the date-grouped queue (e.g. freshly imported BCD jobs). */}
-      {pendingTotal > 0 && (
-        <div className="card animate-fadeup" style={{ marginBottom: 14, padding: '10px 14px', border: '1.5px solid var(--gold)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--ink)' }}>
-            📋 {pendingTotal} unassigned job{pendingTotal === 1 ? '' : 's'} waiting
-          </span>
-          <div style={{ flex: 1 }} />
-          <button className="btn-ghost" style={{ padding: '5px 12px', fontSize: 12.5, cursor: 'pointer' }} onClick={() => setShowQueue((s) => !s)}>
-            {showQueue ? 'Hide queue ▴' : 'Show queue by date ▾'}
-          </button>
-          <button className="btn-ghost" style={{ padding: '5px 12px', fontSize: 12.5, cursor: 'pointer', color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={onClearPending} disabled={clearing}>
-            {clearing ? 'Clearing…' : '🗑 Clear all'}
-          </button>
-        </div>
-      )}
-
-      {/* Day navigation — the primary work surface sits right here at the top */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <button className="btn-ghost" style={navBtn} onClick={() => shiftDay(-1)}>‹</button>
-        <input type="date" className="input" value={day} onChange={(e) => router.push(`/dispatch?d=${e.target.value}`)} style={{ width: 168 }} />
-        <button className="btn-ghost" style={navBtn} onClick={() => shiftDay(1)}>›</button>
-        <div style={{ flex: 1 }} />
-        <div style={{ fontSize: 13.5, color: 'var(--ink2)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          {count('booked') > 0 && <Tag color="var(--danger)">{count('booked')} to assign</Tag>}
-          {count('assigned') > 0 && <Tag color="var(--gold)">{count('assigned')} to dispatch</Tag>}
-          {count('dispatched') > 0 && <Tag color="var(--accent-mid)">{count('dispatched')} awaiting confirm</Tag>}
-          {count('completed') > 0 && <Tag color="var(--ink3)">{count('completed')} done</Tag>}
-        </div>
-      </div>
-
-      {/* Expandable date-grouped pending queue */}
-      {showQueue && otherPending.length > 0 && (
-        <Section title="Waiting to be assigned">
-          <div className="card animate-fadeup" style={{ marginBottom: 18, padding: 14 }}>
-            <div style={{ fontSize: 12.5, color: 'var(--ink2)', marginBottom: 10 }}>
-              Click a day to open it above and assign drivers.{pendingTrips.length < pendingTotal ? ` Showing the first ${pendingDays.length} days.` : ''}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
-              {pendingDays.map(([date, jobs]) => (
-                <button key={date} className="card card-hover" onClick={() => { router.push(`/dispatch?d=${date}`); setShowQueue(false) }}
-                  style={{ padding: 14, textAlign: 'left', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                    <span style={{ fontWeight: 700, fontSize: 14 }}>{fmtDate(date)}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gold)', background: 'var(--gold-light)', padding: '2px 8px', borderRadius: 'var(--radius-pill)', whiteSpace: 'nowrap' }}>{jobs.length} job{jobs.length > 1 ? 's' : ''}</span>
-                  </div>
-                  <div style={{ fontSize: 12.5, color: 'var(--ink3)', lineHeight: 1.5 }}>
-                    {jobs.slice(0, 3).map((j) => j.client_name).join(', ')}{jobs.length > 3 ? `, +${jobs.length - 3} more` : ''}
-                  </div>
-                  <div style={{ fontSize: 12.5, color: 'var(--accent)', fontWeight: 600, marginTop: 2 }}>Open & assign →</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </Section>
-      )}
-
-      <Section title={`Jobs · ${fmtDate(day)}`}>
-        {sorted.length === 0 && <div className="card" style={{ padding: 36, textAlign: 'center', color: 'var(--ink3)' }}>{count('completed') > 0 ? 'All jobs for this day are completed.' : 'No jobs for this day. Pick another date above, or expand the pending queue.'}</div>}
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 14 }}>
-          {sorted.map((t) => {
-            const d = driver(t.driver_id)
-            const doneCount = DONE[t.status] ?? 0
-            const msg = `Hi ${d?.name ?? ''}, trip for ${t.client_name}: ${t.pickup ?? ''} → ${t.dropoff ?? ''}${t.flight_time ? ` at ${fmtTime(t.flight_time)}` : ''}${t.flight_no ? ` (flight ${t.flight_no})` : ''}. Vehicle ${plate(t.vehicle_id) ?? ''}. Please confirm.`
-
-            return (
-              <div key={t.id} className="card card-hover animate-fadeup" style={{ padding: 0, overflow: 'hidden' }}>
-                {/* status accent bar */}
-                <div style={{ height: 3, background: STATUS_COLOR[t.status] }} />
-                <div style={{ padding: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 15.5 }}>{t.client_name}</div>
-                      <div style={{ fontSize: 13, color: 'var(--ink2)', marginTop: 2 }}>{(t.pickup || '—')} → {(t.dropoff || '—')}</div>
-                    </div>
-                    <span style={{ fontSize: 11.5, fontWeight: 700, color: STATUS_COLOR[t.status], background: 'var(--surface2)', padding: '3px 9px', borderRadius: 'var(--radius-pill)', whiteSpace: 'nowrap' }}>{STATUS_LABEL[t.status]}</span>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12.5, color: 'var(--ink3)', margin: '9px 0 12px' }}>
-                    {t.flight_no && <span>✈ {t.flight_no} · {t.flight_time ? fmtTime(t.flight_time) : ''}</span>}
-                    <span>{conName(t.contractor_id)}{orgName(t.organization_id) ? ` · ${orgName(t.organization_id)}` : ''}</span>
-                  </div>
-
-                  {/* Stepper */}
-                  <Stepper doneCount={doneCount} />
-
-                  {/* Step-specific action area */}
-                  <div style={{ marginTop: 14 }}>{renderAction()}</div>
-                </div>
-              </div>
-            )
-
-            function renderAction() {
-              if (t.status === 'booked') {
-                return (
-                  <ActionBlock step="1" title="Assign a driver & vehicle" hint="Pick the driver. Their usual vehicle fills in automatically.">
-                    <AssignForm tripId={t.id} drivers={drivers} vehicles={vehicles} busyDrivers={busyDrivers} busyVehicles={busyVehicles} />
-                  </ActionBlock>
-                )
-              }
-              const who = <div style={{ fontSize: 13.5, marginBottom: 4 }}><strong>{plate(t.vehicle_id) ?? '—'}</strong> · {d?.name ?? 'No driver'}{t.assigned_by ? <span style={{ color: 'var(--ink3)' }}> · by {t.assigned_by}{t.assigned_at ? `, ${fmtDateTime(t.assigned_at)}` : ''}</span> : null}</div>
-              const contact = d?.phone ? (
-                <div style={{ display: 'flex', gap: 8, margin: '8px 0', flexWrap: 'wrap' }}>
-                  <a href={`tel:${d.phone.replace(/\s/g, '')}`} className="btn-ghost" style={contactBtn}>📞 Call</a>
-                  <a href={`https://wa.me/${waNumber(d.phone)}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" className="btn-ghost" style={{ ...contactBtn, color: '#1DA851', borderColor: '#1DA851' }}>💬 WhatsApp</a>
-                  <a href={`sms:${d.phone.replace(/\s/g, '')}?body=${encodeURIComponent(msg)}`} className="btn-ghost" style={contactBtn}>✉ SMS</a>
-                </div>
-              ) : null
-
-              if (t.status === 'assigned') {
-                return (
-                  <ActionBlock step="2" title="Dispatch to the driver" hint="Send the trip details, then mark it dispatched.">
-                    {who}{contact}
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <StatusBtn id={t.id} status="dispatched" label="Mark as dispatched →" primary />
-                      <StatusBtn id={t.id} status="booked" label="Unassign" />
-                    </div>
-                  </ActionBlock>
-                )
-              }
-              if (t.status === 'dispatched') {
-                return (
-                  <ActionBlock step="3" title={`Awaiting ${d?.name?.split(' ')[0] ?? 'driver'}'s confirmation`} hint="Sent. Mark confirmed once the driver accepts.">
-                    {who}{contact}
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <StatusBtn id={t.id} status="confirmed" label="Driver confirmed" primary />
-                      <StatusBtn id={t.id} status="assigned" label="Back" />
-                    </div>
-                  </ActionBlock>
-                )
-              }
-              if (t.status === 'confirmed') {
-                return (
-                  <ActionBlock step="4" title="Ready to go" hint={`${d?.name?.split(' ')[0] ?? 'Driver'} confirmed. Start when the trip begins.`}>
-                    {who}
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <StatusBtn id={t.id} status="enroute" label="▶ Start trip" primary />
-                    </div>
-                  </ActionBlock>
-                )
-              }
-              // enroute
-              return (
-                <ActionBlock step="" title="On the road" hint="Close the job when the passenger is dropped off.">
-                  {who}
-                  <StatusBtn id={t.id} status="completed" label="Complete trip" primary />
-                </ActionBlock>
-              )
-            }
-          })}
-        </div>
-      </Section>
-    </>
-  )
-}
-
-function Stepper({ doneCount }: { doneCount: number }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-      {FLOW.map((label, i) => {
-        const done = i < doneCount
-        const activeStep = i === doneCount
-        const color = done ? 'var(--accent)' : activeStep ? 'var(--gold)' : 'var(--ink3)'
-        return (
-          <div key={label} style={{ display: 'flex', alignItems: 'center', flex: i < FLOW.length - 1 ? 1 : '0 0 auto' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              <div style={{
-                width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 10, fontWeight: 700,
-                background: done ? 'var(--accent)' : activeStep ? 'var(--gold-light)' : 'transparent',
-                color: done ? 'var(--on-accent)' : color,
-                border: `1.5px solid ${done ? 'var(--accent)' : color}`,
-                transition: 'all .3s var(--ease)',
-              }}>{done ? '✓' : i + 1}</div>
-              <span style={{ fontSize: 9.5, fontWeight: activeStep ? 700 : 500, color, whiteSpace: 'nowrap' }}>{label}</span>
-            </div>
-            {i < FLOW.length - 1 && <div style={{ flex: 1, height: 2, background: i < doneCount ? 'var(--accent)' : 'var(--border)', margin: '0 4px', marginBottom: 14, transition: 'background .3s var(--ease)' }} />}
-          </div>
-        )
-      })}
+  return <div className="dispatch-workspace">
+    <div className="dispatch-datebar">
+      <div className="dispatch-date-controls"><button type="button" className="btn-ghost dispatch-day-arrow" onClick={() => shiftDay(-1)} aria-label="Previous day">‹</button><label htmlFor="dispatch-day" className="dispatch-day-label">Dispatch date<input id="dispatch-day" type="date" className="input" value={day} onChange={event => { if (event.target.value) router.push(`/dispatch?d=${event.target.value}`) }}/></label><button type="button" className="btn-ghost dispatch-day-arrow" onClick={() => shiftDay(1)} aria-label="Next day">›</button><button type="button" className="btn-ghost" onClick={openToday}>Today</button></div>
+      <div className="dispatch-day-summary"><span><strong>{activeCount}</strong> active</span><span><strong>{completedCount}</strong> completed</span><span className="dispatch-timezone">EAT · Nairobi</span></div>
     </div>
-  )
+
+    {pendingTotal > 0 && <div className="dispatch-queue-banner">
+      <div><strong>{pendingTotal} unassigned job{pendingTotal === 1 ? '' : 's'}</strong><span>Across the booking queue</span></div>
+      <button type="button" className="btn-ghost" onClick={() => setShowQueue(current => !current)} aria-expanded={showQueue} aria-controls="dispatch-pending-queue">{showQueue ? 'Hide queue' : 'View queue by date'}</button>
+      {canClearPending && <button type="button" className="btn-ghost dispatch-clear-queue" onClick={onClearPending} disabled={clearing}>{clearing ? 'Clearing…' : 'Clear unassigned queue'}</button>}
+    </div>}
+    {queueError && <p className="dispatch-error" role="alert">{queueError}</p>}
+    {showQueue && <section id="dispatch-pending-queue" className="dispatch-pending-panel" aria-label="Pending jobs by date">
+      {pendingDays.length ? <><p>Bookings on other dates. Open a day to assign drivers.{pendingTrips.length < pendingTotal ? ' The queue preview is limited; more bookings may exist on other dates.' : ''}</p><div className="dispatch-pending-days">{pendingDays.map(([date, jobs]) => <button type="button" key={date} onClick={() => { router.push(`/dispatch?d=${date}`); setShowQueue(false) }}><span><strong>{fmtDate(date)}</strong><b>{jobs.length} job{jobs.length === 1 ? '' : 's'}</b></span><small>{jobs.slice(0, 3).map(job => job.client_name).join(', ')}{jobs.length > 3 ? `, +${jobs.length - 3} more` : ''}</small><em>Open day →</em></button>)}</div></> : <p>All jobs in this queue preview are on the selected date.</p>}
+    </section>}
+
+    <RecordToolbar search={query} onSearchChange={setQuery} searchLabel="Search dispatch jobs" searchPlaceholder="Client, route, flight, driver or vehicle…" count={visible.length} countLabel="jobs" views={[{ value: 'board', label: 'Board' }, { value: 'list', label: 'List' }]} activeView={view} onViewChange={setView} filterSummary={hasFilters ? 'Filtered jobs' : undefined} onClearFilters={hasFilters ? resetFilters : undefined}>
+      <label className="dispatch-status-filter"><span>Status</span><select className="input" value={status} onChange={event => setStatus(event.target.value as DispatchStatusFilter)}><option value="all">All jobs</option><option value="active">Active jobs</option>{Object.entries(LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+    </RecordToolbar>
+
+    <div className="dispatch-view-heading"><h2>{fmtDate(day)}</h2><p>{view === 'board' ? 'Move jobs forward with the action on each card.' : 'Review the day’s jobs and open their actions.'}</p></div>
+    {visible.length === 0 ? <div className="dispatch-empty card"><h3>{hasFilters ? 'No jobs match these filters.' : 'No jobs on this date.'}</h3><p>{hasFilters ? 'Try another search or clear the filters to see the full day.' : 'Choose another day or open the pending queue.'}</p>{hasFilters && <button type="button" className="btn-ghost" onClick={resetFilters}>Clear filters</button>}</div> : view === 'board' ? <>
+      <p className="dispatch-scroll-hint">Scroll across to see each stage. Actions save through the server.</p>
+      <div className="dispatch-board-scroll" role="region" aria-label="Dispatch workflow board" tabIndex={0}><div className="dispatch-kanban" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(270px, 1fr))` }}>{columns.map(stage => {
+        const jobs = visible.filter(trip => trip.status === stage)
+        return <section className="dispatch-column" key={stage} aria-label={`${LABELS[stage]} jobs`}><div className="dispatch-column-heading" style={{ borderTopColor: STAGE_COLORS[stage] }}><h3>{LABELS[stage]}<span>{jobs.length}</span></h3><p>{HINTS[stage]}</p></div><div className="dispatch-column-jobs">{jobs.length ? jobs.map(trip => <article key={trip.id} className="dispatch-job-card"><div className="dispatch-job-time">{pickupTime(trip)}<span>{trip.slip_no || trip.voucher_no || ''}</span></div><h4>{trip.client_name}</h4><p className="dispatch-job-route">{trip.pickup || 'Pickup to confirm'}<span aria-hidden="true">→</span>{trip.dropoff || 'Destination to confirm'}</p><p className="dispatch-job-client">{[contractorName(trip.contractor_id), orgName(trip.organization_id)].filter(Boolean).join(' · ') || 'Direct booking'}</p>{trip.flight_no && <p className="dispatch-job-flight">Flight {trip.flight_no}{trip.flight_time ? ` · ${fmtTime(trip.flight_time)}` : ''}</p>}<JobActions trip={trip} {...commonActions}/></article>) : <p className="dispatch-column-empty">No jobs in this stage</p>}</div></section>
+      })}</div></div>
+    </> : <div className="dispatch-list-wrap"><table className="dispatch-list"><caption className="dispatch-sr-only">Jobs for {fmtDate(day)}</caption><thead><tr><th>Pickup</th><th>Client & route</th><th>Driver / vehicle</th><th>Status</th><th>Actions</th></tr></thead><tbody>{visible.map(trip => <tr key={trip.id}><td data-label="Pickup"><strong>{pickupTime(trip)}</strong><small>{trip.slip_no || trip.voucher_no || trip.flight_no || '—'}</small></td><td data-label="Client & route"><strong>{trip.client_name}</strong><span>{trip.pickup || 'Pickup to confirm'} → {trip.dropoff || 'Destination to confirm'}</span><small>{[contractorName(trip.contractor_id), orgName(trip.organization_id)].filter(Boolean).join(' · ') || 'Direct booking'}</small></td><td data-label="Driver / vehicle"><strong>{driverName(trip.driver_id) || 'Unassigned'}</strong><span>{plate(trip.vehicle_id) || 'Vehicle to confirm'}</span></td><td data-label="Status"><span className="dispatch-status" style={{ color: STAGE_COLORS[trip.status] }}>{LABELS[trip.status]}</span></td><td data-label="Actions"><details className="dispatch-row-actions"><summary>{trip.status === 'booked' ? 'Assign job' : trip.status === 'completed' ? 'Job details' : 'Manage job'}</summary><JobActions trip={trip} {...commonActions}/></details></td></tr>)}</tbody></table></div>}
+  </div>
 }
 
-function ActionBlock({ step, title, hint, children }: { step: string; title: string; hint: string; children: React.ReactNode }) {
-  return (
-    <div style={{ background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', padding: 12 }}>
-      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>{step && <span style={{ color: 'var(--accent)' }}>{step} · </span>}{title}</div>
-      <div style={{ fontSize: 12, color: 'var(--ink2)', margin: '2px 0 9px' }}>{hint}</div>
-      {children}
-    </div>
-  )
-}
+function pickupTime(trip: Trip) { return trip.pickup_time ? `${trip.pickup_time} EAT` : trip.flight_time ? `${fmtTime(trip.flight_time)} EAT` : 'Time to confirm' }
 
-function StatusBtn({ id, status, label, primary }: { id: string; status: string; label: string; primary?: boolean }) {
-  return (
-    <form action={setTripStatus}>
-      <input type="hidden" name="id" value={id} />
-      <input type="hidden" name="status" value={status} />
-      <button type="submit" className={primary ? 'btn-primary' : 'btn-ghost'} style={actBtn}>{label}</button>
-    </form>
-  )
-}
-function Tag({ color, children }: { color: string; children: React.ReactNode }) {
-  return <span style={{ fontWeight: 600, color }}>{children}</span>
-}
+function JobActions({ trip, lookups, busyDrivers, busyVehicles }: { trip: Trip; lookups: Lookups; busyDrivers: string[]; busyVehicles: string[] }) {
+  const router = useRouter()
+  const [pending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+  const driver = lookups.drivers.find(item => item.id === trip.driver_id)
+  const vehicle = lookups.vehicles.find(item => item.id === trip.vehicle_id)
+  const month = Number(trip.trip_date.slice(5, 7)) - 1
+  const tripsHref = `/trips?y=${trip.trip_date.slice(0, 4)}&m=${month}`
+  const message = `Hi ${driver?.name ?? ''}, trip for ${trip.client_name}: ${trip.pickup ?? ''} → ${trip.dropoff ?? ''}${trip.pickup_time ? ` at ${trip.pickup_time} EAT` : trip.flight_time ? ` at ${fmtTime(trip.flight_time)}` : ''}${trip.flight_no ? ` (flight ${trip.flight_no})` : ''}. Vehicle ${vehicle?.plate ?? ''}. Please confirm.`
 
-const navBtn: React.CSSProperties = { width: 34, height: 34, fontSize: 18, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
-const contactBtn: React.CSSProperties = { padding: '6px 12px', fontSize: 13, display: 'inline-flex', alignItems: 'center' }
-const actBtn: React.CSSProperties = { padding: '8px 14px', fontSize: 13, cursor: 'pointer' }
+  function changeStatus(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = new FormData(event.currentTarget)
+    const next = String(form.get('status'))
+    if (next === 'cancelled' && !confirm(`Cancel the trip for ${trip.client_name}?`)) return
+    setError(null)
+    startTransition(async () => {
+      try {
+        await setTripStatus(form)
+        toast.success(`Job ${LABELS[next as TripStatus].toLowerCase()}.`)
+        router.refresh()
+      } catch (failure) {
+        setError(failure instanceof Error ? failure.message : 'Could not update this job. Please try again.')
+      }
+    })
+  }
+  function statusButton(status: TripStatus, label: string, primary = false) {
+    return <form onSubmit={changeStatus} key={status}><input type="hidden" name="id" value={trip.id}/><input type="hidden" name="status" value={status}/><button type="submit" disabled={pending} className={primary ? 'btn-primary' : 'btn-ghost'}>{pending ? 'Saving…' : label}</button></form>
+  }
+  if (trip.status === 'booked') return <div className="dispatch-assignment"><p>Assign a driver and vehicle</p><AssignForm tripId={trip.id} drivers={lookups.drivers} vehicles={lookups.vehicles} busyDrivers={busyDrivers} busyVehicles={busyVehicles}/></div>
+  return <div className="dispatch-job-actions">
+    <div className="dispatch-resource"><strong>{vehicle?.plate || 'No vehicle'}</strong><span>{driver?.name || 'No driver'}</span></div>
+    {trip.assigned_by && <p className="dispatch-assigned-by">By {trip.assigned_by}{trip.assigned_at ? ` · ${fmtDateTime(trip.assigned_at)}` : ''}</p>}
+    {driver?.phone && trip.status !== 'cancelled' && <div className="dispatch-contact-links"><a href={`tel:${driver.phone.replace(/\s/g, '')}`}>Call driver</a><a href={`https://wa.me/${waNumber(driver.phone)}?text=${encodeURIComponent(message)}`} target="_blank" rel="noopener noreferrer">WhatsApp</a><a href={`sms:${driver.phone.replace(/\s/g, '')}?body=${encodeURIComponent(message)}`}>SMS</a></div>}
+    {trip.status === 'completed' ? <a className="dispatch-record-link" href={tripsHref}>Open trip records →</a> : <div className="dispatch-transition-actions">
+      {trip.status === 'assigned' && <>{statusButton('dispatched', 'Mark dispatched', true)}{statusButton('booked', 'Unassign')}</>}
+      {trip.status === 'dispatched' && <>{statusButton('confirmed', 'Driver confirmed', true)}{statusButton('assigned', 'Back to assigned')}</>}
+      {trip.status === 'confirmed' && statusButton('enroute', 'Start trip', true)}
+      {trip.status === 'enroute' && statusButton('completed', 'Complete trip', true)}
+      {trip.status === 'cancelled' ? statusButton('booked', 'Restore to unassigned') : statusButton('cancelled', 'Cancel job')}
+    </div>}
+    {error && <p className="dispatch-error" role="alert">{error}</p>}
+  </div>
+}

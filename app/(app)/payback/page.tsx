@@ -6,6 +6,7 @@ import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listFuel, listExpenses, listServices, listVehicles } from '@/lib/db'
 import { kes, fmtDate, isoDate } from '@/lib/format'
 import { OWNERSHIP_LABELS } from '@/lib/types'
+import { isEarnedTrip } from '@/lib/finance'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,9 +25,10 @@ export default async function PaybackPage() {
   if (!canSeeFinance(profile.role)) redirect('/trips')
 
   const today = isoDate(new Date())
-  const [trips, fuel, expenses, services, vehicles] = await Promise.all([
+  const [allTrips, fuel, expenses, services, vehicles] = await Promise.all([
     listTrips('2000-01-01', today), listFuel('2000-01-01', today), listExpenses('2000-01-01', today), listServices(), listVehicles(),
   ])
+  const trips = allTrips.filter(isEarnedTrip)
   const sum = <T,>(a: T[], f: (x: T) => number) => a.reduce((s, x) => s + f(x), 0)
 
   // Attribution coverage — per-car economics only mean something for trips that

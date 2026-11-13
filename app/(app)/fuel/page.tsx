@@ -10,6 +10,7 @@ import ExcelImport from '@/components/ExcelImport'
 import type { FieldSpec } from '@/lib/import-types'
 import FuelManager from './FuelManager'
 import { importMpesaFuel } from './mpesa-actions'
+import { isEarnedTrip } from '@/lib/finance'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,9 +36,10 @@ export default async function FuelPage({
   ])
   const sum = <T,>(arr: T[], f: (x: T) => number) => arr.reduce((a, x) => a + (Number(f(x)) || 0), 0)
 
-  const monthTrips = winTrips.filter((t) => t.trip_date >= start && t.trip_date <= end)
+  const earnedTrips = winTrips.filter(isEarnedTrip)
+  const monthTrips = earnedTrips.filter((t) => t.trip_date >= start && t.trip_date <= end)
   const totalFuel = sum(entries, (f) => f.amount)
-  const revenue = sum(monthTrips, (t) => t.amount)
+  const revenue = sum(monthTrips, (t) => t.amount - t.express_charges)
   const fuelPct = revenue > 0 ? totalFuel / revenue : null
 
   // 6-month fuel-to-sales trend (all real: fuel from M-Pesa, revenue from trips)
@@ -45,7 +47,7 @@ export default async function FuelPage({
   for (let i = 5; i >= 0; i--) {
     const r = monthRange(year, month - i)
     const mf = sum(winFuel.filter((f) => f.fuel_date >= r.start && f.fuel_date <= r.end), (f) => f.amount)
-    const mr = sum(winTrips.filter((t) => t.trip_date >= r.start && t.trip_date <= r.end), (t) => t.amount)
+    const mr = sum(earnedTrips.filter((t) => t.trip_date >= r.start && t.trip_date <= r.end), (t) => t.amount - t.express_charges)
     const d = new Date(r.start + 'T12:00:00Z')
     trend.push({ label: `${MONTH_NAMES[d.getUTCMonth()].slice(0, 3)} ${String(d.getUTCFullYear()).slice(2)}`, fuel: mf, pct: mr > 0 ? mf / mr : 0 })
   }
@@ -69,7 +71,7 @@ export default async function FuelPage({
           <StatCard label="Fuel-to-sales" value={fuelPct === null ? '—' : `${Math.round(fuelPct * 100)}%`}
             hint={fuelPct !== null && fuelPct > 0.32 ? 'watch fuel spend' : undefined}
             accent={fuelPct !== null && fuelPct > 0.32 ? 'var(--danger)' : 'var(--accent)'} />
-          <StatCard label="Revenue this month" value={kes(revenue)} hint={`${monthTrips.length} trips`} />
+          <StatCard label="Fare revenue this month" value={kes(revenue)} hint={`${monthTrips.length} completed trips · excluding tolls`} />
         </div>
       </Section>
 

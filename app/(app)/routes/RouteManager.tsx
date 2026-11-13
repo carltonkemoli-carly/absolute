@@ -6,29 +6,29 @@ import { kes } from '@/lib/format'
 import type { Route } from '@/lib/types'
 import { saveRoute, deleteRoute } from './actions'
 
-export default function RouteManager({ routes }: { routes: Route[] }) {
+export default function RouteManager({ routes, canManage }: { routes: Route[]; canManage: boolean }) {
   const [editing, setEditing] = useState<Route | 'new' | null>(null)
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+      {canManage && <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
         <button className="btn-primary" style={{ padding: '9px 16px', fontSize: 14, cursor: 'pointer' }} onClick={() => setEditing(editing === 'new' ? null : 'new')}>
           {editing === 'new' ? 'Close' : '+ Add route'}
         </button>
-      </div>
+      </div>}
 
-      {editing && <RouteForm key={editing === 'new' ? 'new' : editing.id} route={editing === 'new' ? null : editing} onDone={() => setEditing(null)} />}
+      {canManage && editing && <RouteForm key={editing === 'new' ? 'new' : editing.id} route={editing === 'new' ? null : editing} onDone={() => setEditing(null)} />}
 
       <div className="card" style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 640 }}>
           <thead>
             <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>Route</Th><Th right>Saloon</Th><Th right>Wagon</Th><Th right>Van</Th><Th right>Coaster</Th><Th></Th>
+              <Th>Route</Th><Th right>Saloon</Th><Th right>Wagon</Th><Th right>Van</Th><Th right>Coaster</Th>{canManage && <Th></Th>}
             </tr>
           </thead>
           <tbody>
             {routes.length === 0 && (
-              <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: 'var(--ink3)' }}>No routes yet. Add your common routes and prices.</td></tr>
+              <tr><td colSpan={canManage ? 6 : 5} style={{ padding: 28, textAlign: 'center', color: 'var(--ink3)' }}>{canManage ? 'No routes yet. Add your common routes and prices.' : 'No routes have been priced yet.'}</td></tr>
             )}
             {routes.map((r) => (
               <tr key={r.id} style={{ borderTop: '1px solid var(--border)' }}>
@@ -40,7 +40,7 @@ export default function RouteManager({ routes }: { routes: Route[] }) {
                 <Td right>{kes(r.price_wagon)}</Td>
                 <Td right>{kes(r.price_van)}</Td>
                 <Td right>{kes(r.price_bus)}</Td>
-                <Td>
+                {canManage && <Td>
                   <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                     <button onClick={() => setEditing(r)} style={linkBtn}>Edit</button>
                     <form action={deleteRoute} onSubmit={(e) => { if (!confirm(`Delete ${r.pickup} → ${r.dropoff}?`)) e.preventDefault() }}>
@@ -48,7 +48,7 @@ export default function RouteManager({ routes }: { routes: Route[] }) {
                       <button type="submit" style={{ ...linkBtn, color: 'var(--danger)' }}>Delete</button>
                     </form>
                   </div>
-                </Td>
+                </Td>}
               </tr>
             ))}
           </tbody>

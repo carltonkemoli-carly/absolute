@@ -39,13 +39,22 @@ export async function createUser(formData: FormData): Promise<UserActionResult> 
   const full_name = String(formData.get('full_name') || '').trim()
   const role = String(formData.get('role') || 'office')
   if (!email || password.length < 8) return { ok: false, message: 'Enter an email and a password of at least 8 characters.' }
+  if (!ROLES.includes(role as UserRole)) return { ok: false, message: 'Invalid role.' }
   if (DEV_MODE) return { ok: false, message: 'Not available in demo mode.' }
 
   const sb = admin()
   const { data, error } = await sb.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name } })
   if (error) return { ok: false, message: error.message }
   const id = data.user?.id
-  if (id && role !== 'office') await sb.from('profiles').update({ role }).eq('id', id)
+  if (id && role !== 'office') {
+    const { error: roleError } = await sb.from('profiles').update({ role }).eq('id', id)
+    if (roleError) {
+      const { error: rollbackError } = await sb.auth.admin.deleteUser(id)
+      return { ok: false, message: rollbackError
+        ? `Role update failed and the new login needs review: ${roleError.message}`
+        : `Role update failed; the new login was removed: ${roleError.message}` }
+    }
+  }
   revalidatePath('/settings')
   return { ok: true, message: `Created ${full_name || email}.` }
 }

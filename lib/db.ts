@@ -8,6 +8,7 @@ import type {
   VehicleService, Route, ComplianceDoc, Expense, Target, Invoice, Company,
 } from '@/lib/types'
 import { DEFAULT_COMPANY } from '@/lib/types'
+import { assertNoDispatchOverlap } from '@/lib/dispatch-rules'
 
 type Row = Record<string, unknown>
 
@@ -121,12 +122,12 @@ export async function latestTripMonth(today: string): Promise<{ year: number; mo
 export async function listContractorTrips(contractorId: string, start: string, end: string): Promise<Trip[]> {
   if (DEV_MODE) {
     return loadStore().trips
-      .filter((t) => t.contractor_id === contractorId && t.trip_date >= start && t.trip_date <= end)
+      .filter((t) => t.contractor_id === contractorId && t.status === 'completed' && t.trip_date >= start && t.trip_date <= end)
       .sort(byField('trip_date'))
   }
   const client = await sb()
   return fetchAll<Trip>(`listContractorTrips(${contractorId})`, () =>
-    client.from('trips').select('*').eq('contractor_id', contractorId)
+    client.from('trips').select('*').eq('contractor_id', contractorId).eq('status', 'completed')
       .gte('trip_date', start).lte('trip_date', end).order('trip_date'))
 }
 
@@ -164,8 +165,35 @@ export async function listExpenses(start?: string, end?: string): Promise<Expens
 }
 export async function getInvoice(id: string): Promise<Invoice | null> {
   if (DEV_MODE) return loadStore().invoices.find((i) => i.id === id) ?? null
-  const { data } = await (await sb()).from('invoices').select('*').eq('id', id).maybeSingle()
+  const { data, error } = await (await sb()).from('invoices').select('*').eq('id', id).maybeSingle()
+  if (error) throw new Error(error.message)
   return (data ?? null) as Invoice | null
+}
+
+// Compare-and-set prevents one staff member's stale invoice screen from
+// overwriting another staff member's payment update.
+export async function updateInvoicePayment(
+  id: string, amountPaid: number, paidDate: string | null, expectedAmount: number, expectedPaid: number,
+): Promise<{ error: string | null }> {
+  const changed = 'Invoice changed since this page loaded. Refresh and try again.'
+  if (![amountPaid, expectedAmount, expectedPaid].every(Number.isFinite) || amountPaid < 0 || amountPaid > expectedAmount) {
+    return { error: 'Paid total must be between zero and the invoice amount.' }
+  }
+  if (DEV_MODE) {
+    const data = loadStore()
+    const invoice = data.invoices.find((item) => item.id === id)
+    if (!invoice || Number(invoice.amount) !== expectedAmount || Number(invoice.amount_paid) !== expectedPaid) return { error: changed }
+    invoice.amount_paid = amountPaid
+    invoice.paid_date = paidDate
+    saveStore(data)
+    return { error: null }
+  }
+  const { data, error } = await (await sb()).from('invoices')
+    .update({ amount_paid: amountPaid, paid_date: paidDate })
+    .eq('id', id).eq('amount', expectedAmount).eq('amount_paid', expectedPaid)
+    .select('id').maybeSingle()
+  if (error) return { error: error.message }
+  return { error: data ? null : changed }
 }
 // Is this contractor-period already invoiced? Stops the same month being billed
 // twice, which would silently double Outstanding on the dashboard.
@@ -186,43 +214,25 @@ export async function findInvoiceForPeriod(contractorId: string, start: string, 
 export async function createInvoiceForTrips(invoice: Row, tripIds: string[]): Promise<{ id: string | null; error: string | null }> {
   if (DEV_MODE) {
     const data = loadStore()
+    const ids = new Set(tripIds)
+    const trips = data.trips.filter((t) => ids.has(t.id))
+    if (!ids.size || ids.size !== tripIds.length || trips.length !== ids.size || trips.some((t) =>
+      t.invoice_id || t.status !== 'completed' || Number(t.amount) <= Number(t.express_charges || 0) || t.contractor_id !== invoice.contractor_id || t.trip_date < String(invoice.period_start) || t.trip_date > String(invoice.period_end))) {
+      return { id: null, error: 'Trips changed or are already billed. Refresh and retry.' }
+    }
+    if (data.invoices.some((i) => i.contractor_id === invoice.contractor_id && i.period_start === invoice.period_start && i.period_end === invoice.period_end)) {
+      return { id: null, error: 'This contractor period is already invoiced.' }
+    }
+    const amount = trips.reduce((sum, t) => sum + Number(t.amount), 0)
     const id = uid('invoices')
-    data.invoices.unshift({ id, created_at: new Date().toISOString(), ...invoice } as unknown as Invoice)
-    const billed = new Set(tripIds)
-    for (const t of data.trips) if (billed.has(t.id)) t.invoice_id = id
+    data.invoices.unshift({ ...invoice, id, amount, amount_paid: 0, created_at: new Date().toISOString() } as unknown as Invoice)
+    for (const t of trips) t.invoice_id = id
     saveStore(data)
     return { id, error: null }
   }
-  const s = await sb()
-  const { data: created, error } = await s.from('invoices').insert(invoice).select('id').single()
-  if (error) {
-    console.error(`[db] createInvoiceForTrips failed: ${error.message}`)
-    return { id: null, error: error.message }
-  }
-  const id = (created as { id: string }).id
-  await setTripsInvoice(tripIds, id)
-  return { id, error: null }
-}
-
-// Stamp (or clear) the invoice on a set of trips, in chunks so a long month
-// doesn't build an over-length request.
-export async function setTripsInvoice(tripIds: string[], invoiceId: string | null): Promise<void> {
-  if (!tripIds.length) return
-  if (DEV_MODE) {
-    const data = loadStore()
-    const ids = new Set(tripIds)
-    for (const t of data.trips) if (ids.has(t.id)) t.invoice_id = invoiceId
-    saveStore(data)
-    return
-  }
-  const s = await sb()
-  const CHUNK = 100
-  for (let i = 0; i < tripIds.length; i += CHUNK) {
-    const { error } = await s.from('trips').update({ invoice_id: invoiceId }).in('id', tripIds.slice(i, i + CHUNK))
-    // Before migration-invoice-trips.sql is run the column doesn't exist. The
-    // invoice itself is still valid, so log and carry on rather than failing.
-    if (error) { console.error(`[db] setTripsInvoice failed: ${error.message}`); return }
-  }
+  // No fallback: a missing RPC must fail rather than leave a partial invoice.
+  const { data, error } = await (await sb()).rpc('create_invoice_for_trips', { p_invoice: invoice, p_trip_ids: tripIds })
+  return { id: error ? null : data as string, error: error?.message ?? null }
 }
 
 // The trips an invoice actually bills. Empty for invoices raised before trips
@@ -234,18 +244,6 @@ export async function listInvoiceTrips(invoiceId: string): Promise<Trip[]> {
   const client = await sb()
   return fetchAll<Trip>(`listInvoiceTrips(${invoiceId})`, () =>
     client.from('trips').select('*').eq('invoice_id', invoiceId).order('trip_date'))
-}
-
-// Release every trip an invoice was billing — used when the invoice is deleted.
-export async function clearInvoiceTrips(invoiceId: string): Promise<void> {
-  if (DEV_MODE) {
-    const data = loadStore()
-    for (const t of data.trips) if (t.invoice_id === invoiceId) t.invoice_id = null
-    saveStore(data)
-    return
-  }
-  const { error } = await (await sb()).from('trips').update({ invoice_id: null }).eq('invoice_id', invoiceId)
-  if (error) console.error(`[db] clearInvoiceTrips failed: ${error.message}`)
 }
 
 export async function listInvoices(): Promise<Invoice[]> {
@@ -302,6 +300,12 @@ export async function saveRecord(table: TableName, row: Row, id: string | null):
   if (DEV_MODE) {
     const data = loadStore()
     const arr = data[DEV_KEY[table]] as unknown as ({ id: string } & Row)[]
+    if (table === 'trips') {
+      const previous = id ? data.trips.find((t) => t.id === id) : null
+      if (id && !previous) return { error: 'Trip not found' }
+      try { assertNoDispatchOverlap({ ...previous, ...row, id: id ?? undefined } as unknown as Trip, data.trips) }
+      catch (error) { return { error: (error as Error).message } }
+    }
     if (id) {
       const i = arr.findIndex((x) => x.id === id)
       if (i >= 0) arr[i] = { ...arr[i], ...row }
@@ -314,7 +318,7 @@ export async function saveRecord(table: TableName, row: Row, id: string | null):
   const s = await sb()
   const { error } = id ? await s.from(table).update(row).eq('id', id) : await s.from(table).insert(row)
   if (error) console.error(`[db] saveRecord(${table}) failed: ${error.message}`)
-  return { error: error?.message ?? null }
+  return { error: error?.code === '23P01' ? 'Driver or vehicle has an overlapping trip. Choose another resource or pickup time.' : error?.message ?? null }
 }
 
 // Targets are keyed by (period, kind, category, contractor) — upsert by that, not
@@ -342,12 +346,16 @@ export async function upsertTarget(
   let q = s.from('targets').select('id').eq('period', period).eq('kind', kind)
   q = category === null ? q.is('category', null) : q.eq('category', category)
   q = contractorId === null ? q.is('contractor_id', null) : q.eq('contractor_id', contractorId)
-  const { data: existing } = await q.maybeSingle()
+  const { data: existing, error: lookupError } = await q.maybeSingle()
+  if (lookupError) throw new Error(lookupError.message)
   if (amount > 0) {
-    if (existing) await s.from('targets').update({ amount }).eq('id', existing.id)
-    else await s.from('targets').insert({ period, kind, category, contractor_id: contractorId, amount })
+    const { error } = existing
+      ? await s.from('targets').update({ amount }).eq('id', existing.id)
+      : await s.from('targets').insert({ period, kind, category, contractor_id: contractorId, amount })
+    if (error) throw new Error(error.message)
   } else if (existing) {
-    await s.from('targets').delete().eq('id', existing.id)
+    const { error } = await s.from('targets').delete().eq('id', existing.id)
+    if (error) throw new Error(error.message)
   }
 }
 
@@ -359,6 +367,14 @@ export async function batchInsert(table: TableName, rows: Row[]): Promise<void> 
   if (DEV_MODE) {
     const data = loadStore()
     const arr = data[DEV_KEY[table]] as unknown as ({ id: string } & Row)[]
+    if (table === 'trips') {
+      const pending = [...data.trips]
+      for (const row of rows) {
+        const trip = { ...row, id: uid('trips') } as unknown as Trip
+        assertNoDispatchOverlap(trip, pending)
+        pending.push(trip)
+      }
+    }
     const now = new Date().toISOString()
     for (const row of rows) {
       arr.unshift({ id: uid(table), created_at: now, ...row } as { id: string } & Row)
@@ -369,7 +385,8 @@ export async function batchInsert(table: TableName, rows: Row[]): Promise<void> 
   const s = await sb()
   const CHUNK = 100
   for (let i = 0; i < rows.length; i += CHUNK) {
-    await s.from(table).insert(rows.slice(i, i + CHUNK))
+    const { error } = await s.from(table).insert(rows.slice(i, i + CHUNK))
+    if (error) throw new Error(error.message)
   }
 }
 
@@ -379,8 +396,10 @@ export async function deleteRecord(table: TableName, id: string): Promise<void> 
     const arr = data[DEV_KEY[table]] as unknown as { id: string }[]
     const i = arr.findIndex((x) => x.id === id)
     if (i >= 0) arr.splice(i, 1)
+    if (table === 'invoices') for (const t of data.trips) if (t.invoice_id === id) t.invoice_id = null
     saveStore(data)
     return
   }
-  await (await sb()).from(table).delete().eq('id', id)
+  const { error } = await (await sb()).from(table).delete().eq('id', id)
+  if (error) throw new Error(error.message)
 }

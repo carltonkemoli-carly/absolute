@@ -9,8 +9,9 @@ import SettingsManager from './SettingsManager'
 export const dynamic = 'force-dynamic'
 
 export default async function SettingsPage() {
-  const [profile, contractors, organizations, profiles, company] = await Promise.all([
-    requireProfile(), listContractors(), listOrganizations(), listProfiles(), getCompany(),
+  const profile = await requireProfile()
+  const [contractors, organizations, profiles, company] = await Promise.all([
+    listContractors(), listOrganizations(), profile.role === 'owner' ? listProfiles() : Promise.resolve([]), getCompany(),
   ])
 
   return (

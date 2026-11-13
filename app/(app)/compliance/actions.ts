@@ -2,9 +2,11 @@
 
 import { revalidatePath } from 'next/cache'
 import { saveRecord, deleteRecord } from '@/lib/db'
+import { requireOperations } from '@/lib/auth'
 import { isoDate } from '@/lib/format'
 
 export async function saveDocument(formData: FormData) {
+  await requireOperations()
   const id = String(formData.get('id') || '')
   const ownerKind = String(formData.get('owner_kind') || 'vehicle')
   const row = {
@@ -21,12 +23,14 @@ export async function saveDocument(formData: FormData) {
   if (!row.doc_type) return
   if (ownerKind === 'vehicle' && !row.vehicle_id) return
   if (ownerKind === 'driver' && !row.driver_id) return
-  await saveRecord('documents', row, id || null)
+  const { error } = await saveRecord('documents', row, id || null)
+  if (error) throw new Error(error)
   revalidatePath('/compliance')
   revalidatePath('/')
 }
 
 export async function deleteDocument(formData: FormData) {
+  await requireOperations()
   const id = String(formData.get('id') || '')
   if (id) await deleteRecord('documents', id)
   revalidatePath('/compliance')
@@ -34,22 +38,26 @@ export async function deleteDocument(formData: FormData) {
 }
 
 export async function markAttended(formData: FormData) {
+  await requireOperations()
   const id = String(formData.get('id') || '')
   if (!id) return
   const attended_on = String(formData.get('attended_on') || '').trim() || isoDate(new Date())
-  await saveRecord('documents', {
+  const { error } = await saveRecord('documents', {
     attended: true,
     attended_on,
     attended_note: emptyToNull(formData.get('attended_note')),
   }, id)
+  if (error) throw new Error(error)
   revalidatePath('/compliance')
   revalidatePath('/')
 }
 
 export async function unmarkAttended(formData: FormData) {
+  await requireOperations()
   const id = String(formData.get('id') || '')
   if (!id) return
-  await saveRecord('documents', { attended: false, attended_on: null, attended_note: null }, id)
+  const { error } = await saveRecord('documents', { attended: false, attended_on: null, attended_note: null }, id)
+  if (error) throw new Error(error)
   revalidatePath('/compliance')
   revalidatePath('/')
 }

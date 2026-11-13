@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import {
   saveRecord, deleteRecord, listContractorTrips,
-  findInvoiceForPeriod, createInvoiceForTrips, clearInvoiceTrips,
+  findInvoiceForPeriod, createInvoiceForTrips, getInvoice, updateInvoicePayment,
 } from '@/lib/db'
 import { requireFinance } from '@/lib/auth'
 import { isoDate, addDays } from '@/lib/format'
@@ -47,11 +47,15 @@ export async function previewInvoiceFromTrips(contractorId: string, month: strin
     findInvoiceForPeriod(contractorId, r.start, r.end),
   ])
   if (trips.length === 0) {
-    return { ...empty, start: r.start, end: r.end, label: r.label, message: `No trips logged for this contractor in ${r.label}.` }
+    return { ...empty, start: r.start, end: r.end, label: r.label, message: `No completed trips for this contractor in ${r.label}.` }
   }
 
   const unbilled = trips.filter((t) => !t.invoice_id)
   const alreadyBilled = trips.length - unbilled.length
+  if (unbilled.some((t) => !(Number(t.amount) > Number(t.express_charges || 0)))) {
+    return { ...empty, start: r.start, end: r.end, label: r.label, alreadyBilled,
+      message: 'A completed trip has no fare after expressway tolls. Correct that trip before invoicing this month.' }
+  }
   const total = unbilled.reduce((s, t) => s + Number(t.amount ?? 0), 0)
 
   if (existing) {
@@ -87,15 +91,19 @@ export async function generateInvoiceFromTrips(formData: FormData) {
 
   const trips = (await listContractorTrips(contractor_id, r.start, r.end)).filter((t) => !t.invoice_id)
   if (trips.length === 0) return
+  if (trips.some((t) => !(Number(t.amount) > Number(t.express_charges || 0)))) {
+    throw new Error('A completed trip has no fare after expressway tolls. Correct it before invoicing.')
+  }
 
   const amount = trips.reduce((s, t) => s + Number(t.amount ?? 0), 0)
-  await createInvoiceForTrips({
+  const result = await createInvoiceForTrips({
     contractor_id, invoice_no,
     period_label: r.label, period_start: r.start, period_end: r.end,
     issue_date: isoDate(new Date()), due_date: isoDate(addDays(new Date(), dueDays)),
     amount, amount_paid: 0,
     notes: `Auto-generated from ${trips.length} logged trips.`,
   }, trips.map((t) => t.id))
+  if (result.error) throw new Error(result.error)
 
   revalidatePath('/receivables')
   revalidatePath('/trips')
@@ -114,7 +122,8 @@ export async function saveInvoice(formData: FormData) {
     notes: emptyToNull(formData.get('notes')),
   }
   if (!row.contractor_id || row.amount <= 0) return
-  await saveRecord('invoices', row, id || null)
+  const result = await saveRecord('invoices', row, id || null)
+  if (result.error) throw new Error(result.error)
   revalidatePath('/receivables')
 }
 
@@ -123,12 +132,17 @@ export async function recordPayment(formData: FormData) {
   await requireFinance()
   const id = String(formData.get('id') || '')
   if (!id) return
-  const amount = num(formData.get('amount'))
-  const amount_paid = num(formData.get('amount_paid'))
+  const invoice = await getInvoice(id)
+  if (!invoice) throw new Error('Invoice not found. Refresh and try again.')
+  const amount = Number(invoice.amount)
+  assertFreshInvoice(formData, invoice)
+  const amount_paid = money(formData.get('amount_paid'))
+  if (amount_paid < 0 || amount_paid > amount) throw new Error('Paid total must be between zero and the invoice amount.')
   const paid_date = amount_paid >= amount && amount > 0
     ? (emptyToNull(formData.get('paid_date')) ?? isoDate(new Date()))
-    : emptyToNull(formData.get('paid_date'))
-  await saveRecord('invoices', { amount_paid, paid_date }, id)
+    : amount_paid > 0 ? emptyToNull(formData.get('paid_date')) : null
+  const result = await updateInvoicePayment(id, amount_paid, paid_date, amount, Number(invoice.amount_paid))
+  if (result.error) throw new Error(result.error)
   revalidatePath('/receivables')
 }
 
@@ -136,9 +150,14 @@ export async function recordPayment(formData: FormData) {
 export async function markPaid(formData: FormData) {
   await requireFinance()
   const id = String(formData.get('id') || '')
-  const amount = num(formData.get('amount'))
   if (!id) return
-  await saveRecord('invoices', { amount_paid: amount, paid_date: isoDate(new Date()) }, id)
+  const invoice = await getInvoice(id)
+  if (!invoice) throw new Error('Invoice not found. Refresh and try again.')
+  assertFreshInvoice(formData, invoice)
+  const amount = Number(invoice.amount)
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error('Invoice amount must be positive before it can be marked paid.')
+  const result = await updateInvoicePayment(id, amount, isoDate(new Date()), amount, Number(invoice.amount_paid))
+  if (result.error) throw new Error(result.error)
   revalidatePath('/receivables')
 }
 
@@ -146,9 +165,7 @@ export async function deleteInvoice(formData: FormData) {
   await requireFinance()
   const id = String(formData.get('id') || '')
   if (!id) return
-  // Release the trips first, so they return to the un-billed pool rather than
-  // being stranded against an invoice that no longer exists.
-  await clearInvoiceTrips(id)
+  // The foreign key releases trips in the same transaction as deletion.
   await deleteRecord('invoices', id)
   revalidatePath('/receivables')
   revalidatePath('/trips')
@@ -161,4 +178,16 @@ function emptyToNull(v: FormDataEntryValue | null): string | null {
 function num(v: FormDataEntryValue | null): number {
   const n = Number(String(v ?? '').replace(/[^0-9.\-]/g, ''))
   return Number.isFinite(n) ? n : 0
+}
+function money(v: FormDataEntryValue | null): number {
+  const raw = String(v ?? '').trim()
+  if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) throw new Error('Enter a paid total with at most two decimal places.')
+  return Number(raw)
+}
+function assertFreshInvoice(formData: FormData, invoice: { amount: number; amount_paid: number }) {
+  const expectedAmount = money(formData.get('expected_amount'))
+  const expectedPaid = money(formData.get('expected_amount_paid'))
+  if (expectedAmount !== Number(invoice.amount) || expectedPaid !== Number(invoice.amount_paid)) {
+    throw new Error('Invoice changed since this page loaded. Refresh and try again.')
+  }
 }

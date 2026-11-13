@@ -2,8 +2,8 @@
 
 Internal **operations & finance system** for Absolute Comfort Travel, a Nairobi
 travel agency (point-A-to-B client transport, mostly JKIA airport transfers).
-Built for the owner (the user's mom). It is an internal office tool — **no public
-/ booking site**. This file is the cold-start brief for a new (e.g. cloud) session.
+Built for the owner (the user's mom). This repository is the internal office
+tool. A separate owner-private public website project now exists; see section 8.
 
 - **Live app:** https://absolute-comfort-two.vercel.app
 - **Stack:** Next.js **16.2.6** (App Router) · React 19.2 · Tailwind **v4** ·
@@ -129,3 +129,41 @@ This is a **production app the owner uses**. Don't break it. Prefer DEV_MODE for
 all development. Any destructive live-DB operation (deletes, overwriting
 attribution) should be confirmed with the user and **backed up first** (see the
 attribution-backup pattern used when clearing synthetic data).
+
+## 6. Cloud integrity continuation (9 November 2026)
+
+Continued locally from `fb57a51`; see `docs/SECURITY_AND_INTEGRITY.md` for the role audit, staging rollout and verification, and `docs/WEBSITE_ENQUIRY_HANDOFF.md` for the separate Site integration design. Run `lib/audit-preflight.sql` and then the new `lib/migration-integrity.sql` in staging before deploying the changed app. No live data or deployed app was changed. The migration must run after historical migrations, including company/invoice links. Tests use only synthetic data.
+
+## 7. Workspace continuation (10 November 2026)
+
+The new Odoo-inspired blue/lime workspace is implemented locally on this branch. The finance Dashboard now has a distinct management view with current month performance, all-date collection position, three work queues, honest empty-month guidance and the same refreshed logo as the public website. It also adds a searchable Apps launcher and module navigation; a Nairobi-time daily workboard; dispatch board/list with status search; trip filters, locally saved filter views and safe filtered CSV export; receivables filters; a role-scoped record finder and attention centre; and connected vehicle/client record pages. The office persona opens on Workday. The fleet page now keeps purchase, hire-fee and loan data out of office-rendered props, and vehicle mutation actions recheck role on the server. `app/operations-depth.css` adds restrained layered cards and reduced-motion support.
+
+Website owner-private version 5 is published separately at https://absolute-comfort-travel.creambluff4.chatgpt.site. It includes a dimensional vehicle stage, comparison, a journey planner with optional tentative calendar download, a searchable travel-guide index, and three **sample-only** interactive marketplace designs at `/marketplace-preview`. There are still no live public partner listings or cross-system handoff. Continue with `docs/WEBSITE_ENQUIRY_HANDOFF.md` and rehearse that design in staging with synthetic enquiries before wiring production.
+
+Validate locally with `NEXT_PUBLIC_DEV_MODE=true npm run build`, `node tests/new-workspaces.cjs`, the other `tests/*.cjs`, and the disposable PostgreSQL integrity suite in `tests/integrity.py`. Browser QA covered desktop/mobile Dashboard, Workday, dispatch conflicts, role visibility and record pages with synthetic data. No production Supabase migration or Vercel deployment has been made for this branch. The live Vercel app still shows the old Dashboard. Apply the pending SQL in staging, inspect role access and existing rows, then deploy the operations app only after the staged database and code agree. This workspace has no usable GitHub token or Vercel CLI authentication, so the internal branch commits are local until deployment access is connected. The local `.devdata.json` is ignored by Git.
+
+## 8. Release continuation (10 November 2026)
+
+The remote `claude/design-rollout-crud-pages` branch advanced to `34e4273` with a `HANDOFF.md`; it was merged locally. A 25-route, two-viewport browser sweep found mobile horizontal overflow on Services, Clients and Goals. The chart legend and responsive grid were corrected; repeat the sweep after a fresh production build and preview restart.
+
+Server-action audit found unguarded direct writes on fuel, route rates/import, servicing, compliance, settings lookups and trip import. Guards now run in those actions; route editing is finance-only in the UI and office users keep a read-only rate card. Driver writes require operations access, and non-finance requests cannot alter monthly wages. Save failures now surface in those actions, expenses and target upserts. Creating a user validates the requested role and rolls back a newly created login if the role update fails. Verify these changes in a fresh demo preview, then stage them before production.
+
+GitHub and Vercel plugins were suggested through the Plugin Management UI on 10 November, but suggestions are not account connections. This workspace still has no usable GitHub push authentication, Vercel deployment authentication or production database credentials. Do not describe the local redesign as live. The public Site is owner-private version 5 at https://absolute-comfort-travel.creambluff4.chatgpt.site. Stage the SQL from `docs/SECURITY_AND_INTEGRITY.md` and verify with synthetic enquiries before enabling the separate website-to-system handoff.
+
+Final synthetic QA: `tests/*.cjs`, `npm run lint` (zero errors and warnings), and `NEXT_PUBLIC_DEV_MODE=true npm run build` all passed. The fresh production preview passed 25 routes at 1440px and 390px with no browser errors or horizontal overflow. Owner sees rate and wage editing, while office sees rates read-only and no wage values. A captured route-save Server Action request was replayed with an office session and returned 500 without creating another route; the demo store was restored after this check. Theme switching persisted through a page reload and returned to light mode cleanly. Rerun checks if code changes after this point.
+
+## 9. Accounting and journey rhythm continuation (12 November 2026)
+
+See `docs/ACCOUNTING_READINESS.md` for the current reporting contract and its
+limits. Completed trips alone now earn revenue; pass-through expressway charges
+are removed from fare revenue and profit; receipt updates reject stale or
+overpaid totals; invoice creation requires completed trips. Dashboard, Insights,
+Reports, Fuel and Targets use consistent earned-revenue and margin logic. Data
+Health exposes more missing-data checks. The Dashboard adds a linked month-of-
+journeys view. Synthetic Node and PostgreSQL tests, lint and build passed. The
+Supabase project was reported inactive, so the live database and numbers could
+not be verified and no migration was applied there.
+
+The separate Site source at `/workspace/work/website-source` now includes an
+interactive journey-brief section for airport, business and group requests.
+Its Site remains owner-private; no public marketplace listings were created.

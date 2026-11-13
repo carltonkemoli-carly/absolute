@@ -1,7 +1,9 @@
 import { PageHeader } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
 import { listTrips, listContractors, listOrganizations, listVehicles, listDrivers } from '@/lib/db'
-import { monthRange, isoDate, kes } from '@/lib/format'
+import { monthRange, kes } from '@/lib/format'
+import { nairobiToday } from '@/lib/nairobi-date'
+import { requireOperations } from '@/lib/auth'
 import { stickyPeriod } from '@/lib/period'
 import ExcelImport from '@/components/ExcelImport'
 import type { FieldSpec } from '@/lib/import-types'
@@ -26,22 +28,24 @@ const TRIP_SPEC: FieldSpec[] = [
 export default async function TripsPage({
   searchParams,
 }: { searchParams: Promise<{ y?: string; m?: string }> }) {
+  const profile = await requireOperations()
   const sp = await searchParams
   const { year, month } = await stickyPeriod(sp)
   const { start, end } = monthRange(year, month)
-  const today = isoDate(new Date())
+  const today = nairobiToday()
   const defaultDate = today >= start && today <= end ? today : start
 
   const [rows, contractors, organizations, vehicles, drivers] = await Promise.all([
     listTrips(start, end), listContractors(), listOrganizations(), listVehicles(), listDrivers(),
   ])
-  const total = rows.reduce((s, t) => s + Number(t.amount), 0)
+  const completed = rows.filter((t) => t.status === 'completed')
+  const total = completed.reduce((s, t) => s + Number(t.amount), 0)
 
   return (
     <>
       <PageHeader
         title="Trips"
-        subtitle={`${rows.length} trip${rows.length === 1 ? '' : 's'} · ${kes(total)} billed`}
+        subtitle={`${rows.length} trip${rows.length === 1 ? '' : 's'} · ${completed.length} completed · ${kes(total)} earned value`}
         action={<MonthNav year={year} month={month} />}
       />
       <div style={{ marginBottom: 14 }}>
@@ -65,6 +69,7 @@ export default async function TripsPage({
         trips={rows}
         defaultDate={defaultDate}
         lookups={{ contractors, organizations, vehicles, drivers }}
+        storageKey={`trip-views:${profile.id}`}
       />
     </>
   )

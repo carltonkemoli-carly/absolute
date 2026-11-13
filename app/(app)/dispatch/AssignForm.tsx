@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useActionState, useState } from 'react'
 import type { Driver, Vehicle } from '@/lib/types'
 import { assignTrip } from './actions'
 
@@ -16,6 +16,7 @@ export default function AssignForm({
   busyDrivers?: string[]
   busyVehicles?: string[]
 }) {
+  const [state, action, pending] = useActionState(assignTrip, { error: null })
   const [driverId, setDriverId] = useState('')
   const [vehicleId, setVehicleId] = useState('')
   const [autofilled, setAutofilled] = useState(false)
@@ -36,7 +37,7 @@ export default function AssignForm({
   const warnVehicle = vehicleId && vehicleBusy.has(vehicleId)
 
   return (
-    <form action={assignTrip} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+    <form action={action} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
       <input type="hidden" name="id" value={tripId} />
       <select name="driver_id" required value={driverId} onChange={(e) => onDriver(e.target.value)} className="input" style={sel}>
         <option value="" disabled>Driver…</option>
@@ -46,7 +47,8 @@ export default function AssignForm({
         <option value="" disabled>Vehicle…</option>
         {vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate}{vehicleBusy.has(v.id) ? ' · on a job' : ''}</option>)}
       </select>
-      <button type="submit" className="btn-primary" style={btn}>Assign →</button>
+      <button type="submit" disabled={pending} className="btn-primary" style={btn}>{pending ? 'Assigning…' : 'Assign →'}</button>
+      {state.error && <span role="alert" style={{ color: 'var(--danger)', width: '100%' }}>{state.error}</span>}
       {(warnDriver || warnVehicle) && (
         <span style={{ fontSize: 11.5, color: 'var(--danger)', width: '100%' }}>
           {warnDriver && warnVehicle ? 'Both are' : warnDriver ? 'This driver is' : 'This vehicle is'} already on another job today.

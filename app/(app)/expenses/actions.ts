@@ -19,7 +19,8 @@ export async function saveExpense(formData: FormData) {
     notes: emptyToNull(formData.get('notes')),
   }
   if (!row.expense_date || !row.category) return
-  await saveRecord('expenses', row, id || null)
+  const { error } = await saveRecord('expenses', row, id || null)
+  if (error) throw new Error(error)
   revalidateAll()
 }
 

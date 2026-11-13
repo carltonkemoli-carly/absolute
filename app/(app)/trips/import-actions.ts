@@ -2,9 +2,11 @@
 
 import { revalidatePath } from 'next/cache'
 import { batchInsert, saveRecord, listContractors, listOrganizations, listTrips } from '@/lib/db'
+import { requireOperations } from '@/lib/auth'
 import type { ImportResult, ImportOptions } from '@/lib/import-types'
 
 export async function importTrips(rows: Record<string, string>[], opts: ImportOptions = {}): Promise<ImportResult> {
+  await requireOperations()
   const status = opts.status === 'booked' ? 'booked' : 'completed'
 
   // --- 1. Resolve dates robustly (Excel serials + day/month-swap auto-correct) ---
@@ -37,8 +39,16 @@ export async function importTrips(rows: Record<string, string>[], opts: ImportOp
   const hasCon = (n: string) => contractors.some((c) => c.name.toLowerCase() === n.toLowerCase())
   const hasOrg = (n: string) => organizations.some((o) => o.name.toLowerCase() === n.toLowerCase())
   let createdLookups = false
-  for (const n of wantedCon) if (!hasCon(n)) { await saveRecord('contractors', { name: n }, null); createdLookups = true }
-  for (const n of wantedOrg) if (!hasOrg(n)) { await saveRecord('organizations', { name: n }, null); createdLookups = true }
+  for (const n of wantedCon) if (!hasCon(n)) {
+    const { error } = await saveRecord('contractors', { name: n }, null)
+    if (error) throw new Error(error)
+    createdLookups = true
+  }
+  for (const n of wantedOrg) if (!hasOrg(n)) {
+    const { error } = await saveRecord('organizations', { name: n }, null)
+    if (error) throw new Error(error)
+    createdLookups = true
+  }
   if (createdLookups) { contractors = await listContractors(); organizations = await listOrganizations() }
   const conId = (n: string) => contractors.find((c) => c.name.toLowerCase() === n.trim().toLowerCase())?.id ?? null
   const orgId = (n: string) => organizations.find((o) => o.name.toLowerCase() === n.trim().toLowerCase())?.id ?? null
@@ -162,9 +172,9 @@ function decodeDate(v: string): string {
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10)
   const slash = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})/)
   if (slash) {
-    let [, d, m, y] = slash
-    if (y.length === 2) y = '20' + y
-    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+    const [, d, m, rawYear] = slash
+    const year = rawYear.length === 2 ? `20${rawYear}` : rawYear
+    return `${year}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
   }
   if (/^\d{4,6}$/.test(s)) return serialToISO(Number(s)) // bare Excel serial
   const dt = new Date(s)

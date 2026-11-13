@@ -13,6 +13,7 @@ import { monthRange, MONTH_NAMES, kes, kesPlain, isoDate, fmtDate } from '@/lib/
 import { stickyPeriod } from '@/lib/period'
 import type { Contractor, Invoice, Trip } from '@/lib/types'
 import SupplierTargets from './SupplierTargets'
+import { isEarnedTrip } from '@/lib/finance'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,9 +53,10 @@ export default async function SuppliersPage({
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const pace = today.slice(0, 7) === ym ? Number(today.slice(8, 10)) / daysInMonth : 1
 
-  const [winTrips, contractors, organizations, invoices, targets] = await Promise.all([
+  const [allWinTrips, contractors, organizations, invoices, targets] = await Promise.all([
     listTrips(windowStart, end), listContractors(), listOrganizations(), listInvoices(), listTargets(ym),
   ])
+  const winTrips = allWinTrips.filter(isEarnedTrip)
 
   const monthTrips = winTrips.filter((t) => t.trip_date >= start && t.trip_date <= end)
   const sum = <T,>(a: T[], f: (x: T) => number) => a.reduce((s, x) => s + (Number(f(x)) || 0), 0)

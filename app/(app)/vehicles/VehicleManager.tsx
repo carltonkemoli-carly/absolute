@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Badge } from '@/components/ui'
 import { OWNERSHIP_LABELS, type Vehicle } from '@/lib/types'
 import { saveVehicle, deleteVehicle } from './actions'
@@ -9,7 +10,7 @@ const MODELS = ['Toyota Noah', 'Toyota Hiace', 'Toyota Fielder', 'Toyota Alphard
 const TYPES = ['Saloon', 'Wagon', 'Van', 'Bus']
 const STATUS_TONE = { active: 'green', in_shop: 'gold', retired: 'red' } as const
 
-export default function VehicleManager({ vehicles }: { vehicles: Vehicle[] }) {
+export default function VehicleManager({ vehicles, canFinance }: { vehicles: Vehicle[]; canFinance: boolean }) {
   const [editing, setEditing] = useState<Vehicle | 'new' | null>(null)
 
   return (
@@ -58,21 +59,21 @@ export default function VehicleManager({ vehicles }: { vehicles: Vehicle[] }) {
               <label className="field"><span>Owner (if hired)</span>
                 <input name="owner_name" className="input" defaultValue={editing === 'new' ? '' : editing.owner_name ?? ''} placeholder="Vehicle owner's name" />
               </label>
-              <label className="field"><span>Monthly fee (KES, if monthly hire)</span>
+              {canFinance && <label className="field"><span>Monthly fee (KES, if monthly hire)</span>
                 <input name="monthly_fee" type="number" step="1" className="input" defaultValue={editing === 'new' ? '' : editing.monthly_fee || ''} />
-              </label>
-              <label className="field"><span>Purchase date</span>
+              </label>}
+              {canFinance && <label className="field"><span>Purchase date</span>
                 <input name="purchase_date" type="date" className="input" defaultValue={editing === 'new' ? '' : editing.purchase_date ?? ''} />
-              </label>
-              <label className="field"><span>Purchase price (KES)</span>
+              </label>}
+              {canFinance && <label className="field"><span>Purchase price (KES)</span>
                 <input name="purchase_price" type="number" step="1" className="input" defaultValue={editing === 'new' ? '' : editing.purchase_price || ''} placeholder="e.g. 2,800,000" />
-              </label>
-              <label className="field"><span>Loan amount (KES, 0 if cash)</span>
+              </label>}
+              {canFinance && <label className="field"><span>Loan amount (KES, 0 if cash)</span>
                 <input name="loan_amount" type="number" step="1" className="input" defaultValue={editing === 'new' ? '' : editing.loan_amount || ''} />
-              </label>
-              <label className="field"><span>Loan repayment / month (KES)</span>
+              </label>}
+              {canFinance && <label className="field"><span>Loan repayment / month (KES)</span>
                 <input name="loan_monthly" type="number" step="1" className="input" defaultValue={editing === 'new' ? '' : editing.loan_monthly || ''} />
-              </label>
+              </label>}
               <label className="field"><span>Notes</span>
                 <input name="notes" className="input" defaultValue={editing === 'new' ? '' : editing.notes ?? ''} />
               </label>
@@ -98,22 +99,22 @@ export default function VehicleManager({ vehicles }: { vehicles: Vehicle[] }) {
             )}
             {vehicles.map((v) => (
               <tr key={v.id} style={{ borderTop: '1px solid var(--border)' }}>
-                <Td><strong>{v.plate}</strong></Td>
+                <Td><Link href={`/vehicles/${encodeURIComponent(v.id)}`} className="vehicle-record-link"><strong>{v.plate}</strong><span aria-hidden="true"> ↗</span></Link></Td>
                 <Td>{v.model ?? '—'}</Td>
                 <Td>{v.vehicle_type ?? '—'}</Td>
                 <Td>
                   <Badge tone={v.ownership === 'owned' ? 'green' : 'gold'}>{OWNERSHIP_LABELS[v.ownership]}</Badge>
-                  {v.ownership === 'monthly_hire' && <div style={{ fontSize: 12, color: 'var(--ink3)' }}>{v.owner_name ?? ''} · {v.monthly_fee ? `KES ${v.monthly_fee.toLocaleString()}/mo` : ''}</div>}
+                  {v.ownership === 'monthly_hire' && <div style={{ fontSize: 12, color: 'var(--ink3)' }}>{v.owner_name ?? ''}{canFinance && v.monthly_fee ? ` · KES ${v.monthly_fee.toLocaleString()}/mo` : ''}</div>}
                   {v.ownership === 'casual_hire' && v.owner_name && <div style={{ fontSize: 12, color: 'var(--ink3)' }}>{v.owner_name}</div>}
                 </Td>
                 <Td><Badge tone={STATUS_TONE[v.status]}>{v.status.replace('_', ' ')}</Badge></Td>
                 <Td>
                   <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                     <button onClick={() => setEditing(v)} style={linkBtn}>Edit</button>
-                    <form action={deleteVehicle} onSubmit={(e) => { if (!confirm(`Delete ${v.plate}?`)) e.preventDefault() }}>
+                    {canFinance && <form action={deleteVehicle} onSubmit={(e) => { if (!confirm(`Delete ${v.plate}?`)) e.preventDefault() }}>
                       <input type="hidden" name="id" value={v.id} />
                       <button type="submit" style={{ ...linkBtn, color: 'var(--danger)' }}>Delete</button>
-                    </form>
+                    </form>}
                   </div>
                 </Td>
               </tr>

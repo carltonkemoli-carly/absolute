@@ -2,33 +2,36 @@
 
 import { revalidatePath } from 'next/cache'
 import { saveRecord, deleteRecord } from '@/lib/db'
-import { requireProfile } from '@/lib/auth'
+import { requireOperations, canSeeFinance } from '@/lib/auth'
 
 export async function saveDriver(formData: FormData) {
-  await requireProfile() // any signed-in staff may manage drivers
+  const profile = await requireOperations()
   const id = String(formData.get('id') || '')
   const row = {
     name: String(formData.get('name') || '').trim(),
     phone: emptyToNull(formData.get('phone')),
     license_no: emptyToNull(formData.get('license_no')),
     default_vehicle_id: emptyToNull(formData.get('default_vehicle_id')),
-    monthly_wage: num(formData.get('monthly_wage')),
+    ...(canSeeFinance(profile.role) ? { monthly_wage: num(formData.get('monthly_wage')) } : {}),
     status: String(formData.get('status') || 'active'),
   }
   if (!row.name) return
   const { error } = await saveRecord('drivers', row, id || null)
   // Graceful fallback if the monthly_wage migration hasn't been run yet —
   // still save the rest of the driver's details.
-  if (error && /monthly_wage/i.test(error)) {
+  if (error && /monthly_wage/i.test(error) && 'monthly_wage' in row) {
     const { monthly_wage: _omit, ...rest } = row
     void _omit
-    await saveRecord('drivers', rest, id || null)
+    const retry = await saveRecord('drivers', rest, id || null)
+    if (retry.error) throw new Error(retry.error)
+  } else if (error) {
+    throw new Error(error)
   }
   revalidatePath('/drivers')
 }
 
 export async function deleteDriver(formData: FormData) {
-  await requireProfile()
+  await requireOperations()
   const id = String(formData.get('id') || '')
   if (id) await deleteRecord('drivers', id)
   revalidatePath('/drivers')

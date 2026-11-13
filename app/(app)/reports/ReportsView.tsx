@@ -20,8 +20,8 @@ export interface MonthRow {
 export default function ReportsView({ months, costsComplete = false, delta = null, deltaLabel = 'vs prior month' }: { months: MonthRow[]; costsComplete?: boolean; delta?: number | null; deltaLabel?: string }) {
   const maxRevenue = Math.max(1, ...months.map((m) => m.revenue))
   const latest = months[months.length - 1]
-  const profitLabel = costsComplete ? 'Net profit' : 'Profit before wages'
-  const profitNote = costsComplete ? 'after all costs' : 'wages not logged yet'
+  const profitLabel = 'Profit after recorded costs'
+  const profitNote = costsComplete ? 'other costs may still be missing' : 'some wages not logged'
 
   return (
     <div>
@@ -56,7 +56,7 @@ export default function ReportsView({ months, costsComplete = false, delta = nul
         </div>
         <div style={{ display: 'flex', gap: 18, marginTop: 8, fontSize: 12.5, color: 'var(--ink2)' }}>
           <Legend color="var(--accent-mid)" text="Revenue" />
-          <Legend color="var(--gold)" text={costsComplete ? 'Net profit (after all costs)' : 'Profit before wages (wages not logged yet)'} />
+          <Legend color="var(--gold)" text={`Profit after recorded costs (${profitNote})`} />
         </div>
       </div>
 

@@ -9,6 +9,7 @@ import type { FieldSpec } from '@/lib/import-types'
 import type { Route } from '@/lib/types'
 import RouteManager from './RouteManager'
 import { importRoutes } from './import-actions'
+import { requireProfile, canSeeFinance } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,6 +32,8 @@ const ROUTE_SPEC: FieldSpec[] = [
 ]
 
 export default async function RoutesPage() {
+  const profile = await requireProfile()
+  const canManage = canSeeFinance(profile.role)
   const routes = await listRoutes()
 
   const active = routes.filter((r) => r.active)
@@ -78,15 +81,15 @@ export default async function RoutesPage() {
         )}
       </Section>
 
-      <div style={{ marginBottom: 14 }}>
+      {canManage && <div style={{ marginBottom: 14 }}>
         <ExcelImport
           label="Import routes from Excel"
           spec={ROUTE_SPEC}
           importAction={importRoutes}
           hint="Upload a sheet of routes with prices per class. Existing routes (same From → To) get updated."
         />
-      </div>
-      <RouteManager routes={routes} />
+      </div>}
+      <RouteManager routes={routes} canManage={canManage} />
     </>
   )
 }

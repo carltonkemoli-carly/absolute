@@ -4,6 +4,7 @@ import { topSegments, type Seg } from '@/lib/chart'
 import { listVehicles } from '@/lib/db'
 import { OWNERSHIP_LABELS, type VehicleOwnership } from '@/lib/types'
 import { kes } from '@/lib/format'
+import { requireOperations, canSeeFinance } from '@/lib/auth'
 import VehicleManager from './VehicleManager'
 
 export const dynamic = 'force-dynamic'
@@ -11,6 +12,8 @@ export const dynamic = 'force-dynamic'
 const GREEN = '#2C7A53', GOLD = '#C9A227', TEAL = '#2F9E8F'
 
 export default async function VehiclesPage() {
+  const profile = await requireOperations()
+  const canFinance = canSeeFinance(profile.role)
   const vehicles = await listVehicles()
 
   const countBy = (f: (v: (typeof vehicles)[number]) => boolean) => vehicles.filter(f).length
@@ -45,8 +48,8 @@ export default async function VehiclesPage() {
           <StatCard label="On the road" value={String(active)}
             hint={inShop > 0 ? `${inShop} in the shop` : undefined}
             accent={inShop > 0 ? 'var(--gold)' : 'var(--accent)'} />
-          <StatCard label="Monthly hire" value={kes(hireCost)} accent={hireCost > 0 ? 'var(--gold)' : undefined} />
-          <StatCard label="Loan repayment" value={kes(loanMonthly)} hint="monthly" accent={loanMonthly > 0 ? 'var(--gold)' : undefined} />
+          {canFinance && <StatCard label="Monthly hire" value={kes(hireCost)} accent={hireCost > 0 ? 'var(--gold)' : undefined} />}
+          {canFinance && <StatCard label="Loan repayment" value={kes(loanMonthly)} hint="monthly" accent={loanMonthly > 0 ? 'var(--gold)' : undefined} />}
         </div>
 
         <div className="grid-2">
@@ -63,7 +66,7 @@ export default async function VehiclesPage() {
         </div>
       </Section>
 
-      <VehicleManager vehicles={vehicles} />
+      <VehicleManager canFinance={canFinance} vehicles={canFinance ? vehicles : vehicles.map(vehicle => ({ ...vehicle, monthly_fee: 0, purchase_price: 0, loan_amount: 0, loan_monthly: 0, purchase_date: null }))} />
     </>
   )
 }

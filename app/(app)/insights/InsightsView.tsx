@@ -38,7 +38,7 @@ export default function InsightsView({
 
       {/* Trend */}
       <div className="card" style={{ padding: 18 }}>
-        <SectionTitle>Revenue vs {pl.costsComplete ? 'net' : 'before-wages'} profit · last 6 months</SectionTitle>
+        <SectionTitle>Revenue vs profit after recorded costs · last 6 months</SectionTitle>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {trend.map((t, i) => {
             const max = Math.max(1, ...trend.map((x) => x.revenue))

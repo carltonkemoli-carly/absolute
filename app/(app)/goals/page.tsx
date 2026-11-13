@@ -69,6 +69,7 @@ export default async function GoalsPage({
       <GoalsView
         period={period}
         revenue={revenue}
+        express={pl.express}
         costs={costs}
         revenueTarget={revenueTarget}
         profitTarget={profitTarget}

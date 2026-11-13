@@ -5,7 +5,7 @@ import PrintButton from '@/components/PrintButton'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listFuel, listExpenses, listServices, listDrivers, listVehicles, listOrganizations, listContractors, listRoutes } from '@/lib/db'
 import { monthRange, MONTH_NAMES, isoDate } from '@/lib/format'
-import { periodPL, profitHeadline } from '@/lib/finance'
+import { isEarnedTrip, periodPL, profitHeadline } from '@/lib/finance'
 import { stickyPeriod } from '@/lib/period'
 import type { Trip, Route } from '@/lib/types'
 import InsightsView from './InsightsView'
@@ -32,7 +32,7 @@ export default async function InsightsPage({
   ])
 
   const inMonth = (d: string) => d >= start && d <= end
-  const trips = winTrips.filter((t) => inMonth(t.trip_date))
+  const trips = winTrips.filter((t) => inMonth(t.trip_date) && isEarnedTrip(t))
 
   const orgName = (id: string | null) => organizations.find((o) => o.id === id)?.name ?? 'Direct / none'
   const conName = (id: string | null) => contractors.find((c) => c.id === id)?.name ?? '—'
@@ -56,7 +56,7 @@ export default async function InsightsPage({
   const partial = todayIso >= start && todayIso <= end
   const prevCutoff = partial ? prev.start.slice(0, 8) + todayIso.slice(8, 10) : prev.end
   const prevRev = sum(
-    winTrips.filter((t) => t.trip_date >= prev.start && t.trip_date <= prevCutoff),
+    winTrips.filter((t) => isEarnedTrip(t) && t.trip_date >= prev.start && t.trip_date <= prevCutoff),
     amt,
   )
   const prevLabel = partial ? 'vs same point last month' : 'vs last month'
@@ -101,7 +101,7 @@ export default async function InsightsPage({
   const byDriver = revGroupOf(trips.filter((t) => t.driver_id), (t) => t.driver_id as string, driverName)
   const attrCoverage = trips.length ? trips.filter((t) => t.vehicle_id).length / trips.length : 0
 
-  const fleetFuelPct = revenue > 0 ? fuelTotal / revenue : 0
+  const fleetFuelPct = pl.netRevenue > 0 ? fuelTotal / pl.netRevenue : 0
 
   // ---- rate-card pricing check ----
   // Compare each trip's net fare (amount − expressway toll) to the JKIA rate card
