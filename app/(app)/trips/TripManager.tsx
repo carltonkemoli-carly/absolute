@@ -1,8 +1,13 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { Badge } from '@/components/ui'
-import { kes, fmtDate } from '@/lib/format'
+import { RecordToolbar } from '@/components/RecordToolbar'
+import TripViewTools from '@/components/TripViewTools'
+import { EMPTY_TRIP_FILTERS, filterTrips, TRIP_STATUS_LABELS, type TripFilterState } from '@/lib/trip-filters'
+import './trips-workspace.css'
+import DataTable, { type Column } from '@/components/DataTable'
+import { kes, kesPlain, fmtDate } from '@/lib/format'
 import type { Contractor, Driver, Organization, Trip, Vehicle } from '@/lib/types'
 import { saveTrip, deleteTrip, attributeTrip } from './actions'
 
@@ -14,10 +19,10 @@ type Lookups = {
 }
 
 export default function TripManager({
-  trips, lookups, defaultDate,
-}: { trips: Trip[]; lookups: Lookups; defaultDate: string }) {
+  trips, lookups, defaultDate, storageKey,
+}: { trips: Trip[]; lookups: Lookups; defaultDate: string; storageKey?: string }) {
   const [editing, setEditing] = useState<Trip | 'new' | null>(null)
-  const [q, setQ] = useState('')
+  const [filters, setFilters] = useState<TripFilterState>({ ...EMPTY_TRIP_FILTERS })
 
   const { contractors, organizations, vehicles, drivers } = lookups
   const name = (arr: { id: string; name?: string; plate?: string }[], id: string | null) => {
@@ -25,38 +30,91 @@ export default function TripManager({
     return f ? (f.name ?? f.plate ?? '—') : '—'
   }
 
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase()
-    if (!s) return trips
-    return trips.filter((t) =>
-      [t.client_name, t.slip_no, t.voucher_no, t.pickup, t.dropoff,
-       name(organizations, t.organization_id), name(vehicles, t.vehicle_id)]
-        .filter(Boolean).join(' ').toLowerCase().includes(s))
-  }, [q, trips, organizations, vehicles])
+  const filtered = useMemo(() => filterTrips(trips, filters, lookups), [trips, filters, lookups])
+  function changeFilter<Key extends keyof TripFilterState>(key: Key, value: TripFilterState[Key]) {
+    setFilters(current => ({ ...current, [key]: value }))
+  }
+  const chips = [
+    filters.query.trim() ? { key: 'query' as const, label: `Search: ${filters.query.trim()}` } : null,
+    filters.status ? { key: 'status' as const, label: TRIP_STATUS_LABELS[filters.status] } : null,
+    filters.contractorId ? { key: 'contractorId' as const, label: `Contractor: ${name(contractors, filters.contractorId)}` } : null,
+    filters.driverId ? { key: 'driverId' as const, label: `Driver: ${name(drivers, filters.driverId)}` } : null,
+    filters.vehicleId ? { key: 'vehicleId' as const, label: `Vehicle: ${name(vehicles, filters.vehicleId)}` } : null,
+    filters.assignment !== 'all' ? { key: 'assignment' as const, label: filters.assignment === 'assigned' ? 'Vehicle & driver assigned' : 'Needs assignment' } : null,
+  ].filter((chip): chip is NonNullable<typeof chip> => chip !== null)
+  function clearFilters() { setFilters({ ...EMPTY_TRIP_FILTERS }) }
 
   // Attribution coverage — how many trips have both a vehicle & driver.
   const attributed = trips.filter((t) => t.vehicle_id && t.driver_id).length
   const coverage = trips.length > 0 ? attributed / trips.length : 0
 
+  const columns: Column<Trip>[] = [
+    { label: 'Date', nowrap: true, render: (t) => fmtDate(t.trip_date) },
+    { label: 'Client', role: 'primary', render: (t) => (
+      <>
+        <strong>{t.client_name}</strong>
+        {isRecent(t.created_at) && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, color: 'var(--gold)', background: 'var(--gold-light)', padding: '1px 6px', borderRadius: 99, verticalAlign: 'middle' }}>NEW</span>}
+        {t.slip_no && <div style={{ fontSize: 12, color: 'var(--ink3)', fontWeight: 400 }}>#{t.slip_no}</div>}
+      </>
+    ) },
+    { label: 'Route', render: (t) => (
+      <>
+        {(t.pickup || '—')} → {(t.dropoff || '—')}
+        {t.notes && <div style={{ fontSize: 12, color: 'var(--ink3)' }}>{t.notes}</div>}
+      </>
+    ) },
+    { label: 'Status', render: (t) => <Badge tone={t.status === 'completed' ? 'green' : t.status === 'cancelled' ? 'red' : t.status === 'booked' ? 'gold' : 'neutral'}>{TRIP_STATUS_LABELS[t.status]}</Badge> },
+    { label: 'Organization', render: (t) => name(organizations, t.organization_id) },
+    { label: 'Via', render: (t) => name(contractors, t.contractor_id) },
+    { label: 'Assigned to', render: (t) => <InlineAssign key={`${t.id}:${t.vehicle_id}:${t.driver_id}`} trip={t} vehicles={vehicles} drivers={drivers} /> },
+    { label: 'Express', align: 'right', render: (t) => (t.express_charges ? kes(t.express_charges) : '—') },
+    { label: 'Amount', align: 'right', render: (t) => (
+      <>
+        <strong>{kes(t.amount)}</strong>
+        {t.express_charges > 0 && <div style={{ fontSize: 11.5, color: 'var(--ink3)', whiteSpace: 'normal' }}>fare {kesPlain(t.amount - t.express_charges)} · exp {kesPlain(t.express_charges)}</div>}
+        {t.payment === 'cash' && <div><Badge tone="gold">cash</Badge></div>}
+      </>
+    ) },
+    { label: '', role: 'actions', render: (t) => (
+      <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+        <button onClick={() => setEditing(t)} style={linkBtn}>Edit</button>
+        <DeleteTripButton trip={t}/>
+
+      </div>
+    ) },
+  ]
+
   return (
     <>
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
-        <input className="input" placeholder="Search client, slip, voucher, route…" value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 360 }} />
-        <div style={{ flex: 1 }} />
-        <button className="btn-primary" style={{ padding: '9px 16px', fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => setEditing(editing === 'new' ? null : 'new')}>
-          {editing === 'new' ? 'Close' : '+ Log trip'}
-        </button>
-      </div>
+      <RecordToolbar
+        search={filters.query} onSearchChange={value => changeFilter('query', value)}
+        searchLabel="Search trips" searchPlaceholder="Client, route, reference, driver or vehicle…"
+        count={filtered.length} countLabel={filtered.length === 1 ? 'trip' : 'trips'}
+        filterSummary={chips.length ? `${chips.length} active ${chips.length === 1 ? 'filter' : 'filters'}` : undefined}
+        onClearFilters={chips.length ? clearFilters : undefined}
+        action={<button className="btn-primary tw-new-button" type="button" onClick={() => setEditing(editing === 'new' ? null : 'new')}>{editing === 'new' ? 'Close new trip' : '+ New trip'}</button>}
+      >
+        <div className="tw-filters">
+          <label>Status<select className="input" value={filters.status} onChange={event => changeFilter('status', event.target.value as TripFilterState['status'])}><option value="">All statuses</option>{Object.entries(TRIP_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label>Contractor<select className="input" value={filters.contractorId} onChange={event => changeFilter('contractorId', event.target.value)}><option value="">All contractors</option>{contractors.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          <label>Driver<select className="input" value={filters.driverId} onChange={event => changeFilter('driverId', event.target.value)}><option value="">All drivers</option>{drivers.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          <label>Vehicle<select className="input" value={filters.vehicleId} onChange={event => changeFilter('vehicleId', event.target.value)}><option value="">All vehicles</option>{vehicles.map(item => <option key={item.id} value={item.id}>{item.plate}</option>)}</select></label>
+          <label>Assignment<select className="input" value={filters.assignment} onChange={event => changeFilter('assignment', event.target.value as TripFilterState['assignment'])}><option value="all">All assignments</option><option value="assigned">Vehicle & driver assigned</option><option value="unassigned">Needs assignment</option></select></label>
+        </div>
+      </RecordToolbar>
+      {chips.length > 0 && <div className="tw-filter-chips" aria-label="Active trip filters">{chips.map(chip => <button key={chip.key} type="button" className="tw-filter-chip" aria-label={`Remove ${chip.label} filter`} onClick={() => changeFilter(chip.key, chip.key === 'assignment' ? 'all' : '')}>{chip.label}<span aria-hidden="true">×</span></button>)}<button className="tw-clear-filters" type="button" onClick={clearFilters}>Clear all</button></div>}
+      <TripViewTools filters={filters} onApply={setFilters} rows={filtered} lookups={lookups} storageKey={storageKey}/>
+      <p className="tw-result-summary" role="status" aria-live="polite">Showing {filtered.length} of {trips.length} {trips.length === 1 ? 'trip' : 'trips'} in this period.</p>
 
       {trips.length > 0 && (
         <div className="card" style={{ padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 13.5 }}>
-            <strong>{attributed}</strong> of <strong>{trips.length}</strong> trips assigned a vehicle &amp; driver
+            <strong>{attributed}</strong> of <strong>{trips.length}</strong> trips tagged with vehicle & driver
           </span>
           <div style={{ flex: 1, minWidth: 140, height: 7, background: 'var(--surface2)', borderRadius: 99, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${Math.round(coverage * 100)}%`, background: coverage >= 0.9 ? 'var(--accent)' : 'var(--gold)', borderRadius: 99, transition: 'width .3s' }} />
           </div>
-          <span style={{ fontSize: 12.5, color: 'var(--ink3)' }}>{Math.round(coverage * 100)}% · tag each trip below to unlock per-car & per-driver insights</span>
+          <span style={{ fontSize: 12.5, color: 'var(--ink3)' }}>{Math.round(coverage * 100)}% tagged with vehicle &amp; driver</span>
         </div>
       )}
 
@@ -70,52 +128,12 @@ export default function TripManager({
         />
       )}
 
-      <div className="card" style={{ overflowX: 'auto' }} >
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5, minWidth: 980 }}>
-          <thead>
-            <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>Date</Th><Th>Client</Th><Th>Route</Th><Th>Organization</Th><Th>Via</Th>
-              <Th>Assigned to</Th><Th right>Express</Th><Th right>Amount</Th><Th></Th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 && (
-              <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: 'var(--ink3)' }}>No trips for this month.</td></tr>
-            )}
-            {filtered.map((t) => {
-              const isNew = isRecent(t.created_at)
-              return (
-              <tr key={t.id} className={isNew ? 'row-new' : undefined} style={{ borderTop: '1px solid var(--border)' }}>
-                <Td>{fmtDate(t.trip_date)}</Td>
-                <Td>
-                  <strong>{t.client_name}</strong>
-                  {isNew && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, color: 'var(--gold)', background: 'var(--gold-light)', padding: '1px 6px', borderRadius: 99, verticalAlign: 'middle' }}>NEW</span>}
-                  {t.slip_no && <div style={{ fontSize: 12, color: 'var(--ink3)' }}>#{t.slip_no}</div>}
-                </Td>
-                <Td>{(t.pickup || '—')} → {(t.dropoff || '—')}{t.notes && <div style={{ fontSize: 12, color: 'var(--ink3)' }}>{t.notes}</div>}</Td>
-                <Td>{name(organizations, t.organization_id)}</Td>
-                <Td>{name(contractors, t.contractor_id)}</Td>
-                <Td><InlineAssign trip={t} vehicles={vehicles} drivers={drivers} /></Td>
-                <Td right>{t.express_charges ? kes(t.express_charges) : '—'}</Td>
-                <Td right>
-                  <strong>{kes(t.amount)}</strong>
-                  {t.express_charges > 0 && <div style={{ fontSize: 11.5, color: 'var(--ink3)' }}>fare {kes(t.amount - t.express_charges)} + exp {kes(t.express_charges)}</div>}
-                  {t.payment === 'cash' && <div><Badge tone="gold">cash</Badge></div>}
-                </Td>
-                <Td>
-                  <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                    <button onClick={() => setEditing(t)} style={linkBtn}>Edit</button>
-                    <form action={deleteTrip} onSubmit={(e) => { if (!confirm('Delete this trip?')) e.preventDefault() }}>
-                      <input type="hidden" name="id" value={t.id} />
-                      <button type="submit" style={{ ...linkBtn, color: 'var(--danger)' }}>Delete</button>
-                    </form>
-                  </div>
-                </Td>
-              </tr>
-            )})}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        rows={filtered} rowKey={(t) => t.id} minWidth={900}
+        empty={trips.length ? 'No trips match these filters. Clear a filter to see more records.' : 'No trips for this month. Use New trip or import a trip sheet to get started.'}
+        rowClass={(t) => (isRecent(t.created_at) ? 'row-new' : undefined)}
+        columns={columns}
+      />
     </>
   )
 }
@@ -127,8 +145,18 @@ function InlineAssign({ trip, vehicles, drivers }: { trip: Trip; vehicles: Vehic
   const [drv, setDrv] = useState(trip.driver_id ?? '')
   const [pending, startTransition] = useTransition()
 
+  const [error, setError] = useState('')
+
   function persist(nextVeh: string, nextDrv: string) {
-    startTransition(async () => { await attributeTrip(trip.id, nextVeh || null, nextDrv || null) })
+    const previous = { veh, drv }
+    setError('')
+    startTransition(async () => {
+      try { await attributeTrip(trip.id, nextVeh || null, nextDrv || null) }
+      catch (failure) {
+        setVeh(previous.veh); setDrv(previous.drv)
+        setError(failure instanceof Error ? failure.message : 'Assignment could not be saved. Please try again.')
+      }
+    })
   }
   function onDriver(e: React.ChangeEvent<HTMLSelectElement>) {
     const d = e.target.value
@@ -144,20 +172,34 @@ function InlineAssign({ trip, vehicles, drivers }: { trip: Trip; vehicles: Vehic
     setVeh(v); persist(v, drv)
   }
 
-  const done = veh && drv
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 150, opacity: pending ? 0.55 : 1 }}>
-      <select value={drv} onChange={onDriver} style={assignSel} aria-label="Driver">
+      <select value={drv} disabled={pending} onChange={onDriver} style={assignSel} aria-label={`Driver for ${trip.client_name}`}>
         <option value="">+ driver…</option>
         {drivers.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
       </select>
-      <select value={veh} onChange={onVehicle} style={{ ...assignSel, color: veh ? 'var(--ink2)' : 'var(--ink3)' }} aria-label="Vehicle">
+      <select value={veh} disabled={pending} onChange={onVehicle} style={{ ...assignSel, color: veh ? 'var(--ink2)' : 'var(--ink3)' }} aria-label={`Vehicle for ${trip.client_name}`}>
         <option value="">+ vehicle…</option>
         {vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate}</option>)}
       </select>
-      {done && <span style={{ fontSize: 10.5, color: 'var(--accent)', fontWeight: 600 }}>✓ assigned</span>}
+      {pending && <span className="tw-inline-saving" role="status">Saving assignment…</span>}
+      {error && <span className="tw-inline-error" role="alert">{error}</span>}
     </div>
   )
+}
+
+function DeleteTripButton({ trip }: { trip: Trip }) {
+  const [pending, startTransition] = useTransition()
+  const [error, setError] = useState('')
+  return <div className="tw-delete-action"><button type="button" style={{ ...linkBtn, color: 'var(--danger)' }} disabled={pending} onClick={() => {
+    if (!confirm(`Delete the trip for ${trip.client_name}?`)) return
+    const data = new FormData(); data.set('id', trip.id)
+    setError('')
+    startTransition(async () => {
+      try { await deleteTrip(data) }
+      catch (failure) { setError(failure instanceof Error ? failure.message : 'The trip could not be deleted.') }
+    })
+  }}>{pending ? 'Deleting…' : 'Delete'}</button>{error && <span className="tw-inline-error" role="alert">{error}</span>}</div>
 }
 
 function isRecent(createdAt: string | null | undefined): boolean {
@@ -168,15 +210,31 @@ function isRecent(createdAt: string | null | undefined): boolean {
 
 function TripForm({ trip, lookups, defaultDate, onDone }: { trip: Trip | null; lookups: Lookups; defaultDate: string; onDone: () => void }) {
   const { contractors, organizations, vehicles, drivers } = lookups
+  const [pending, startTransition] = useTransition()
+  const [error, setError] = useState('')
+  const panel = useRef<HTMLDivElement>(null)
+  useEffect(() => { panel.current?.querySelector<HTMLInputElement>('[name="trip_date"]')?.focus() }, [])
   return (
-    <div className="card animate-fadeup" style={{ padding: 20, marginBottom: 18 }}>
-      <form action={async (fd) => { await saveTrip(fd); onDone() }}>
+    <div ref={panel} className="card tw-record-form">
+      <div className="tw-record-form-heading"><div><span>Trips / {trip ? 'Edit record' : 'New record'}</span><h2>{trip ? trip.client_name : 'New trip'}</h2></div><span className="tw-record-type">Trip record</span></div>
+      <form onSubmit={event => {
+        event.preventDefault()
+        if (pending) return
+        const data = new FormData(event.currentTarget)
+        if (!String(data.get('client_name') ?? '').trim()) { setError('Enter the client name.'); return }
+        setError('')
+        startTransition(async () => {
+          try { await saveTrip(data); onDone() }
+          catch (failure) { setError(failure instanceof Error ? failure.message : 'The trip could not be saved. Please try again.') }
+        })
+      }} aria-busy={pending}>
+        <fieldset className="tw-form-fields" disabled={pending}><legend className="tw-sr-only">Trip details</legend>
         {trip && <input type="hidden" name="id" value={trip.id} />}
         <div className="grid-form">
           <label className="field"><span>Date *</span>
             <input name="trip_date" type="date" className="input" required defaultValue={trip?.trip_date ?? defaultDate} />
           </label>
-          <label className="field" style={{ gridColumn: 'span 2' }}><span>Client name *</span>
+          <label className="field tw-client-field"><span>Client name *</span>
             <input name="client_name" className="input" required defaultValue={trip?.client_name ?? ''} />
           </label>
           <label className="field"><span>Slip / ticket no.</span>
@@ -233,10 +291,12 @@ function TripForm({ trip, lookups, defaultDate, onDone }: { trip: Trip | null; l
           </label>
           <input type="hidden" name="status" value={trip?.status ?? 'completed'} />
         </div>
-        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <button type="submit" className="btn-primary" style={{ padding: '9px 20px', fontSize: 14, cursor: 'pointer' }}>{trip ? 'Save changes' : 'Save trip'}</button>
+        {error && <p className="tw-form-error" role="alert">{error}</p>}
+        <div className="tw-form-actions">
+          <button type="submit" className="btn-primary" style={{ padding: '9px 20px', fontSize: 14, cursor: 'pointer' }}>{pending ? 'Saving…' : trip ? 'Save changes' : 'Save trip'}</button>
           <button type="button" className="btn-ghost" style={{ padding: '9px 18px', fontSize: 14, cursor: 'pointer' }} onClick={onDone}>Cancel</button>
         </div>
+        </fieldset>
       </form>
     </div>
   )
@@ -244,9 +304,3 @@ function TripForm({ trip, lookups, defaultDate, onDone }: { trip: Trip | null; l
 
 const linkBtn: React.CSSProperties = { background: 'none', border: 'none', color: 'var(--accent-mid)', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }
 const assignSel: React.CSSProperties = { fontSize: 12.5, padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 7, background: 'var(--surface)', color: 'var(--ink2)', cursor: 'pointer', maxWidth: 160 }
-function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <th style={{ padding: '11px 14px', fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: right ? 'right' : 'left' }}>{children}</th>
-}
-function Td({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <td style={{ padding: '11px 14px', textAlign: right ? 'right' : 'left', verticalAlign: 'top' }}>{children}</td>
-}

@@ -8,10 +8,8 @@ import { usePathname } from 'next/navigation'
 // responsive even when the server takes a moment.
 export default function NavProgress() {
   const pathname = usePathname()
-  const [active, setActive] = useState(false)
-
-  // Route changed → navigation finished
-  useEffect(() => { setActive(false) }, [pathname])
+  const [pendingFromPath, setPendingFromPath] = useState<string | null>(null)
+  const active = pendingFromPath !== null && pendingFromPath === pathname
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -21,7 +19,7 @@ export default function NavProgress() {
       const href = a.getAttribute('href')
       if (!href || a.target === '_blank' || href.startsWith('http') || href.startsWith('#')) return
       const dest = new URL(a.href, location.href)
-      if (dest.pathname !== location.pathname) setActive(true)
+      if (dest.pathname !== location.pathname) setPendingFromPath(location.pathname)
     }
     document.addEventListener('click', onClick, true)
     return () => document.removeEventListener('click', onClick, true)

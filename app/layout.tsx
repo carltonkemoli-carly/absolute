@@ -4,6 +4,8 @@ import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { Toaster } from 'react-hot-toast'
 import './globals.css'
+import './workspace.css'
+import './operations-depth.css'
 
 export const metadata: Metadata = {
   title: 'Absolute Comfort Travel — Operations',

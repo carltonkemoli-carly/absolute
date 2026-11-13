@@ -2,8 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { saveRecord, deleteRecord } from '@/lib/db'
+import { requireOperations } from '@/lib/auth'
 
 export async function saveService(formData: FormData) {
+  await requireOperations()
   const id = String(formData.get('id') || '')
   const row = {
     vehicle_id: emptyToNull(formData.get('vehicle_id')),
@@ -18,12 +20,14 @@ export async function saveService(formData: FormData) {
     notes: emptyToNull(formData.get('notes')),
   }
   if (!row.vehicle_id || !row.service_date) return
-  await saveRecord('vehicle_services', row, id || null)
+  const { error } = await saveRecord('vehicle_services', row, id || null)
+  if (error) throw new Error(error)
   revalidatePath('/services')
   revalidatePath('/')
 }
 
 export async function deleteService(formData: FormData) {
+  await requireOperations()
   const id = String(formData.get('id') || '')
   if (id) await deleteRecord('vehicle_services', id)
   revalidatePath('/services')

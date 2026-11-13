@@ -2,9 +2,11 @@
 
 import { revalidatePath } from 'next/cache'
 import { saveRecord, listRoutes } from '@/lib/db'
+import { requireFinance } from '@/lib/auth'
 import type { ImportResult } from '@/lib/import-types'
 
 export async function importRoutes(rows: Record<string, string>[]): Promise<ImportResult> {
+  await requireFinance()
   const existing = await listRoutes()
   const key = (p: string, d: string) => `${p.toLowerCase().trim()}→${d.toLowerCase().trim()}`
   const byKey = new Map(existing.map((r) => [key(r.pickup, r.dropoff), r.id]))
@@ -21,8 +23,10 @@ export async function importRoutes(rows: Record<string, string>[]): Promise<Impo
       active: true, notes: emptyToNull(r.notes),
     }
     const id = byKey.get(key(pickup, dropoff))
-    if (id) { await saveRecord('routes', row, id); updated++ }
-    else { await saveRecord('routes', row, null); created++ }
+    const { error } = await saveRecord('routes', row, id || null)
+    if (error) throw new Error(error)
+    if (id) updated++
+    else created++
   }
   revalidatePath('/routes')
   return {

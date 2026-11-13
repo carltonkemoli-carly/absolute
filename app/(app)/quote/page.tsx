@@ -16,7 +16,7 @@ export default async function QuotePage() {
 
   return (
     <>
-      <PageHeader title="Quote a fare" subtitle="Instant, correct pricing from your rate card — for when a client calls" />
+      <PageHeader title="Quote" />
       <QuoteCalculator routes={qr} companyName={company.name} />
     </>
   )

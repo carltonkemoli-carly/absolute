@@ -1,4 +1,4 @@
-import { PageHeader } from '@/components/ui'
+import { PageHeader, Section } from '@/components/ui'
 import { requireProfile } from '@/lib/auth'
 import { listContractors, listOrganizations, listProfiles, getCompany } from '@/lib/db'
 import ThemeToggle from '@/components/ThemeToggle'
@@ -9,41 +9,39 @@ import SettingsManager from './SettingsManager'
 export const dynamic = 'force-dynamic'
 
 export default async function SettingsPage() {
-  const [profile, contractors, organizations, profiles, company] = await Promise.all([
-    requireProfile(), listContractors(), listOrganizations(), listProfiles(), getCompany(),
+  const profile = await requireProfile()
+  const [contractors, organizations, profiles, company] = await Promise.all([
+    listContractors(), listOrganizations(), profile.role === 'owner' ? listProfiles() : Promise.resolve([]), getCompany(),
   ])
 
   return (
     <>
-      <PageHeader title="Settings" subtitle="Appearance, contractors, organizations and users" />
+      <PageHeader title="Settings" />
 
-      <section style={{ marginBottom: 26 }}>
-        <h2 className="font-display" style={{ fontSize: 17, fontWeight: 600, margin: '0 0 2px' }}>Appearance</h2>
-        <p style={{ fontSize: 13.5, color: 'var(--ink2)', margin: '0 0 12px' }}>Choose how the console looks. Your choice is remembered on this device.</p>
+      <Section title="Appearance">
+        <p style={{ fontSize: 13.5, color: 'var(--ink2)', margin: '-2px 0 12px' }}>Choice is remembered on this device.</p>
         <div className="card" style={{ padding: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontWeight: 600, fontSize: 14 }}>Theme</div>
-            <div style={{ fontSize: 13, color: 'var(--ink2)', marginTop: 2 }}>Light is clean and bright; dark is a focused night console.</div>
+            <div style={{ fontSize: 13, color: 'var(--ink2)', marginTop: 2 }}>Light or dark.</div>
           </div>
           <ThemeToggle />
         </div>
-      </section>
+      </Section>
 
       {profile.role === 'owner' && (
-        <section style={{ marginBottom: 26 }}>
-          <h2 className="font-display" style={{ fontSize: 17, fontWeight: 600, margin: '0 0 2px' }}>Company</h2>
-          <p style={{ fontSize: 13.5, color: 'var(--ink2)', margin: '0 0 12px' }}>These details appear on the invoices you print and send to contractors.</p>
+        <Section title="Company">
+          <p style={{ fontSize: 13.5, color: 'var(--ink2)', margin: '-2px 0 12px' }}>Prints on invoices.</p>
           <CompanyDetails company={company} />
-        </section>
+        </Section>
       )}
 
-      <section style={{ marginBottom: 26 }}>
-        <h2 className="font-display" style={{ fontSize: 17, fontWeight: 600, margin: '0 0 2px' }}>Account</h2>
-        <p style={{ fontSize: 13.5, color: 'var(--ink2)', margin: '0 0 12px' }}>Change your own password.</p>
+      <Section title="Account">
+        <p style={{ fontSize: 13.5, color: 'var(--ink2)', margin: '-2px 0 12px' }}>Change your own password.</p>
         <div className="card" style={{ padding: 18 }}>
           <ChangePassword />
         </div>
-      </section>
+      </Section>
 
       <SettingsManager
         contractors={contractors}

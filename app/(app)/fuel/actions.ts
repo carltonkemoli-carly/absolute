@@ -2,8 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { saveRecord, deleteRecord } from '@/lib/db'
+import { requireOperations } from '@/lib/auth'
 
 export async function saveFuel(formData: FormData) {
+  await requireOperations()
   const id = String(formData.get('id') || '')
   const row = {
     fuel_date: String(formData.get('fuel_date') || '').trim(),
@@ -17,12 +19,14 @@ export async function saveFuel(formData: FormData) {
     notes: emptyToNull(formData.get('notes')),
   }
   if (!row.fuel_date) return  // vehicle optional: station payments aren't tied to one car
-  await saveRecord('fuel_entries', row, id || null)
+  const { error } = await saveRecord('fuel_entries', row, id || null)
+  if (error) throw new Error(error)
   revalidatePath('/fuel')
   revalidatePath('/')
 }
 
 export async function deleteFuel(formData: FormData) {
+  await requireOperations()
   const id = String(formData.get('id') || '')
   if (id) await deleteRecord('fuel_entries', id)
   revalidatePath('/fuel')

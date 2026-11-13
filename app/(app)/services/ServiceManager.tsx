@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { kes, fmtDate } from '@/lib/format'
+import { kes, fmtDate, isoDate } from '@/lib/format'
 import type { Vehicle, VehicleService } from '@/lib/types'
 import { saveService, deleteService } from './actions'
 
@@ -106,7 +106,7 @@ export default function ServiceManager({ services, vehicles }: { services: Vehic
   )
 }
 
-function today() { return new Date().toISOString().slice(0, 10) }
+function today() { return isoDate(new Date()) }
 const linkBtn: React.CSSProperties = { background: 'none', border: 'none', color: 'var(--accent-mid)', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }
 function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
   return <th style={{ padding: '11px 14px', fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: right ? 'right' : 'left' }}>{children}</th>

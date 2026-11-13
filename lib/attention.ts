@@ -1,5 +1,6 @@
 // Builds the list of things needing attention: documents expiring/expired and
 // services coming due. Shared by the dashboard Attention panel and Compliance page.
+import { isoDate } from '@/lib/format'
 import type { ComplianceDoc, Driver, Vehicle, VehicleService } from '@/lib/types'
 
 export type Severity = 'expired' | 'soon' | 'ok'
@@ -18,7 +19,10 @@ const SOON_DAYS = 30
 const SERVICE_SOON_DAYS = 21
 
 function daysUntil(date: string): number {
-  const today = new Date(new Date().toISOString().slice(0, 10)).getTime()
+  // Today's LOCAL calendar day, pinned to UTC midnight so it compares like-for-like
+  // with the 'YYYY-MM-DD' expiry dates (which parse as UTC midnight). Reading the
+  // UTC day here would count a day short between midnight and 3am in Nairobi.
+  const today = Date.parse(`${isoDate(new Date())}T00:00:00Z`)
   return Math.round((new Date(date).getTime() - today) / DAY)
 }
 

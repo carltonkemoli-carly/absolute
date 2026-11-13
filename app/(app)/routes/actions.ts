@@ -2,8 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { saveRecord, deleteRecord } from '@/lib/db'
+import { requireFinance } from '@/lib/auth'
 
 export async function saveRoute(formData: FormData) {
+  await requireFinance()
   const id = String(formData.get('id') || '')
   const row = {
     pickup: String(formData.get('pickup') || '').trim(),
@@ -16,11 +18,13 @@ export async function saveRoute(formData: FormData) {
     notes: emptyToNull(formData.get('notes')),
   }
   if (!row.pickup || !row.dropoff) return
-  await saveRecord('routes', row, id || null)
+  const { error } = await saveRecord('routes', row, id || null)
+  if (error) throw new Error(error)
   revalidatePath('/routes')
 }
 
 export async function deleteRoute(formData: FormData) {
+  await requireFinance()
   const id = String(formData.get('id') || '')
   if (id) await deleteRecord('routes', id)
   revalidatePath('/routes')

@@ -12,7 +12,7 @@ export default async function DriversPage() {
   return (
     <>
       <PageHeader title="Drivers" subtitle={`${drivers.length} driver${drivers.length === 1 ? '' : 's'}`} />
-      <DriverManager drivers={drivers} vehicles={vehicles} canFinance={canSeeFinance(profile.role)} />
+      <DriverManager drivers={canSeeFinance(profile.role) ? drivers : drivers.map((driver) => ({ ...driver, monthly_wage: 0 }))} vehicles={vehicles} canFinance={canSeeFinance(profile.role)} />
     </>
   )
 }

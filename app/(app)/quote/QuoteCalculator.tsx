@@ -98,7 +98,7 @@ export default function QuoteCalculator({ routes, companyName }: { routes: Quote
           <span className="font-display" style={{ fontWeight: 700, fontSize: 16 }}>Total</span>
           <span className="font-display" style={{ fontWeight: 700, fontSize: 26 }}>{kes(total)}</span>
         </div>
-        {base <= 0 && <p style={{ fontSize: 12.5, color: 'var(--danger)', marginTop: 10 }}>No rate set for this class on this route — pick another class or add the rate on Routes &amp; rates.</p>}
+        {base <= 0 && <p style={{ fontSize: 12.5, color: 'var(--danger)', marginTop: 10 }}>No rate set for this class on this route. Pick another class or add the rate on Routes & rates.</p>}
 
         <div style={{ display: 'flex', gap: 8, marginTop: 18, flexWrap: 'wrap' }}>
           <button className="btn-primary" style={{ padding: '9px 16px', fontSize: 14, cursor: 'pointer' }} onClick={copy}>Copy quote</button>

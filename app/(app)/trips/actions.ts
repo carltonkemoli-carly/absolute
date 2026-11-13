@@ -2,14 +2,15 @@
 
 import { revalidatePath } from 'next/cache'
 import { saveRecord, deleteRecord } from '@/lib/db'
-import { requireProfile } from '@/lib/auth'
+import { requireOperations } from '@/lib/auth'
 
 // Fast per-trip attribution from the Trips table (who actually drove, in which
 // car). Powers real per-vehicle / per-driver analytics as coverage grows.
 export async function attributeTrip(id: string, vehicleId: string | null, driverId: string | null) {
-  await requireProfile()
+  await requireOperations()
   if (!id) return
-  await saveRecord('trips', { vehicle_id: vehicleId, driver_id: driverId }, id)
+  const result = await saveRecord('trips', { vehicle_id: vehicleId, driver_id: driverId }, id)
+  if (result.error) throw new Error(result.error)
   revalidatePath('/trips')
   revalidatePath('/insights')
   revalidatePath('/payback')
@@ -17,7 +18,7 @@ export async function attributeTrip(id: string, vehicleId: string | null, driver
 }
 
 export async function saveTrip(formData: FormData) {
-  await requireProfile()
+  await requireOperations()
   const id = String(formData.get('id') || '')
   const row = {
     trip_date: String(formData.get('trip_date') || '').trim(),
@@ -39,13 +40,14 @@ export async function saveTrip(formData: FormData) {
     status: String(formData.get('status') || 'completed'),
   }
   if (!row.trip_date || !row.client_name) return
-  await saveRecord('trips', row, id || null)
+  const result = await saveRecord('trips', row, id || null)
+  if (result.error) throw new Error(result.error)
   revalidatePath('/trips')
   revalidatePath('/')
 }
 
 export async function deleteTrip(formData: FormData) {
-  await requireProfile()
+  await requireOperations()
   const id = String(formData.get('id') || '')
   if (id) await deleteRecord('trips', id)
   revalidatePath('/trips')

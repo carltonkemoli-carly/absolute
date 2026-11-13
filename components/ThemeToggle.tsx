@@ -1,22 +1,25 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 
 type Theme = 'light' | 'dark'
 
+const THEME_EVENT = 'absolute-comfort-theme-change'
+function subscribeTheme(onChange: () => void) {
+  window.addEventListener(THEME_EVENT, onChange)
+  return () => window.removeEventListener(THEME_EVENT, onChange)
+}
+function currentTheme(): Theme {
+  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
+}
+function setThemePreference(theme: Theme) {
+  document.documentElement.dataset.theme = theme
+  document.cookie = `theme=${theme}; path=/; max-age=${60 * 60 * 24 * 365}`
+  window.dispatchEvent(new Event(THEME_EVENT))
+}
+
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('light')
-
-  useEffect(() => {
-    const t = (document.documentElement.dataset.theme as Theme) || 'light'
-    setTheme(t)
-  }, [])
-
-  function apply(t: Theme) {
-    document.documentElement.dataset.theme = t
-    document.cookie = `theme=${t}; path=/; max-age=${60 * 60 * 24 * 365}`
-    setTheme(t)
-  }
+  const theme = useSyncExternalStore(subscribeTheme, currentTheme, () => 'light')
 
   const options: { key: Theme; label: string; icon: string }[] = [
     { key: 'light', label: 'Light', icon: '☀' },
@@ -38,7 +41,7 @@ export default function ThemeToggle() {
       {options.map((o) => {
         const active = theme === o.key
         return (
-          <button key={o.key} type="button" onClick={() => apply(o.key)} style={{
+          <button key={o.key} type="button" onClick={() => setThemePreference(o.key)} style={{
             position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 7,
             padding: '8px 18px', border: 'none', background: 'transparent', cursor: 'pointer',
             fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-body)',

@@ -2,8 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { saveRecord, deleteRecord } from '@/lib/db'
+import { requireOperations, requireFinance, canSeeFinance } from '@/lib/auth'
 
 export async function saveVehicle(formData: FormData) {
+  const profile = await requireOperations()
   const id = String(formData.get('id') || '')
   const row = {
     plate: String(formData.get('plate') || '').trim().toUpperCase(),
@@ -13,20 +15,24 @@ export async function saveVehicle(formData: FormData) {
     status: String(formData.get('status') || 'active'),
     ownership: String(formData.get('ownership') || 'owned'),
     owner_name: emptyToNull(formData.get('owner_name')),
-    monthly_fee: num(formData.get('monthly_fee')),
-    purchase_date: emptyToNull(formData.get('purchase_date')),
-    purchase_price: num(formData.get('purchase_price')),
-    loan_amount: num(formData.get('loan_amount')),
-    loan_monthly: num(formData.get('loan_monthly')),
     notes: emptyToNull(formData.get('notes')),
+    ...(canSeeFinance(profile.role) ? {
+      monthly_fee: num(formData.get('monthly_fee')),
+      purchase_date: emptyToNull(formData.get('purchase_date')),
+      purchase_price: num(formData.get('purchase_price')),
+      loan_amount: num(formData.get('loan_amount')),
+      loan_monthly: num(formData.get('loan_monthly')),
+    } : id ? {} : { monthly_fee: 0, purchase_date: null, purchase_price: 0, loan_amount: 0, loan_monthly: 0 }),
   }
-  if (!row.plate) return
-  await saveRecord('vehicles', row, id || null)
+  if (!row.plate) throw new Error('Vehicle registration is required')
+  const result = await saveRecord('vehicles', row, id || null)
+  if (result.error) throw new Error(result.error)
   revalidatePath('/vehicles')
   revalidatePath('/payback')
 }
 
 export async function deleteVehicle(formData: FormData) {
+  await requireFinance()
   const id = String(formData.get('id') || '')
   if (id) await deleteRecord('vehicles', id)
   revalidatePath('/vehicles')

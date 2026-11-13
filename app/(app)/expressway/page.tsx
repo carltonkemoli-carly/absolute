@@ -2,11 +2,12 @@ import { redirect } from 'next/navigation'
 import { PageHeader } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
-import { listTrips, listDrivers, listVehicles, listOrganizations, listContractors, listInvoices } from '@/lib/db'
+import { listTrips, listOrganizations, listContractors, listInvoices } from '@/lib/db'
 import { monthRange, MONTH_NAMES } from '@/lib/format'
 import { stickyPeriod } from '@/lib/period'
 import type { Trip } from '@/lib/types'
 import ExpresswayInsights from './ExpresswayInsights'
+import { isEarnedTrip } from '@/lib/finance'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,9 +26,10 @@ export default async function ExpresswayPage({
 
   // 6-month window (for the trend) ending at the selected month
   const windowStart = monthRange(year, month - 5).start
-  const [windowTrips, organizations, contractors, invoices] = await Promise.all([
+  const [allWindowTrips, organizations, contractors, invoices] = await Promise.all([
     listTrips(windowStart, end), listOrganizations(), listContractors(), listInvoices(),
   ])
+  const windowTrips = allWindowTrips.filter(isEarnedTrip)
 
   const orgName = (id: string | null) => organizations.find((o) => o.id === id)?.name ?? '—'
   const conName = (id: string | null) => contractors.find((c) => c.id === id)?.name ?? 'Direct / none'
@@ -51,7 +53,7 @@ export default async function ExpresswayPage({
   }
 
   // ---- group helper: id/key → {label,count,toll, totalTrips} ----
-  function group<T>(items: Trip[], keyOf: (t: Trip) => string, labelOf: (k: string) => string, allForShare?: Trip[]) {
+  function group(items: Trip[], keyOf: (t: Trip) => string, labelOf: (k: string) => string, allForShare?: Trip[]) {
     const m = new Map<string, { key: string; label: string; count: number; toll: number; total: number }>()
     for (const t of items) {
       const k = keyOf(t)
@@ -116,8 +118,8 @@ export default async function ExpresswayPage({
   return (
     <>
       <PageHeader
-        title="Expressway insights"
-        subtitle="Who uses the expressway, on which routes, and how the toll bill is trending"
+        title="Expressway"
+        subtitle={`${MONTH_NAMES[month]} ${year}`}
         action={<MonthNav year={year} month={month} />}
       />
       <ExpresswayInsights

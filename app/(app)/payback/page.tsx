@@ -6,6 +6,7 @@ import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listFuel, listExpenses, listServices, listVehicles } from '@/lib/db'
 import { kes, fmtDate, isoDate } from '@/lib/format'
 import { OWNERSHIP_LABELS } from '@/lib/types'
+import { isEarnedTrip } from '@/lib/finance'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,9 +25,10 @@ export default async function PaybackPage() {
   if (!canSeeFinance(profile.role)) redirect('/trips')
 
   const today = isoDate(new Date())
-  const [trips, fuel, expenses, services, vehicles] = await Promise.all([
+  const [allTrips, fuel, expenses, services, vehicles] = await Promise.all([
     listTrips('2000-01-01', today), listFuel('2000-01-01', today), listExpenses('2000-01-01', today), listServices(), listVehicles(),
   ])
+  const trips = allTrips.filter(isEarnedTrip)
   const sum = <T,>(a: T[], f: (x: T) => number) => a.reduce((s, x) => s + f(x), 0)
 
   // Attribution coverage — per-car economics only mean something for trips that
@@ -35,7 +37,12 @@ export default async function PaybackPage() {
   const totalTrips = trips.length
   const attributedTrips = trips.filter((t) => t.vehicle_id).length
   const coverage = totalTrips > 0 ? attributedTrips / totalTrips : 0
-  const totalAttrRevenue = sum(trips.filter((t) => t.vehicle_id), (t) => Number(t.amount) || 0)
+  // Fuel is shared out against ALL revenue, not just the attributed slice. Using
+  // attributed revenue as the denominator would push the entire company fuel bill
+  // onto whatever fraction of trips happens to be tagged, making those cars look
+  // far less profitable than they are. The fuel belonging to untagged trips stays
+  // unallocated instead.
+  const totalRevenue = sum(trips, (t) => Number(t.amount) || 0)
   const companyFuel = sum(fuel, (f) => Number(f.amount) || 0)
 
   const owned = vehicles.filter((v) => v.ownership === 'owned')
@@ -44,8 +51,8 @@ export default async function PaybackPage() {
     const ve = expenses.filter((e) => e.vehicle_id === v.id)
     const vs = services.filter((s) => s.vehicle_id === v.id)
     const revenue = sum(vt, (t) => Number(t.amount) || 0)
-    // Fuel allocated by this car's share of all attributed revenue.
-    const fuelC = totalAttrRevenue > 0 ? companyFuel * (revenue / totalAttrRevenue) : 0
+    // Fuel allocated by this car's share of total revenue.
+    const fuelC = totalRevenue > 0 ? companyFuel * (revenue / totalRevenue) : 0
     const expC = sum(ve, (e) => Number(e.amount) || 0)
     const svcC = sum(vs, (s) => Number(s.cost) || 0)
     const contribution = revenue - fuelC - expC - svcC
@@ -91,7 +98,7 @@ export default async function PaybackPage() {
 
   return (
     <>
-      <PageHeader title="Vehicle payback" subtitle="What each car has truly brought back — and when it clears its loan" action={<PrintButton />} />
+      <PageHeader title="Payback" action={<PrintButton />} />
 
       {/* Coverage — per-car numbers are only as complete as trip attribution. */}
       <div className="card" style={{ padding: '12px 16px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
@@ -107,21 +114,21 @@ export default async function PaybackPage() {
 
       <Section title="Fleet">
         <div className="grid-stats">
-          <StatCard label="Capital in fleet" value={kes(fleetInvested)} hint={`${cards.length} owned vehicles`} />
-          <StatCard label="Contribution earned" value={kes(fleetContribution)} hint="revenue − allocated fuel, costs & servicing" accent="var(--accent)" />
-          <StatCard label="Outstanding loans" value={kes(fleetLoanBalance)} hint="remaining balance" accent={fleetLoanBalance > 0 ? 'var(--gold)' : 'var(--accent)'} />
-          <StatCard label="Data window" value={`${Math.max(1, ...cards.map((c) => c.dataMonths))} mo`} hint="months of trips recorded" />
+          <StatCard label="Capital in fleet" value={kes(fleetInvested)} hint={`${cards.length} owned`} />
+          <StatCard label="Contribution" value={kes(fleetContribution)} hint="net of allocated costs" accent="var(--accent)" />
+          <StatCard label="Outstanding loans" value={kes(fleetLoanBalance)} accent={fleetLoanBalance > 0 ? 'var(--gold)' : 'var(--accent)'} />
+          <StatCard label="Data window" value={`${Math.max(1, ...cards.map((c) => c.dataMonths))} mo`} hint="of trip history" />
         </div>
       </Section>
 
       <p style={{ fontSize: 12.5, color: 'var(--ink3)', margin: '0 0 16px' }}>
-        Fuel is paid company-wide (M-Pesa), so it&rsquo;s allocated to each car by its share of attributed revenue. Projections assume each car keeps earning at its recorded monthly average — the more trips you tag, the sharper these get.
+        Fuel is allocated by each car&rsquo;s share of total revenue. {coverage < 0.9 && <>At {Math.round(coverage * 100)}% trip coverage these figures reflect only the work tagged so far. </>}Projections hold each car at its recorded monthly average.
       </p>
 
       {attributedTrips === 0 && (
         <div className="card" style={{ padding: 24, marginBottom: 16, borderLeft: '3px solid var(--gold)' }}>
           <div style={{ fontWeight: 700, marginBottom: 4 }}>No trips are assigned to a vehicle yet</div>
-          <div style={{ fontSize: 13.5, color: 'var(--ink2)' }}>Per-car revenue and payback light up as you tag trips with the car that did them. Head to <Link href="/trips" style={{ color: 'var(--accent-mid)', fontWeight: 600 }}>Trips</Link> and assign a vehicle &amp; driver to each row — the loan &amp; break-even figures below already reflect your purchase/loan details.</div>
+          <div style={{ fontSize: 13.5, color: 'var(--ink2)' }}>Tag trips with a vehicle on <Link href="/trips" style={{ color: 'var(--accent-mid)', fontWeight: 600 }}>Trips</Link> to see per-car revenue and payback. Loan and break-even figures below already use your purchase details.</div>
         </div>
       )}
 
@@ -142,7 +149,7 @@ export default async function PaybackPage() {
                 </div>
                 {c.price > 0 && (
                   <span style={{ fontSize: 11.5, fontWeight: 700, color: c.paidBack ? 'var(--accent)' : 'var(--gold)', background: 'var(--surface2)', padding: '3px 9px', borderRadius: 'var(--radius-pill)' }}>
-                    {c.paidBack ? 'Paid back ✓' : `${c.recoveredPct}% recovered`}
+                    {c.paidBack ? 'Paid back' : `${c.recoveredPct}% recovered`}
                   </span>
                 )}
               </div>
@@ -165,7 +172,7 @@ export default async function PaybackPage() {
                   <Row label="Contribution" value={kes(c.contribution)} strong />
                   <Row label="Avg / month" value={kes(Math.round(c.avgMonthly))} />
                   <Row label={c.paidBack ? 'Paid for itself' : 'Projected payback'}
-                    value={c.paidBack ? 'Yes ✓' : c.paybackDate ? `${fmtDate(c.paybackDate)}` : '—'}
+                    value={c.paidBack ? 'Yes' : c.paybackDate ? `${fmtDate(c.paybackDate)}` : '—'}
                     accent={c.paidBack ? 'var(--accent)' : undefined} />
 
                   {c.hasLoan && (
@@ -180,18 +187,18 @@ export default async function PaybackPage() {
                             background: c.surplus >= 0 ? 'var(--accent-light)' : 'var(--danger-light)', color: c.surplus >= 0 ? 'var(--accent)' : 'var(--danger)' }}>
                             {c.surplus >= 0
                               ? `Self-financing: earns ${kes(Math.round(c.surplus))}/mo after its loan instalment.`
-                              : `Shortfall: earns ${kes(Math.round(c.avgMonthly))}/mo but the instalment is ${kes(c.loanMo)} — you top up ${kes(Math.round(-c.surplus))}/mo.`}
+                              : `Shortfall: earns ${kes(Math.round(c.avgMonthly))}/mo against a ${kes(c.loanMo)} instalment. You top up ${kes(Math.round(-c.surplus))}/mo.`}
                           </div>
                           {c.breakevenTrips !== null && (
                             <div style={{ fontSize: 12.5, color: 'var(--ink2)', marginTop: 8 }}>
                               <strong>Break-even:</strong> needs ~{c.breakevenTrips} trips/mo to cover the instalment · currently doing ~{Math.round(c.tripsPerMonth)}/mo
-                              {c.tripsPerMonth < c.breakevenTrips ? <span style={{ color: 'var(--danger)' }}> ({c.breakevenTrips - Math.round(c.tripsPerMonth)} short)</span> : <span style={{ color: 'var(--accent)' }}> ✓ on track</span>}
+                              {c.tripsPerMonth < c.breakevenTrips ? <span style={{ color: 'var(--danger)' }}> ({c.breakevenTrips - Math.round(c.tripsPerMonth)} short)</span> : <span style={{ color: 'var(--accent)' }}> on track</span>}
                             </div>
                           )}
                         </>
                       ) : (
                         <div style={{ padding: '9px 11px', borderRadius: 'var(--radius-sm)', fontSize: 12.5, background: 'var(--accent-light)', color: 'var(--accent)' }}>
-                          Loan cleared ✓{c.clearDate ? ` (${fmtDate(c.clearDate)})` : ''} — full contribution is now yours.
+                          Loan cleared{c.clearDate ? ` on ${fmtDate(c.clearDate)}` : ''}.
                         </div>
                       )}
                     </div>

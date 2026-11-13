@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { batchInsert, listFuel } from '@/lib/db'
+import { requireOperations } from '@/lib/auth'
 import type { ImportResult, ImportOptions } from '@/lib/import-types'
 
 // Kenyan petrol brands / fuel keywords seen in M-Pesa "Details".
@@ -16,7 +17,11 @@ function toISODate(v: string): string {
   if (!s) return ''
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10)
   const dmy = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})/)
-  if (dmy) { let [, d, m, y] = dmy; if (y.length === 2) y = '20' + y; return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}` }
+  if (dmy) {
+    const [, d, m, rawYear] = dmy
+    const year = rawYear.length === 2 ? `20${rawYear}` : rawYear
+    return `${year}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+  }
   const dt = new Date(s)
   return Number.isFinite(dt.getTime()) ? dt.toISOString().slice(0, 10) : ''
 }
@@ -30,6 +35,7 @@ function stationName(details: string): string | null {
 // Import fuel payments out of an M-Pesa statement (as rows). Detects payments to
 // petrol stations and records them as fuel (no vehicle — she pays the station).
 export async function importMpesaFuel(rows: Record<string, string>[], opts: ImportOptions = {}): Promise<ImportResult> {
+  await requireOperations()
   const detectAll = opts.detect === 'all'
 
   const dates = rows.map((r) => toISODate(r.date)).filter(Boolean).sort()

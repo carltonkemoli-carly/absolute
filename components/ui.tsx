@@ -28,10 +28,12 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
 
 export function StatCard({ label, value, hint, accent }: { label: string; value: string; hint?: string; accent?: string }) {
   return (
-    <div className="card card-hover" style={{ padding: '16px 18px' }}>
-      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
-      <div className="font-display" style={{ fontSize: 23, fontWeight: 700, letterSpacing: '-0.02em', marginTop: 6, color: accent ?? 'var(--ink)', whiteSpace: 'nowrap' }}>{value}</div>
-      {hint && <div style={{ fontSize: 12.5, color: 'var(--ink3)', marginTop: 4 }}>{hint}</div>}
+    <div className="card card-hover" style={{ padding: '14px 16px' }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
+      {/* Big numbers may wrap to a second line on a narrow card — that is
+          better than hiding digits behind an ellipsis. */}
+      <div className="font-display" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', marginTop: 7, color: accent ?? 'var(--ink)' }}>{value}</div>
+      {hint && <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 4 }}>{hint}</div>}
     </div>
   )
 }

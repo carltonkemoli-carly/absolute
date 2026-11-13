@@ -8,7 +8,7 @@ export default function DemoUserSwitch({ activeRole }: { activeRole: string }) {
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink3)', marginBottom: 6 }}>
-        Demo — viewing as
+        Viewing as
       </div>
       <div style={{ display: 'flex', gap: 6, background: 'var(--surface2)', padding: 3, borderRadius: 9 }}>
         <form action={setDemoUser.bind(null, 'ceo')} style={{ flex: 1 }}>

@@ -90,6 +90,7 @@ export interface Trip {
   amount: number
   distance_km: number | null
   hire_cost: number
+  invoice_id: string | null   // the invoice that billed this trip (null = unbilled)
   flight_no: string | null
   flight_time: string | null
   payment: PaymentType
@@ -186,12 +187,13 @@ export interface Expense {
   created_at: string
 }
 
-export type TargetKind = 'revenue' | 'profit' | 'spend_cap'
+export type TargetKind = 'revenue' | 'profit' | 'spend_cap' | 'trips'
 export interface Target {
   id: string
-  period: string // e.g. '2026-Q3'
+  period: string // '2026-Q3' for company goals, '2026-10' for supplier goals
   kind: TargetKind
   category: string | null // for spend_cap: the cost category
+  contractor_id: string | null // set = a target for that supplier; null = company-wide
   amount: number
   created_at: string
 }
