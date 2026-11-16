@@ -1,196 +1,114 @@
 # Absolute Comfort — Handoff
 
-Internal operations & finance system for **Absolute Comfort Travel**, a
-Nairobi airport-transfer business. Built for the owner (Carlton's mum) to
-track trips, drivers, fleet, fuel, receivables, suppliers and vehicle
-payback.
+Internal operations and finance system for **Absolute Comfort Travel**, a
+Nairobi airport-transfer business. Built for the owner (Carlton's mum) and her
+office staff: trips, dispatch, fleet, fuel, servicing, compliance, suppliers,
+invoices and payments, and the business figures that come out of them.
 
-## Repo
+Read this first, then `CLOUD_SESSION.md` (session history and live-deploy
+notes) and `docs/` (accounting, security, design direction).
+
+## Repo and branch
 
 - GitHub: `https://github.com/carltonkemoli-carly/absolute`
-- Default branch: `main`
-- **Latest work is on `claude/design-rollout-crud-pages`** — merge or check
-  out this branch; `main` is behind.
+- **All current work is on `claude/design-rollout-crud-pages`** (PR #1).
+  `main` is far behind. Nothing on this branch is deployed yet.
+- Live app (old version, from `main`): https://absolute-comfort-two.vercel.app
 
-## Stack
-
-- Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind v4
-- Data: Supabase (Postgres + auth via `@supabase/ssr`)
-- Extras: `exceljs` (trip-sheet import), `geist` fonts, `react-hot-toast`
-
-## Run it locally
+## Run it
 
 ```bash
 npm install
-npm run dev   # http://localhost:3000
+npm run dev          # http://localhost:3000, demo data, no keys needed
+npm test             # 10 Node test files
+npm run lint
+NEXT_PUBLIC_DEV_MODE=true npm run build
+python3 tests/integrity.py local   # PostgreSQL suite (needs a local postgres server;
+                                    # or pass a Docker container name instead of `local`)
 ```
 
-### Two data modes
+**Demo mode** is on whenever no Supabase URL is set. It skips login and serves
+synthetic data from `.devdata.json` (gitignored; delete it to reseed). The
+sidebar footer switches between the CEO (owner) and Rachel (office) to check
+what each role can see.
 
-- **DEV_MODE** (no env file needed): file-backed demo store at
-  `.devdata.json`, gitignored. Delete to reseed. Auto-enabled when
-  `NEXT_PUBLIC_SUPABASE_URL` is missing. Forceable with
-  `NEXT_PUBLIC_DEV_MODE=true`.
-- **Live Supabase**: set the three keys in `.env.local`
-  (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-  `SUPABASE_SERVICE_ROLE_KEY`). Carlton has these.
+**Live mode** needs `.env.local` with `NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. Never commit it.
 
-## Migrations owed by the user (run in Supabase SQL Editor)
+## Before this branch goes live
 
-Everything in `lib/migration-*.sql` is runnable SQL. Two from the last
-session are not yet applied against live data:
+Run these in the Supabase SQL Editor, **on a staging copy first**, in order:
 
-1. `lib/migration-invoice-trips.sql` — adds `invoice_id` column to
-   `trips` so a generated invoice can own its billed trips.
-2. `lib/migration-supplier-targets.sql` — adds `contractor_id` to
-   `targets` so each supplier can carry its own monthly revenue/trip
-   target.
+1. `lib/audit-preflight.sql` — read-only; shows rows that would block step 2.
+2. `lib/migration-integrity.sql` — roles, finance-only policies, atomic
+   invoice creation, dispatch overlap constraints.
+3. `lib/migration-invoice-payments.sql` — the payment ledger.
 
-Code degrades gracefully when these columns are missing.
+The app works before step 3 (payments fall back to adjusting the paid total
+and say so), but not before step 2 for invoices. Then deploy the branch.
+The Supabase project was reported inactive on 11 November; it may need
+restoring first.
 
-## Design system
+## Where things are
 
-- `components/ui.tsx` exports `Section`, `PageHeader`, `StatCard`, `Card`,
-  `EmptyState`, `Badge` — use these; don't hand-roll.
-- `components/SegmentDonut.tsx` for part-to-whole charts.
-- `components/Bars.tsx` for ranked bar lists.
-- `components/DataTable.tsx` — **new, shared**. Renders a real table on
-  desktop, stacks each row as a labelled card below 860px. Columns are a
-  typed spec:
-  ```ts
-  { label, render, align?: 'right', nowrap?: boolean,
-    role?: 'primary' | 'actions' }
-  ```
-  `primary` leads on phone as the card headline. `actions` sits at
-  the foot. Use for new tables; ~11 old `Th/Td` pages still remain to
-  convert (Services, Fuel, Expenses, Receivables, Drivers, Clients,
-  Reports, Vehicles, PricingCheck, Routes, Compliance).
+| Area | Files |
+| --- | --- |
+| Data layer (every read/write) | `lib/db.ts`, demo store `lib/devstore.ts` |
+| Roles and guards | `lib/auth.ts` — `requireOperations`, `requireFinance`, `requireOwner`. Every server action calls one itself. |
+| Profit and loss (one engine) | `lib/finance.ts` — `monthlyPL`, `periodPL`, `profitHeadline`. Only completed trips earn revenue; tolls are pass-through. |
+| Dashboard maths | `lib/dashboard.ts` — receivables aging, debtors, like-for-like comparison |
+| Payments | `lib/payments.ts` (validation, settlement), `invoice_payments` table |
+| Dispatch rules | `lib/dispatch-rules.ts` — only jobs still to be done hold a driver or vehicle |
+| Search | `lib/record-search.ts`, command palette `components/CommandPalette.tsx`, server action `app/(app)/search/actions.ts` |
+| Shell and navigation | `components/AppShell.tsx` |
+| Design system | `components/ui.tsx` (`PageHeader`, `Section`, `KpiCard`, `StatCard`, `Card`, `Badge`), `DataTable.tsx`, `SegmentDonut.tsx`, `Bars.tsx`, `Sparkline.tsx`, `BrandLogo.tsx` |
+| Colours | `app/globals.css` (all tokens, light and dark), `lib/chart.ts` (`CHART_COLORS`, `STATUS_COLORS`) |
 
-### Tokens
+## Design rules
 
-CSS variables in `app/globals.css`:
-- `--radius: 14px`, `--radius-sm: 10px`, `--radius-pill`
-- `--surface`, `--surface2`, `--border`, `--ink`, `--ink2`, `--ink3`
-- `--accent` (green), `--accent-mid`, `--accent-light`
-- `--gold`, `--gold-light`, `--danger`, `--danger-light`
-- Dark-mode overrides under
-  `:root:not([data-theme="light"]) @media (prefers-color-scheme: dark)`
-  and `:root[data-theme="dark"]`
+- **Colour carries meaning.** Blue is the brand and anything you can act on.
+  Green (`--ok`) is done or healthy. Amber (`--gold`) needs a look. Red
+  (`--danger`) is overdue or broken. Charts use `CHART_COLORS` /
+  `STATUS_COLORS`, never hex values in a page.
+- **Every list is a `DataTable`.** A table on a laptop, labelled cards below
+  860px. Column options: `role: 'primary' | 'actions' | 'select'`,
+  `align: 'right'`, `nowrap`, `card: 'hide'`.
+- **Plain copy.** No decorative emoji, no em-dashes in interface text, no
+  coaching hints that repeat the label. Say what a number is, and when it is
+  incomplete (for example "profit before unrecorded wages").
+- **Minimum text size 11px** in stylesheets.
+- **Tailwind v4 gotcha:** a CSS class referenced only from files under
+  `app/(app)/` can be dropped from the built CSS. Reference it from a file in
+  `components/` (see `CARD_ONLY` in `DataTable.tsx`) or use inline styles.
+- **Dates:** use `nairobiToday()` / `isoDate()`, never `toISOString()` for a
+  calendar day.
 
-### Breakpoint
+## What exists now (this branch)
 
-**860px**, app-wide. Sidebar becomes an off-canvas drawer below it.
+- **Dashboard:** four headline figures with six-month trends and fair
+  month-to-date comparisons, trips by day, a "needs a decision" queue,
+  where the fares went, money owed by lateness, revenue by supplier and vehicle.
+- **Search anywhere:** Ctrl/Cmd+K or `/` — pages and records (passengers,
+  plates, routes, invoices), scoped to the user's role.
+- **Phone:** bottom tab bar (Today, Dispatch, Trips, Search, Menu); installable
+  to the home screen (manifest, icons, theme colour).
+- **Trips:** 30 per page, one toolbar, select many and tag them with a driver
+  and vehicle, or mark them completed.
+- **Receivables:** aging, who owes what, a payment ledger (amount, date,
+  M-Pesa / bank / cash / cheque, reference), receipts printed on the invoice.
+- From the ChatGPT session: Today's work, Dispatch board/list, attention
+  centre, vehicle and client record pages, saved trip views and CSV export.
 
-### Gotcha: Tailwind v4 tree-shaking
+## Open questions for the owner
 
-Custom CSS classes referenced only from files under `app/(app)/*` get
-silently tree-shaken out of the production CSS. Workarounds:
-- Reference the class from a file under `components/` (scanned path).
-- Or inline the style.
-- `.grid-stats`, `.grid-2`, `.data-table` survive because they're
-  referenced from `components/`.
+- Pricing: distance → zone → per-trip cost model. Needs her decision on zones.
+- Trip vs run: one booking can be several runs; the data model treats a trip
+  as one run.
+- Invoice snapshots and credit notes (see `docs/ACCOUNTING_READINESS.md`).
 
-Verify a class survives by grepping the built CSS:
-```bash
-npm run build
-grep "my-class" .next/static/chunks/*.css
-```
+## Good next steps
 
-## P&L — single source of truth
-
-`lib/finance.ts`:
-```ts
-monthlyPL(args) → PL         // one month
-periodPL(args, months)       // several months
-combinePL(parts)             // aggregate several PLs
-profitHeadline(pl)           // label + hint for a stat card
-```
-All four finance surfaces (Dashboard, Insights, Payback, Reports) go
-through this. Don't recompute P&L anywhere else.
-
-Key field: `costsComplete: boolean` — true only when wages are logged.
-Headline label flips from "Net profit" to "Profit before wages" so the
-numbers never claim more than the data supports.
-
-## Timezone / date handling
-
-Nairobi runs on UTC+3. The app does its own timezone-safe dates:
-- `lib/format.ts` exports `isoDate(Date)` → `YYYY-MM-DD` in local
-  calendar, `addDays(Date, n)` which uses date components, not ms.
-- Never use `toISOString()` for a user-visible calendar day — it
-  reads the UTC day, which is wrong between midnight and 3am in
-  Nairobi. Several bugs from this were fixed last session.
-
-## Nav
-
-Sidebar groups in `components/AppShell.tsx`. Currently 22 items, 9
-under Finance — this is bloat, flagged as the next big look/feel win.
-
-## Business context Carlton established
-
-- African Bliss (new account) was the trigger: break-even on a vehicle
-  works out to ~55 USD per trip ≈ 30km one-way for a van.
-- Fleet justified at 4 vehicles on service grounds (0400 starts).
-- Competitor band: $50–70 per vehicle per trip.
-- See `AUDIT_FINDINGS.md` and `AUDIT_BRIEF.md` on the repo for the
-  deeper audit of data flow and finance correctness.
-
-## Audit findings status (from last session)
-
-Closed:
-- **C1** honest gross/net distinction
-- **C2** one P&L across all four surfaces
-- **C3** payback fuel allocation (was biased against tagged cars)
-- **C4** duplicate invoice guard
-- **C5** invoice↔trip linking
-- **C7/C8** time-window clarity (which numbers are "this month" vs
-  running positions)
-- **D1** finance route guards + authorization
-
-Open / deferred:
-- Nav consolidation (22 → ~12 items)
-- The remaining 11 hand-rolled `Th`/`Td` tables → DataTable
-- Distance → zone → per-trip cost pricing model (business decision
-  needed from the owner)
-- Trip-vs-run modelling (one booking may be multiple runs)
-
-## Conventions
-
-- Server components by default (App Router). Only add `'use client'`
-  when you need state, effects, or an event handler.
-- Server actions in `actions.ts` next to the page that uses them.
-- Money always in KES, formatted with `kes(n)` or `kesPlain(n)` from
-  `lib/format.ts`. Don't use `Intl.NumberFormat` directly.
-- Section titles are sentence case source; the CSS uppercases them.
-- No em-dashes in user-facing copy. No decorative emoji. No coaching
-  hints under stat cards. (The de-AI pass last session was explicit
-  about this; keep it clean.)
-
-## Scripts
-
-```bash
-npm run dev     # dev server (port 3000 by default)
-npm run build   # production build (also useful to catch errors)
-npm run lint    # eslint (next 16 doesn't run it during build)
-```
-
-Pre-existing lint errors in `components/ThemeToggle.tsx`,
-`AppShell.tsx`, `NavProgress.tsx`, `SegmentDonut.tsx`, and
-`scripts/apply-db.cjs` — 13 errors, all before this session's work.
-Don't let them block you.
-
-## Immediate next task candidates
-
-Pick one; they're ordered by probable impact:
-
-1. **Convert remaining Th/Td tables to `DataTable`** — cosmetic but
-   finishes the mobile story. Files listed above.
-2. **Nav consolidation** — fold the 9 Finance items into ~3 tabs
-   under one page. The sidebar is the loudest remaining tell.
-3. **Per-trip cost model** (business + code) — distance → zone →
-   fair price, so fares stop being set by vibes.
-4. **Trip pagination** — a phone shows about 2 trip cards at a time,
-   and October's 79 trips are a 33,000px scroll. "Show 20, load more"
-   is the move.
-
-Everything else (migrations, CI, deploy) can wait.
+1. Stage and apply the three SQL files above, then deploy this branch.
+2. Load recent months of trips from the supplier Excel sheets.
+3. Recurring monthly costs (insurance, licences) so profit needs less typing.
+4. Offline-friendly service worker, if she uses it with poor signal.

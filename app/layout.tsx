@@ -10,11 +10,17 @@ import './operations-depth.css'
 export const metadata: Metadata = {
   title: 'Absolute Comfort Travel · Operations',
   description: 'Bookings, fleet, fuel and finance for Absolute Comfort Travel.',
+  appleWebApp: { capable: true, title: 'Absolute', statusBarStyle: 'default' },
 }
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  // Phone status bar and installed-app title bar follow the theme.
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#F3F5FA' },
+    { media: '(prefers-color-scheme: dark)', color: '#101624' },
+  ],
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

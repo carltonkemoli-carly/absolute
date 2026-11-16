@@ -167,3 +167,40 @@ not be verified and no migration was applied there.
 The separate Site source at `/workspace/work/website-source` now includes an
 interactive journey-brief section for airport, business and group requests.
 Its Site remains owner-private; no public marketplace listings were created.
+
+## 10. Claude continuation (16 November 2026)
+
+Continued from ChatGPT's `ffef794`. `HANDOFF.md` is rewritten as the current
+starting point. In order, on this branch:
+
+- **One palette.** Brand blue/lime tokens moved into `globals.css` (the old
+  green theme and the override layer are gone); amber restored as the warning
+  colour (`--gold` had become olive green); `--ok` added; chart colours are CSS
+  variables in `lib/chart.ts` with dark values. Workspace CSS reformatted from
+  minified lines.
+- **Dashboard rebuilt** (2,837px marketing layout → 1,519px of answers).
+  `lib/dashboard.ts` + `tests/dashboard.cjs`.
+- **Command palette** (Ctrl/Cmd+K, `/`), phone tab bar, inline logo that
+  follows the theme, 148 font sizes under 12px raised.
+- **Dispatch rule fix:** completed trips no longer reserve a driver or vehicle.
+  Before this, once `migration-integrity.sql` reached live, a driver could be
+  tagged on only one finished trip per day when pickup times were missing
+  (most imported history). Changed in `lib/dispatch-rules.ts` and in the
+  migration's exclusion constraints; both test suites cover it.
+  `tests/integrity.py local` runs against a local PostgreSQL.
+- **Trips:** paging, one toolbar, bulk tag and bulk complete
+  (`updateTrips` in `lib/db.ts`, guarded actions capped at 500 ids).
+- **Receivables:** payment ledger (`lib/migration-invoice-payments.sql`,
+  trigger-derived `amount_paid`/`paid_date`, finance-only RLS, opening rows for
+  existing paid amounts), aging, debtors, DataTable list, receipts on the
+  printed invoice.
+- **Consistency:** last ten hand-rolled tables → DataTable; healthy states use
+  `--ok`; reintroduced emoji removed.
+- **Installable:** `app/manifest.ts`, PNG icons, Apple touch icon, theme
+  colour; `proxy.ts` leaves the manifest public (`tests/pwa.cjs`).
+- `npm test` runs all Node tests.
+
+Verified: `npm test` (10/10), `python3 tests/integrity.py local` (all pass),
+lint clean, production build clean, 25 routes at 1440px and 390px with no
+overflow, console errors or failed requests. Nothing deployed and no live
+data touched.
