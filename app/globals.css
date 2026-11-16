@@ -276,6 +276,10 @@ label.field > span { display: block; font-size: 12px; font-weight: 500; color: v
 .data-table tbody tr { border-top: 1px solid var(--border); }
 .data-table th.dt-num, .data-table td.dt-num { text-align: right; }
 .data-table td.dt-num, .data-table td.dt-nowrap { white-space: nowrap; }
+.data-table th[data-role="select"], .data-table td[data-role="select"] { width: 34px; padding-right: 0; }
+.data-table input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+/* Detail that only belongs in the phone card (see Column.card). */
+.dt-only-card { display: none; }
 
 @media (max-width: 860px) {
   /* Every row becomes its own card, so the container steps out of the way. */
@@ -307,7 +311,15 @@ label.field > span { display: block; font-size: 12px; font-weight: 500; color: v
   /* Row actions sit at the foot of the card, also unlabelled. */
   .data-table td[data-role="actions"] { order: 1; padding: 10px 0 0; justify-content: flex-start; }
   .data-table td[data-role="primary"]::before,
-  .data-table td[data-role="actions"]::before { content: none; }
+  .data-table td[data-role="actions"]::before,
+  .data-table td[data-role="select"]::before { content: none; }
+  .data-table td.dt-card-hide { display: none; }
+  .dt-only-card { display: block; }
+  /* The row checkbox sits in the card's top corner, clear of the headline. */
+  .data-table tbody tr { position: relative; }
+  .data-table td[data-role="select"] { position: absolute; top: 10px; right: 12px; width: auto; padding: 0; }
+  .data-table td[data-role="select"] input { width: 20px; height: 20px; }
+  .data-table tbody tr:has(td[data-role="select"]) td[data-role="primary"] { padding-right: 34px; }
   .data-table td[data-role="primary"] > .dt-v,
   .data-table td[data-role="actions"] > .dt-v { text-align: left; }
 }

@@ -13,8 +13,10 @@ type Props = {
   rows: Trip[]
   lookups: { contractors: Contractor[]; drivers: Driver[]; vehicles: Vehicle[] }
   storageKey?: string
+  /** Sit inline in a toolbar: no card, and the storage note only while saving. */
+  compact?: boolean
 }
-export default function TripViewTools({ filters, onApply, rows, lookups, storageKey }: Props) {
+export default function TripViewTools({ filters, onApply, rows, lookups, storageKey, compact = false }: Props) {
   const id = useId()
   const [views, setViews] = useState<SavedTripView[]>([])
   const [loadedKey, setLoadedKey] = useState<string | undefined>(undefined)
@@ -83,12 +85,12 @@ export default function TripViewTools({ filters, onApply, rows, lookups, storage
     } catch { setError('The CSV could not be prepared. Please try again.') }
   }
 
-  return <div className="trip-view-tools">
+  return <div className={`trip-view-tools${compact ? ' tvt-compact' : ''}`}>
     <div className="tvt-main">
       {storageKey && <><label className="tvt-view-select" htmlFor={`${id}-views`}>Saved views<select id={`${id}-views`} className="input" value={matchingView?.id ?? ''} disabled={loadedKey !== storageKey || !currentViews.length} onChange={event => applyView(event.target.value)} aria-describedby={`${id}-storage-note`}><option value="">Choose a saved view</option>{currentViews.map(view => <option key={view.id} value={view.id}>{view.name}</option>)}</select></label><button type="button" className="btn-ghost" disabled={loadedKey !== storageKey || currentViews.length >= 8} onClick={() => { setSaving(value => !value); setError(''); setNotice('') }} aria-expanded={saving} aria-controls={`${id}-save`}>{saving ? 'Close save view' : 'Save view'}</button>{matchingView && <button type="button" className="tvt-remove" onClick={removeView}>Remove saved view</button>}</>}
       <button type="button" className="btn-ghost tvt-export" onClick={downloadCsv} disabled={!rows.length}>Export CSV <span>{rows.length.toLocaleString('en-KE')}</span></button>
     </div>
-    {storageKey && <p id={`${id}-storage-note`} className="tvt-storage-note">Saved on this browser for your account. Only filters are saved; search text and trip records are not stored.</p>}
+    {storageKey && (!compact || saving) && <p id={`${id}-storage-note`} className="tvt-storage-note">Saved on this browser for your account. Only filters are saved; search text and trip records are not stored.</p>}
     {saving && storageKey && <form className="tvt-save-form" id={`${id}-save`} onSubmit={saveView}><label htmlFor={`${id}-name`}>View name<input id={`${id}-name`} className="input" value={name} onChange={event => setName(event.target.value)} required maxLength={40} placeholder="e.g. Unassigned airport jobs" autoFocus/></label><button className="btn-primary" type="submit">Save filters</button><button className="btn-ghost" type="button" onClick={() => setSaving(false)}>Cancel</button></form>}
     {error && <p className="tvt-error" role="alert">{error}</p>}
     {notice && <p className="tvt-notice" role="status">{notice}</p>}

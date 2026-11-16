@@ -102,10 +102,11 @@ export function EmptyState({ message }: { message: string }) {
   )
 }
 
-export function Badge({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'neutral' | 'green' | 'gold' | 'red' }) {
+export function Badge({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'neutral' | 'green' | 'blue' | 'gold' | 'red' }) {
   const tones: Record<string, { bg: string; fg: string }> = {
     neutral: { bg: 'var(--surface2)', fg: 'var(--ink2)' },
-    green: { bg: 'var(--accent-light)', fg: 'var(--accent)' },
+    green: { bg: 'var(--ok-light)', fg: 'var(--ok)' },
+    blue: { bg: 'var(--accent-light)', fg: 'var(--accent)' },
     gold: { bg: 'var(--gold-light)', fg: 'var(--gold)' },
     red: { bg: 'var(--danger-light)', fg: 'var(--danger)' },
   }

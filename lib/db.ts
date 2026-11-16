@@ -321,6 +321,41 @@ export async function saveRecord(table: TableName, row: Row, id: string | null):
   return { error: error?.code === '23P01' ? 'Driver or vehicle has an overlapping trip. Choose another resource or pickup time.' : error?.message ?? null }
 }
 
+// Apply the same change to many trips at once (bulk tagging from the Trips
+// page). All-or-nothing in demo mode; against Supabase each batch of 100 is one
+// statement, so a refused batch changes nothing in that batch and the count of
+// trips already saved is reported back.
+export async function updateTrips(ids: string[], patch: Row): Promise<{ updated: number; error: string | null }> {
+  if (!ids.length) return { updated: 0, error: null }
+  if (DEV_MODE) {
+    const data = loadStore()
+    // Check every change against the others before saving any of them.
+    const working = data.trips.map((trip) => ({ ...trip }))
+    for (const id of ids) {
+      const trip = working.find((candidate) => candidate.id === id)
+      if (!trip) return { updated: 0, error: 'A selected trip no longer exists. Refresh and try again.' }
+      Object.assign(trip, patch)
+      try { assertNoDispatchOverlap(trip, working) }
+      catch (error) { return { updated: 0, error: (error as Error).message } }
+    }
+    data.trips = working
+    saveStore(data)
+    return { updated: ids.length, error: null }
+  }
+  const s = await sb()
+  let updated = 0
+  for (let i = 0; i < ids.length; i += 100) {
+    const batch = ids.slice(i, i + 100)
+    const { error } = await s.from('trips').update(patch).in('id', batch)
+    if (error) {
+      console.error(`[db] updateTrips failed: ${error.message}`)
+      return { updated, error: error.code === '23P01' ? 'A selected job that is still to be done overlaps another job for that driver or vehicle.' : error.message }
+    }
+    updated += batch.length
+  }
+  return { updated, error: null }
+}
+
 // Targets are keyed by (period, kind, category, contractor) — upsert by that, not
 // by id. contractorId null = a company-wide target; set = that supplier's target.
 export async function upsertTarget(

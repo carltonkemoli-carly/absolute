@@ -11,9 +11,17 @@ export interface Column<T> {
   /**
    * `primary` is the column that identifies the record — it becomes the card's
    * headline and drops its label. `actions` is the edit/delete column, which
-   * sits at the foot of the card, also unlabelled.
+   * sits at the foot of the card, also unlabelled. `select` holds a row
+   * checkbox: a narrow first column on a laptop, the card's top corner on a phone.
    */
-  role?: 'primary' | 'actions'
+  role?: 'primary' | 'actions' | 'select'
+  /** Replaces the text header on a laptop, e.g. a select-all checkbox. */
+  header?: ReactNode
+  /**
+   * Leave this column out of the phone card. Use it when the card's headline
+   * already carries the value (wrap that part in `dt-only-card`).
+   */
+  card?: 'hide'
 }
 
 /**
@@ -24,6 +32,12 @@ export interface Column<T> {
  *
  * No hooks, so server and client components can both use it.
  */
+// Class names for callers, kept here so Tailwind's scanner sees them from a
+// shared component: a class referenced only from a route-group file is dropped
+// from the built CSS.
+export const CARD_ONLY = 'dt-only-card'
+export const ROW_SELECTED = 'row-selected'
+
 export default function DataTable<T>({
   columns, rows, rowKey, empty, minWidth, rowClass,
 }: {
@@ -54,7 +68,7 @@ export default function DataTable<T>({
         <thead>
           <tr>
             {columns.map((c, i) => (
-              <th key={i} className={cellClass(c)}>{c.label}</th>
+              <th key={i} className={cellClass(c)} data-role={c.role}>{c.header ?? c.label}</th>
             ))}
           </tr>
         </thead>
@@ -77,6 +91,6 @@ export default function DataTable<T>({
 }
 
 function cellClass<T>(c: Column<T>): string | undefined {
-  const names = [c.align === 'right' && 'dt-num', c.nowrap && 'dt-nowrap'].filter(Boolean)
+  const names = [c.align === 'right' && 'dt-num', c.nowrap && 'dt-nowrap', c.card === 'hide' && 'dt-card-hide'].filter(Boolean)
   return names.length ? names.join(' ') : undefined
 }
