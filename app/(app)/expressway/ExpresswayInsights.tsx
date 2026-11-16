@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { StatCard, Card, Section } from '@/components/ui'
 import { Bars, SectionTitle } from '@/components/Bars'
 import SegmentDonut, { type Seg } from '@/components/SegmentDonut'
+import { CHART_COLORS } from '@/lib/chart'
 import { kes, kesPlain } from '@/lib/format'
 
 type Group = { key: string; label: string; count: number; toll: number; total: number }
@@ -33,9 +34,9 @@ export default function ExpresswayInsights({
   const delta = stats.prevToll > 0 ? Math.round(((stats.totalToll - stats.prevToll) / stats.prevToll) * 100) : null
 
   const dirSegs: Seg[] = [
-    { label: 'To JKIA', value: direction.to.toll, color: '#2C7A53' },
-    { label: 'From JKIA', value: direction.from.toll, color: '#C9A227' },
-    { label: 'Other', value: direction.other.toll, color: '#2F9E8F' },
+    { label: 'To JKIA', value: direction.to.toll, color: CHART_COLORS[0] },
+    { label: 'From JKIA', value: direction.from.toll, color: CHART_COLORS[1] },
+    { label: 'Other', value: direction.other.toll, color: CHART_COLORS[7] },
   ].filter((s) => s.value > 0)
 
   return (

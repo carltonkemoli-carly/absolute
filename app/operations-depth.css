@@ -1,52 +1,5 @@
 /* Absolute Comfort workspace: dimensional accents, flat readable record surfaces. */
-:root,
-[data-theme="light"] {
-  --bg: #f3f5fa;
-  --surface: #fff;
-  --surface2: #edf1f8;
-  --ink: #17243c;
-  --ink2: #53627b;
-  --ink3: #718099;
-  --accent: #354da4;
-  --accent-light: #e8edfb;
-  --accent-mid: #2b3f89;
-  --on-accent: #fff;
-  --gold: #546f12;
-  --gold-light: #eff6df;
-  --brand-lime: #a2d729;
-  --brand-blue: #354da4;
-  --border: rgba(29, 48, 87, 0.1);
-  --border-med: rgba(29, 48, 87, 0.18);
-  --stripe: rgba(53, 77, 164, 0.035);
-  --grad-1: rgba(53, 77, 164, 0.035);
-  --grad-2: rgba(162, 215, 41, 0.025);
-  --shadow-sm: 0 1px 1px rgba(20, 38, 76, 0.035), 0 3px 9px rgba(20, 38, 76, 0.035);
-  --shadow-md: 0 9px 22px rgba(20, 38, 76, 0.09), 0 2px 5px rgba(20, 38, 76, 0.045);
-  --shadow-lg: 0 20px 50px rgba(20, 38, 76, 0.14);
-  --radius: 11px;
-  --radius-sm: 7px;
-}
-[data-theme="dark"] {
-  --bg: #101624;
-  --surface: #192131;
-  --surface2: #222e42;
-  --ink: #eef1f8;
-  --ink2: #b2bdd0;
-  --ink3: #8f9db5;
-  --accent: #9bafff;
-  --accent-light: rgba(123, 150, 255, 0.16);
-  --accent-mid: #b5c4ff;
-  --on-accent: #142247;
-  --gold: #bedc78;
-  --gold-light: rgba(162, 215, 41, 0.13);
-  --brand-lime: #b0dd4f;
-  --brand-blue: #8da6ff;
-  --border: rgba(207, 221, 248, 0.1);
-  --border-med: rgba(207, 221, 248, 0.19);
-  --stripe: rgba(207, 221, 248, 0.025);
-  --grad-1: rgba(123, 150, 255, 0.03);
-  --grad-2: rgba(162, 215, 41, 0.025);
-}
+/* Colour tokens live in globals.css. */
 body {
   background-image: none;
 }

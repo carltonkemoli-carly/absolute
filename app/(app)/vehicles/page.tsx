@@ -1,6 +1,6 @@
 import { PageHeader, StatCard, Card, Section } from '@/components/ui'
 import SegmentDonut from '@/components/SegmentDonut'
-import { topSegments, type Seg } from '@/lib/chart'
+import { topSegments, CHART_COLORS, type Seg } from '@/lib/chart'
 import { listVehicles } from '@/lib/db'
 import { OWNERSHIP_LABELS, type VehicleOwnership } from '@/lib/types'
 import { kes } from '@/lib/format'
@@ -9,7 +9,8 @@ import VehicleManager from './VehicleManager'
 
 export const dynamic = 'force-dynamic'
 
-const GREEN = '#2C7A53', GOLD = '#C9A227', TEAL = '#2F9E8F'
+// Ownership is a category, not a verdict, so it uses the neutral series colours.
+const GREEN = CHART_COLORS[0], GOLD = CHART_COLORS[1], TEAL = CHART_COLORS[3]
 
 export default async function VehiclesPage() {
   const profile = await requireOperations()

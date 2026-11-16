@@ -10,6 +10,7 @@ import { nairobiToday } from '@/lib/nairobi-date'
 import { EMPTY_INVOICE_FILTERS, filterInvoices, invoiceListTotals, invoiceOutstanding, invoiceOverdueDays, type InvoicePaymentFilter } from '@/lib/invoice-filters'
 import './receivables-workspace.css'
 import SegmentDonut, { type Seg } from '@/components/SegmentDonut'
+import { STATUS_COLORS } from '@/lib/chart'
 import { kes, kesPlain, fmtDate } from '@/lib/format'
 import type { Contractor, Invoice } from '@/lib/types'
 import { saveInvoice, recordPayment, markPaid, deleteInvoice, previewInvoiceFromTrips, generateInvoiceFromTrips, type InvoicePreview } from './actions'
@@ -100,9 +101,9 @@ export default function ReceivablesView({
   const filterSummary = [filters.search.trim() ? `Search: ${filters.search.trim()}` : '', filters.contractorId ? cname(filters.contractorId) : '', filters.payment !== 'all' ? paymentLabel : ''].filter(Boolean).join(' · ')
 
   const statusSegs: Seg[] = [
-    { label: 'Collected', value: totalCollected, color: '#2C7A53' },
-    { label: 'Outstanding', value: Math.max(0, totalOutstanding - overdue), color: '#C9A227' },
-    { label: 'Overdue', value: overdue, color: '#BC3E22' },
+    { label: 'Collected', value: totalCollected, color: STATUS_COLORS.good },
+    { label: 'Outstanding', value: Math.max(0, totalOutstanding - overdue), color: STATUS_COLORS.warn },
+    { label: 'Overdue', value: overdue, color: STATUS_COLORS.bad },
   ].filter((s) => s.value > 0)
 
   return (

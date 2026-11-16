@@ -70,9 +70,9 @@ export default function SegmentDonut({
             {segs.map((s, i) => (
               <circle
                 key={i} cx={cx} cy={cx} r={r} fill="none"
-                stroke={s.color} strokeWidth={thickness} strokeLinecap="round"
+                strokeWidth={thickness} strokeLinecap="round"
                 strokeDasharray={`${s.len} ${c}`} strokeDashoffset={-s.offset}
-                style={{ animation: `${anim} .7s var(--ease) ${i * 0.09}s both` }}
+                style={{ stroke: s.color, animation: `${anim} .7s var(--ease) ${i * 0.09}s both` }}
               />
             ))}
           </g>

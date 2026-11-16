@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { PageHeader, StatCard, Card, Section } from '@/components/ui'
 import SegmentDonut from '@/components/SegmentDonut'
-import type { Seg } from '@/lib/chart'
+import { STATUS_COLORS, type Seg } from '@/lib/chart'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
 import { listTrips, listVehicles, listFuel, listOrganizations, listContractors, listDrivers, listInvoices, listExpenses } from '@/lib/db'
 import { nairobiToday } from '@/lib/nairobi-date'
@@ -89,9 +89,9 @@ export default async function DataHealthPage() {
 
   // Part-to-whole of the checks themselves — how much of the audit is clean.
   const resultMix: Seg[] = [
-    { label: 'Healthy', value: clean.length, color: '#2C7A53' },
-    { label: 'Worth a look', value: infos.length, color: '#C9A227' },
-    { label: 'Needs attention', value: issues.length, color: '#BC3E22' },
+    { label: 'Healthy', value: clean.length, color: STATUS_COLORS.good },
+    { label: 'Worth a look', value: infos.length, color: STATUS_COLORS.warn },
+    { label: 'Needs attention', value: issues.length, color: STATUS_COLORS.bad },
   ]
 
   const covered: { label: string; value: number }[] = [

@@ -3,7 +3,7 @@ import { listRoutes } from '@/lib/db'
 import ExcelImport from '@/components/ExcelImport'
 import SegmentDonut from '@/components/SegmentDonut'
 import { Bars } from '@/components/Bars'
-import type { Seg } from '@/lib/chart'
+import { STATUS_COLORS, type Seg } from '@/lib/chart'
 import { kes } from '@/lib/format'
 import type { FieldSpec } from '@/lib/import-types'
 import type { Route } from '@/lib/types'
@@ -13,7 +13,7 @@ import { requireProfile, canSeeFinance } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
-const GREEN = '#2C7A53', GOLD = '#C9A227', RED = '#BC3E22'
+const GREEN = STATUS_COLORS.good, GOLD = STATUS_COLORS.warn, RED = STATUS_COLORS.bad
 const CLASSES = ['price_saloon', 'price_wagon', 'price_van', 'price_bus'] as const
 
 // How many of the four vehicle classes this route is actually priced for.

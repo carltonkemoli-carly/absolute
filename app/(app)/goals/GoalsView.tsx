@@ -3,11 +3,12 @@
 import { useMemo, useState } from 'react'
 import { kes, kesPlain } from '@/lib/format'
 import SegmentDonut, { type Seg } from '@/components/SegmentDonut'
+import { CHART_COLORS } from '@/lib/chart'
 import { saveTargets } from './actions'
 
 export type CostLine = { category: string; amount: number; cap: number | null }
 
-const COST_COLORS = ['#BC3E22', '#C9A227', '#2F9E8F', '#3E7CB1', '#7A5FB0', '#D98A3D', '#2C7A53', '#9A6A4B', '#5C8A72', '#A8527C']
+const COST_COLORS = CHART_COLORS
 
 export default function GoalsView({
   period, revenue, express, costs, revenueTarget, profitTarget, profitLabel, profitHint, costsComplete,

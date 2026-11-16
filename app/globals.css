@@ -6,63 +6,104 @@
   --font-body: var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --radius: 14px;
-  --radius-sm: 10px;
+  --radius: 11px;
+  --radius-sm: 7px;
   --radius-pill: 999px;
 }
 
+/* One palette for the whole system.
+   Brand: the blue of the mark and the lime of its swoosh.
+   Meaning: blue is neutral-positive and interactive, lime/leaf is done or
+   healthy, amber needs a look, red is overdue or broken. `--gold` is the
+   long-standing name for the amber "needs a look" colour. */
+
 /* ---- Light theme (default) ---- */
 :root, [data-theme="light"] {
-  --bg: #F4F6F3;
+  --bg: #F3F5FA;
   --surface: #FFFFFF;
-  --surface2: #ECF0EC;
-  --ink: #15211B;
-  --ink2: #56655D;
-  --ink3: #94A099;
-  --accent: #1E6B47;
-  --accent-light: #DBEFE3;
-  --accent-mid: #2C7A53;
+  --surface2: #EDF1F8;
+  --ink: #17243C;
+  --ink2: #53627B;
+  --ink3: #718099;
+  --accent: #354DA4;
+  --accent-light: #E8EDFB;
+  --accent-mid: #2B3F89;
   --on-accent: #FFFFFF;
-  --gold: #A9781A;
-  --gold-light: #F6EDD3;
-  --danger: #BC3E22;
-  --danger-light: #FBE7E0;
-  --border: rgba(21, 33, 27, 0.10);
-  --border-med: rgba(21, 33, 27, 0.17);
+  --brand-blue: #354DA4;
+  --brand-lime: #A2D729;
+  --ok: #3F7D14;
+  --ok-light: #EEF6DD;
+  --gold: #A35F00;
+  --gold-light: #FCEFD6;
+  --danger: #C2402A;
+  --danger-light: #FBE6E1;
+  --border: rgba(29, 48, 87, 0.10);
+  --border-med: rgba(29, 48, 87, 0.18);
   --glass: rgba(255, 255, 255, 0.72);
-  --stripe: rgba(30, 107, 71, 0.045);
-  --grad-1: rgba(44, 122, 83, 0.06);
-  --grad-2: rgba(169, 120, 26, 0.05);
-  --shadow-sm: 0 1px 2px rgba(21, 33, 27, 0.05), 0 1px 3px rgba(21, 33, 27, 0.06);
-  --shadow-md: 0 8px 24px rgba(21, 33, 27, 0.10), 0 2px 6px rgba(21, 33, 27, 0.06);
-  --shadow-lg: 0 20px 48px rgba(21, 33, 27, 0.14);
+  --stripe: rgba(53, 77, 164, 0.035);
+  --grad-1: rgba(53, 77, 164, 0.035);
+  --grad-2: rgba(162, 215, 41, 0.025);
+  --shadow-sm: 0 1px 1px rgba(20, 38, 76, 0.035), 0 3px 9px rgba(20, 38, 76, 0.035);
+  --shadow-md: 0 9px 22px rgba(20, 38, 76, 0.09), 0 2px 5px rgba(20, 38, 76, 0.045);
+  --shadow-lg: 0 20px 50px rgba(20, 38, 76, 0.14);
+
+  /* Charts: categories that sit next to each other must not be confused, so
+     the order alternates hue and lightness. The three status colours are the
+     only ones that carry meaning. */
+  --chart-1: #354DA4;
+  --chart-2: #8FC31F;
+  --chart-3: #F0A92B;
+  --chart-4: #1FA3A3;
+  --chart-5: #8262D6;
+  --chart-6: #E2644A;
+  --chart-7: #5AA0E6;
+  --chart-8: #8492AB;
+  --chart-good: #8FC31F;
+  --chart-warn: #F0A92B;
+  --chart-bad: #DC4C33;
 }
 
-/* ---- Dark theme (polished, with depth + colour) ---- */
+/* ---- Dark theme ---- */
 [data-theme="dark"] {
-  --bg: #0C0F0D;
-  --surface: #16191A;
-  --surface2: #20251F;
-  --ink: #EDEBE1;
-  --ink2: #A2AAA2;
-  --ink3: #707870;
-  --accent: #54CB8B;
-  --accent-light: rgba(84, 203, 139, 0.18);
-  --accent-mid: #6CDCA0;
-  --on-accent: #07150D;
-  --gold: #E2BE6A;
-  --gold-light: rgba(226, 190, 106, 0.18);
+  --bg: #101624;
+  --surface: #192131;
+  --surface2: #222E42;
+  --ink: #EEF1F8;
+  --ink2: #B2BDD0;
+  --ink3: #8F9DB5;
+  --accent: #9BAFFF;
+  --accent-light: rgba(123, 150, 255, 0.16);
+  --accent-mid: #B5C4FF;
+  --on-accent: #142247;
+  --brand-blue: #8DA6FF;
+  --brand-lime: #B0DD4F;
+  --ok: #B0DD4F;
+  --ok-light: rgba(162, 215, 41, 0.14);
+  --gold: #F2BD5B;
+  --gold-light: rgba(242, 189, 91, 0.15);
   --danger: #F4855F;
   --danger-light: rgba(244, 133, 95, 0.18);
-  --border: rgba(237, 235, 225, 0.11);
-  --border-med: rgba(237, 235, 225, 0.20);
-  --glass: rgba(18, 22, 19, 0.74);
-  --stripe: rgba(237, 235, 225, 0.03);
-  --grad-1: rgba(84, 203, 139, 0.08);
-  --grad-2: rgba(226, 190, 106, 0.06);
+  --border: rgba(207, 221, 248, 0.10);
+  --border-med: rgba(207, 221, 248, 0.19);
+  --glass: rgba(18, 24, 38, 0.74);
+  --stripe: rgba(207, 221, 248, 0.025);
+  --grad-1: rgba(123, 150, 255, 0.03);
+  --grad-2: rgba(162, 215, 41, 0.025);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 22px 56px rgba(0, 0, 0, 0.6);
+
+  --chart-1: #8DA6FF;
+  --chart-2: #B0DD4F;
+  --chart-3: #F2BD5B;
+  --chart-4: #4FD1C9;
+  --chart-5: #B39DF5;
+  --chart-6: #F58D75;
+  --chart-7: #8CC4F7;
+  --chart-8: #9AA7BE;
+  --chart-good: #B0DD4F;
+  --chart-warn: #F2BD5B;
+  --chart-bad: #F4755A;
 }
 
 * { box-sizing: border-box; }

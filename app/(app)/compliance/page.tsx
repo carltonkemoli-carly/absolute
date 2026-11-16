@@ -2,7 +2,7 @@ import { PageHeader, StatCard, Card, Section } from '@/components/ui'
 import AttentionPanel from '@/components/AttentionPanel'
 import SegmentDonut from '@/components/SegmentDonut'
 import { Bars } from '@/components/Bars'
-import type { Seg } from '@/lib/chart'
+import { CHART_COLORS, STATUS_COLORS, type Seg } from '@/lib/chart'
 import { listDocuments, listServices, listVehicles, listDrivers } from '@/lib/db'
 import { buildAttention } from '@/lib/attention'
 import { isoDate, addDays } from '@/lib/format'
@@ -11,7 +11,7 @@ import ComplianceManager from './ComplianceManager'
 
 export const dynamic = 'force-dynamic'
 
-const GREEN = '#2C7A53', GOLD = '#C9A227', RED = '#BC3E22', TEAL = '#2F9E8F'
+const GREEN = STATUS_COLORS.good, GOLD = STATUS_COLORS.warn, RED = STATUS_COLORS.bad, TEAL = CHART_COLORS[3]
 
 type DocState = 'expired' | 'due' | 'attended' | 'valid' | 'undated'
 
