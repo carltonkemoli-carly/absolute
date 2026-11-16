@@ -36,7 +36,7 @@ export function buildAlerts(input: {
   const totalFuel = sum(fuel, (f) => num(f.amount))
   const fuelPct = totalRev > 0 ? totalFuel / totalRev : 0
   if (totalRev > 0 && fuelPct > 0.34) {
-    alerts.push({ level: 'warning', title: `Fuel is high this month`, detail: `Fuel is ${Math.round(fuelPct * 100)}% of revenue (${kes(totalFuel)} on ${kes(totalRev)}) — usually it runs ~28–31%. Worth a look.`, href: '/fuel' })
+    alerts.push({ level: 'warning', title: `Fuel is high this month`, detail: `${Math.round(fuelPct * 100)}% of revenue (${kes(totalFuel)} on ${kes(totalRev)}). It usually runs 28–31%.`, href: '/fuel' })
   }
 
   // ---- un-invoiced expressway tolls (recoverable) ----
@@ -48,7 +48,7 @@ export function buildAlerts(input: {
       (inv.period_start && inv.period_end && inv.period_start <= monthEnd && inv.period_end >= monthStart) ||
       (inv.issue_date != null && inv.issue_date >= monthStart && inv.issue_date <= monthEnd)))
     if (!invoiced && toll > 0) {
-      alerts.push({ level: 'warning', title: `${kes(toll)} in tolls not invoiced`, detail: `Expressway tolls fronted for ${conName(k === 'none' ? null : k)} in ${monthLabel} aren't on an invoice yet — recover them.`, href: '/expressway' })
+      alerts.push({ level: 'warning', title: `${kes(toll)} in tolls not invoiced`, detail: `Paid for ${conName(k === 'none' ? null : k)} in ${monthLabel} and not on an invoice yet`, href: '/expressway' })
     }
   }
 
