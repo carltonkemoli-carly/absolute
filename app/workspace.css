@@ -54,7 +54,7 @@
 }
 .workspace-brand small {
   display: block;
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 0.14em;
   font-weight: 500;
   color: var(--ink3);
@@ -115,7 +115,7 @@
 }
 .workspace-module-title small {
   display: block;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.1em;
   color: var(--ink3);
@@ -175,7 +175,7 @@
 .workspace-switch-links .nav-section {
   margin-bottom: 7px;
   padding-left: 8px;
-  font-size: 9px;
+  font-size: 11px;
 }
 .workspace-switch-links > a {
   display: flex;
@@ -184,7 +184,7 @@
   border-radius: 5px;
   padding: 7px 8px;
   color: var(--ink3);
-  font-size: 11.5px;
+  font-size: 12px;
   text-decoration: none;
   transition:
     background 0.18s ease,
@@ -226,7 +226,7 @@
   background: var(--surface2);
   color: var(--workspace-blue);
   font-weight: 600;
-  font-size: 10px;
+  font-size: 11px;
   flex: none;
   box-shadow: inset 0 1px 0 #ffffff35;
 }
@@ -235,7 +235,7 @@
 }
 .workspace-user strong {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -243,7 +243,7 @@
   font-weight: 600;
 }
 .workspace-user small {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ink3);
   text-transform: capitalize;
 }
@@ -251,7 +251,7 @@
   border: 0;
   background: none;
   color: var(--ink3);
-  font-size: 10px;
+  font-size: 11px;
   padding: 8px 0 0 40px;
   cursor: pointer;
 }
@@ -291,7 +291,7 @@
   box-shadow:
     inset 0 1px 0 #ffffff40,
     0 2px 0 rgba(23, 45, 101, 0.055);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -323,7 +323,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  font-size: 11px;
+  font-size: 12px;
   flex-wrap: wrap;
   line-height: 1.5;
   color: var(--ink3);
@@ -354,7 +354,7 @@
   flex: none;
 }
 .workspace-today-link {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   text-decoration: none;
   color: var(--workspace-blue);
@@ -364,12 +364,12 @@
   text-underline-offset: 3px;
 }
 .workspace-timezone {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--ink3);
   letter-spacing: 0.03em;
 }
 .workspace-topbar-role {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--ink2);
   text-transform: capitalize;
   border: 1px solid var(--border);
@@ -386,7 +386,7 @@
   gap: 7px;
   justify-content: center;
   padding: 7px 15px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--ink2);
   background: var(--surface2);
@@ -508,7 +508,7 @@
 }
 .workspace-app-tile small {
   display: block;
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.7;
   color: var(--ink3);
   font-weight: 400;
@@ -521,7 +521,7 @@
   padding-left: 57px;
 }
 .workspace-app-pages a {
-  font-size: 10px;
+  font-size: 11px;
   text-decoration: none;
   color: var(--ink2);
   line-height: 1.8;
@@ -581,7 +581,7 @@
   box-shadow: none !important;
   background: transparent;
   font: inherit;
-  font-size: 11.5px;
+  font-size: 12px;
   padding: 8px 0;
 }
 .record-search > svg {
@@ -614,7 +614,7 @@
   border: 0;
   color: var(--ink3);
   background: transparent;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   padding: 6px 10px;
   border-radius: 3px;
@@ -633,7 +633,7 @@
   border-top: 1px solid var(--border);
   margin-top: 11px;
   padding-top: 10px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ink3);
 }
 .record-toolbar-summary > span:first-child {
@@ -651,7 +651,7 @@
   background: transparent;
   color: var(--workspace-blue);
   font: inherit;
-  font-size: 10px;
+  font-size: 11px;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -803,7 +803,7 @@
   }
   .workspace-breadcrumbs ol {
     gap: 0;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.3;
     flex-direction: column;
     align-items: flex-start;
@@ -815,7 +815,7 @@
     display: none;
   }
   .workspace-breadcrumbs li:nth-child(2) {
-    font-size: 8px;
+    font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--ink3);
@@ -825,7 +825,7 @@
     display: none;
   }
   .workspace-topbar-role {
-    font-size: 8px;
+    font-size: 11px;
     padding: 4px 6px;
   }
   .workspace-topbar-end {
@@ -833,7 +833,7 @@
     gap: 0;
   }
   .workspace-demo-banner {
-    font-size: 9px;
+    font-size: 11px;
     padding: 7px 10px;
   }
   .workspace-app-panel {
@@ -856,10 +856,10 @@
     border-radius: 9px;
   }
   .workspace-app-tile strong {
-    font-size: 11px;
+    font-size: 12px;
   }
   .workspace-app-tile small {
-    font-size: 8px;
+    font-size: 11px;
     line-height: 1.5;
   }
   .workspace-app-pages {
@@ -867,7 +867,7 @@
     gap: 4px 9px;
   }
   .workspace-app-pages a {
-    font-size: 9px;
+    font-size: 11px;
   }
   .workspace-page-pad {
     padding-top: 20px;
@@ -892,7 +892,7 @@
     flex: 1;
   }
   .record-toolbar-summary {
-    font-size: 10px;
+    font-size: 11px;
   }
   .record-toolbar-summary > button {
     margin-left: 0;
@@ -908,19 +908,19 @@
     display: none;
   }
   .workspace-topbar-role {
-    font-size: 8px;
+    font-size: 11px;
   }
   .workspace-app-grid {
     grid-template-columns: 1fr;
   }
   .workspace-app-tile small {
-    font-size: 9px;
+    font-size: 11px;
   }
   .workspace-app-pages {
-    font-size: 10px;
+    font-size: 11px;
   }
   .workspace-app-pages a {
-    font-size: 10px;
+    font-size: 11px;
   }
   .record-toolbar-actions {
     justify-content: flex-start;
@@ -997,6 +997,340 @@
   margin-top: 3px !important;
   padding-left: 43px;
   letter-spacing: 0.11em !important;
-  font-size: 8px !important;
+  font-size: 11px !important;
   white-space: nowrap;
+}
+
+/* ---- Sidebar: brand and signed-in user ---- */
+.workspace-brand-row {
+  padding: 18px 18px 16px;
+}
+.workspace-user-name {
+  flex: 1;
+  min-width: 0;
+}
+.workspace-user strong {
+  font-size: 12.5px;
+}
+.workspace-user small {
+  font-size: 11.5px;
+}
+.workspace-signout {
+  flex: none;
+  padding: 5px 9px;
+  border: 1px solid var(--border-med);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink2);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.workspace-signout:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  text-decoration: none;
+}
+
+/* ---- Search trigger in the top bar ---- */
+.workspace-search-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 190px;
+  padding: 7px 8px 7px 11px;
+  border: 1px solid var(--border-med);
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--ink3);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.workspace-search-trigger:hover {
+  border-color: var(--accent);
+  color: var(--ink2);
+}
+.workspace-search-trigger > span {
+  flex: 1;
+  text-align: left;
+}
+.workspace-search-trigger kbd,
+.cmdk-foot kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--border-med);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--ink2);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ---- Command palette ---- */
+.cmdk-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 11vh 16px 16px;
+  background: rgba(13, 22, 44, 0.42);
+  animation: cmdkFade 0.12s ease both;
+}
+.cmdk {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 620px;
+  max-height: min(560px, 76vh);
+  overflow: hidden;
+  border: 1px solid var(--border-med);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: cmdkIn 0.16s var(--ease) both;
+}
+@keyframes cmdkFade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes cmdkIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.985);
+  }
+}
+.cmdk-field {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink3);
+}
+.cmdk-field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+.cmdk-field input::placeholder {
+  color: var(--ink3);
+}
+.cmdk-esc {
+  padding: 3px 8px;
+  border: 1px solid var(--border-med);
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--ink2);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cmdk-busy {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border-med);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: cmdkSpin 0.7s linear infinite;
+}
+@keyframes cmdkSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.cmdk-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 8px 8px;
+  scrollbar-width: thin;
+}
+.cmdk-section {
+  padding: 10px 10px 5px;
+  color: var(--ink3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.cmdk-option {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.cmdk-option[data-active="true"] {
+  background: var(--accent-light);
+}
+.cmdk-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 7px;
+  background: var(--surface2);
+  color: var(--accent);
+}
+.cmdk-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.cmdk-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink3);
+}
+.cmdk-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.cmdk-text strong {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cmdk-text small {
+  overflow: hidden;
+  color: var(--ink3);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cmdk-badge {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--surface2);
+  color: var(--ink2);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.cmdk-enter {
+  flex: none;
+  color: var(--accent);
+  font-size: 13px;
+  visibility: hidden;
+}
+.cmdk-option[data-active="true"] .cmdk-enter {
+  visibility: visible;
+}
+.cmdk-empty {
+  margin: 0;
+  padding: 26px 16px;
+  color: var(--ink3);
+  font-size: 13.5px;
+  text-align: center;
+}
+.cmdk-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 9px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--ink3);
+  font-size: 11.5px;
+}
+.cmdk-foot span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.cmdk-foot-note {
+  margin-left: auto;
+}
+
+/* ---- Phone tab bar ---- */
+.workspace-tabs {
+  display: none;
+}
+@media (max-width: 1150px) {
+  .workspace-search-trigger {
+    min-width: 0;
+  }
+  .workspace-search-trigger kbd {
+    display: none;
+  }
+}
+@media (max-width: 860px) {
+  /* The drawer and the tab bar cover navigation on a phone. */
+  .workspace-launcher,
+  .workspace-search-trigger {
+    display: none;
+  }
+  .workspace-tabs {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 34;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    padding: 5px 6px calc(5px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border-med);
+    background: var(--surface);
+    box-shadow: 0 -4px 16px rgba(20, 38, 76, 0.06);
+  }
+  .workspace-tabs > a,
+  .workspace-tabs > button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    min-height: 48px;
+    padding: 6px 2px 4px;
+    border: 0;
+    border-radius: 9px;
+    background: none;
+    color: var(--ink3);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .workspace-tabs > a[aria-current="page"] {
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+  .workspace-page-pad {
+    padding-bottom: calc(86px + env(safe-area-inset-bottom));
+  }
+  .cmdk-overlay {
+    padding: 10px 10px 0;
+  }
+  .cmdk {
+    max-height: calc(100dvh - 90px);
+  }
+  .cmdk-foot {
+    display: none;
+  }
+}
+@media print {
+  .workspace-tabs {
+    display: none !important;
+  }
+}
+/* The palette's field is the only control in view, so the dialog itself shows focus. */
+.workspace-layout .cmdk-field input:focus-visible {
+  outline: none;
 }

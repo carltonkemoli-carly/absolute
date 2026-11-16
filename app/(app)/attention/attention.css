@@ -17,7 +17,7 @@
   box-shadow: var(--shadow-md);
 }
 .attention-metric > span {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink2);
   display: block;
 }
@@ -30,7 +30,7 @@
 }
 .attention-metric > small {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ink2);
 }
 .attention-metric > i {
@@ -41,7 +41,7 @@
   font-style: normal;
 }
 .attention-scope {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink2);
   margin: 16px 0 23px;
   line-height: 1.8;
@@ -66,7 +66,7 @@
   background: var(--surface2);
 }
 .attention-panel > header p {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--ink2);
   letter-spacing: 0.06em;
   font-weight: 600;
@@ -82,7 +82,7 @@
   margin-left: 8px;
 }
 .attention-panel > header > a {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--accent);
   white-space: nowrap;
 }
@@ -108,18 +108,18 @@
   font-size: 13px;
 }
 .attention-panel li p {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink2);
   margin: 5px 0;
   line-height: 1.8;
 }
 .attention-panel li small {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ink2);
   line-height: 1.8;
 }
 .attention-panel li > a > span {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--accent);
   white-space: nowrap;
 }
@@ -134,7 +134,7 @@
   padding: 13px 19px;
   margin: 0;
   border-top: 1px solid var(--border);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.8;
   color: var(--ink2);
 }
@@ -163,10 +163,10 @@
     gap: 9px;
   }
   .attention-metric > span {
-    font-size: 10px;
+    font-size: 11px;
   }
   .attention-metric > small {
-    font-size: 9px;
+    font-size: 11px;
   }
   .attention-panel > header {
     align-items: start;

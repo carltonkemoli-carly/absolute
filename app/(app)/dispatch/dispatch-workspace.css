@@ -29,7 +29,7 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--ink3);
   letter-spacing: 0.03em;
@@ -53,7 +53,7 @@
 }
 .dispatch-timezone {
   color: var(--ink3);
-  font-size: 10px;
+  font-size: 11px;
 }
 .dispatch-queue-banner {
   display: flex;
@@ -79,11 +79,11 @@
   font-size: 13px;
 }
 .dispatch-queue-banner span {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink3);
 }
 .dispatch-queue-banner .btn-ghost {
-  font-size: 11px;
+  font-size: 12px;
   padding: 7px 11px;
 }
 .dispatch-queue-banner .dispatch-clear-queue {
@@ -137,18 +137,18 @@
   font-size: 12px;
 }
 .dispatch-pending-days b {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--accent);
   font-weight: 600;
 }
 .dispatch-pending-days small {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink3);
   line-height: 1.6;
 }
 .dispatch-pending-days em {
   font-style: normal;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--accent);
   font-weight: 600;
 }
@@ -156,7 +156,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink2);
 }
 .dispatch-status-filter .input {
@@ -180,12 +180,12 @@
   margin: 0;
 }
 .dispatch-view-heading p {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink3);
   margin: 0;
 }
 .dispatch-scroll-hint {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ink3);
   margin: 0 0 12px;
 }
@@ -230,13 +230,13 @@
   height: 22px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   background: var(--surface);
   font-variant-numeric: tabular-nums;
 }
 .dispatch-column-heading p {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ink3);
   margin: 6px 0 0;
   line-height: 1.6;
@@ -250,7 +250,7 @@
 }
 .dispatch-column-empty {
   text-align: center;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink3);
   padding: 27px 3px;
   margin: 0;
@@ -278,14 +278,14 @@
   justify-content: space-between;
   align-items: baseline;
   gap: 8px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--accent);
   font-weight: 600;
   margin-bottom: 10px;
 }
 .dispatch-job-time > span {
   color: var(--ink3);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 400;
   overflow-wrap: anywhere;
 }
@@ -297,7 +297,7 @@
   overflow-wrap: anywhere;
 }
 .dispatch-job-route {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink2);
   line-height: 1.7;
   display: flex;
@@ -310,7 +310,7 @@
 }
 .dispatch-job-client,
 .dispatch-job-flight {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ink3);
   line-height: 1.6;
   margin: 5px 0;
@@ -321,19 +321,19 @@
   margin-top: 13px;
 }
 .dispatch-assignment > p {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--ink2);
   margin: 0 0 8px;
 }
 .dispatch-assignment select.input {
-  font-size: 11px !important;
+  font-size: 12px !important;
   min-width: 100% !important;
   flex-basis: 100% !important;
   min-height: 35px;
 }
 .dispatch-assignment button {
-  font-size: 11px !important;
+  font-size: 12px !important;
   min-height: 34px;
 }
 .dispatch-job-actions {
@@ -346,7 +346,7 @@
   align-items: baseline;
   gap: 7px;
   flex-wrap: wrap;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.6;
 }
 .dispatch-resource > span {
@@ -354,7 +354,7 @@
 }
 .dispatch-assigned-by {
   color: var(--ink3);
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.8;
   margin: 5px 0 0;
 }
@@ -365,7 +365,7 @@
   margin: 11px 0 0;
 }
 .dispatch-contact-links > a {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -381,7 +381,7 @@
   display: contents;
 }
 .dispatch-transition-actions button {
-  font-size: 10px;
+  font-size: 11px;
   padding: 6px 8px;
   min-height: 31px;
 }
@@ -391,7 +391,7 @@
 }
 .dispatch-record-link {
   display: inline-flex;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--accent);
   margin-top: 13px;
 }
@@ -400,7 +400,7 @@
   border: 1px solid var(--danger);
   border-radius: 6px;
   color: var(--danger);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.7;
   margin: 12px 0 0;
   overflow-wrap: anywhere;
@@ -433,7 +433,7 @@
 }
 .dispatch-list th {
   padding: 12px 15px;
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--ink3);
@@ -461,16 +461,16 @@
   font-weight: 600;
 }
 .dispatch-list td > span {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink2);
 }
 .dispatch-list td > small {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ink3);
   margin-top: 4px;
 }
 .dispatch-list td > span.dispatch-status {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   display: inline-block;
   border: 1px solid var(--border);
@@ -487,7 +487,7 @@
   cursor: pointer;
   color: var(--accent);
   font-weight: 600;
-  font-size: 11px;
+  font-size: 12px;
   padding: 2px 0;
 }
 .dispatch-row-actions[open] {
@@ -526,13 +526,13 @@
     gap: 7px;
   }
   .dispatch-queue-banner .btn-ghost {
-    font-size: 10px;
+    font-size: 11px;
   }
   .dispatch-view-heading {
     margin-top: 20px;
   }
   .dispatch-view-heading p {
-    font-size: 10px;
+    font-size: 11px;
   }
   .dispatch-board-scroll {
     margin-right: -5px;
@@ -572,7 +572,7 @@
   .dispatch-list td:before {
     content: attr(data-label);
     display: block;
-    font-size: 9px;
+    font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--ink3);

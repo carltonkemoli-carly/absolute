@@ -5,7 +5,7 @@
   min-width: 145px;
 }
 .invoice-filter > span {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.035em;
   color: var(--ink2);
 }
@@ -34,7 +34,7 @@
 }
 .invoice-list-summary span {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ink2);
   margin-bottom: 5px;
 }
@@ -89,7 +89,7 @@
     width: 100%;
   }
   .invoice-action {
-    font-size: 11px;
+    font-size: 12px;
     padding: 9px 11px;
   }
 }

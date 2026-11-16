@@ -14,7 +14,7 @@
 }
 .record-detail-kicker {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.15em;
   color: var(--accent-mid);
@@ -35,7 +35,7 @@
   padding: 7px 12px;
   border: 1px solid var(--border);
   border-radius: 50px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: capitalize;
   white-space: nowrap;
@@ -70,7 +70,7 @@
 .record-detail-metrics span,
 .record-detail-metrics small {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink3);
   line-height: 1.5;
 }
@@ -110,7 +110,7 @@
   margin: 0;
 }
 .record-detail-panel header a {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--accent-mid);
   font-weight: 600;
   white-space: nowrap;
@@ -147,14 +147,14 @@
   font-size: 12px;
 }
 .record-detail-panel li p {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink3);
   margin: 5px 0 0;
   line-height: 1.5;
 }
 .record-detail-panel li small {
   color: var(--ink2);
-  font-size: 10px;
+  font-size: 11px;
   white-space: nowrap;
 }
 .record-detail-empty {
@@ -174,7 +174,7 @@
   white-space: pre-line;
 }
 .record-detail-caption {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.6;
   color: var(--ink3);
   margin: 15px 0 0;
