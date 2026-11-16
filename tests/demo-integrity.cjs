@@ -22,13 +22,26 @@ const db = compile('lib/db.ts', {
 const trip = (id, time='10:00') => ({ id,trip_date:'2026-11-10',pickup_time:time,status:'completed',vehicle_id:'v',driver_id:null,contractor_id:'c',amount:250,invoice_id:null })
 const invoice = {contractor_id:'c',period_start:'2026-11-01',period_end:'2026-11-30',amount:0}
 ;(async () => {
-  store.trips=[trip('a')]
-  assert.ok((await db.saveRecord('trips',trip('b','11:00'),null)).error)
+  // Jobs still to be done hold their vehicle; overlapping ones are refused.
+  const live = (id, time) => ({ ...trip(id, time), status:'assigned' })
+  store.trips=[live('a')]
+  assert.ok((await db.saveRecord('trips',live('b','11:00'),null)).error)
   assert.equal(store.trips.length,1)
-  assert.equal((await db.saveRecord('trips',trip('b','12:00'),null)).error,null)
+  assert.equal((await db.saveRecord('trips',live('b','12:00'),null)).error,null)
   assert.equal(store.trips.length,2)
-  await assert.rejects(db.batchInsert('trips',[trip('c','14:00'),trip('d','14:30')]))
+  await assert.rejects(db.batchInsert('trips',[live('c','14:00'),live('d','14:30')]))
   assert.equal(store.trips.length,2)
+  // Finished trips are history, not reservations: several per vehicle per day,
+  // with or without a pickup time, alongside live work.
+  assert.equal((await db.saveRecord('trips',trip('h','10:30'),null)).error,null)
+  assert.equal((await db.saveRecord('trips',{ ...trip('h'), pickup_time:null },null)).error,null)
+  assert.equal((await db.saveRecord('trips',{ ...trip('h'), pickup_time:null },null)).error,null)
+  assert.equal(store.trips.length,5)
+  // Completing a job frees the vehicle; reopening it is checked again.
+  assert.equal((await db.saveRecord('trips',{ status:'completed' },'a')).error,null)
+  assert.equal((await db.saveRecord('trips',live('e','09:00'),null)).error,null)
+  assert.ok((await db.saveRecord('trips',{ status:'assigned' },'a')).error)
+  store.trips=[trip('a')]
   assert.ok((await db.createInvoiceForTrips(invoice,['a','missing'])).error)
   store.trips.push({ ...trip('booked','16:00'), status:'booked' }, { ...trip('cancelled','18:00'), status:'cancelled' })
   assert.ok((await db.createInvoiceForTrips(invoice,['booked'])).error)
@@ -48,5 +61,5 @@ const invoice = {contractor_id:'c',period_start:'2026-11-01',period_end:'2026-11
   assert.ok((await db.updateInvoicePayment(paymentId,700,'2026-11-10',500,100)).error)
   assert.equal(store.invoices[0].amount_paid,100)
   assert.equal((await db.updateInvoicePayment(paymentId,500,'2026-11-11',500,100)).error,null)
-  console.log('PASS: demo overlaps, completed-only invoice selection, concurrent invoices, and stale/overpaid payment protection')
+  console.log('PASS: live-job overlaps, completed trips as history, completed-only invoice selection, concurrent invoices, and stale/overpaid payment protection')
 })().catch(e=>{console.error(e);process.exitCode=1})

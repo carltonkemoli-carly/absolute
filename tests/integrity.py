@@ -1,5 +1,7 @@
-"""Synthetic integration tests. Requires a local postgres:17 Docker container.
-Run: python tests/integrity.py [container-name] (default: absolute-test-db).
+"""Synthetic integration tests against a disposable PostgreSQL database.
+Run: python tests/integrity.py [container-name]   (Docker; default absolute-test-db)
+ or: python tests/integrity.py local              (a PostgreSQL server on this machine,
+                                                    reached as the postgres OS user)
 Creates and drops its own database; never accepts a remote database URL.
 """
 import concurrent.futures
@@ -13,9 +15,11 @@ container = sys.argv[1] if len(sys.argv) > 1 else 'absolute-test-db'
 database = 'act_synthetic_' + uuid.uuid4().hex
 root = Path(__file__).resolve().parents[1]
 
+PSQL = (['runuser', '-u', 'postgres', '--', 'psql'] if container == 'local'
+        else ['docker', '--host=unix:///var/run/docker.sock', 'exec', '-i', container, 'psql', '-U', 'postgres'])
+
 def sql(text, ok=True, db=database):
-    r = subprocess.run(['docker', '--host=unix:///var/run/docker.sock', 'exec', '-i', container,
-                        'psql', '-X', '-U', 'postgres', '-d', db, '-At', '-v', 'ON_ERROR_STOP=1'],
+    r = subprocess.run(PSQL + ['-X', '-d', db, '-At', '-v', 'ON_ERROR_STOP=1'],
                        input=text, text=True, capture_output=True)
     if ok and r.returncode:
         raise AssertionError(r.stderr)
@@ -40,6 +44,9 @@ def invoice(ids, start='2026-11-01', end='2026-11-30'):
     return f"select create_invoice_for_trips('{payload}'::jsonb, ARRAY[{','.join(repr(x) for x in ids)}]::uuid[]);"
 
 try:
+    # Supabase provides these roles; a bare PostgreSQL server does not.
+    sql("do $$ begin if not exists (select from pg_roles where rolname='authenticated') then create role authenticated; end if; "
+        "if not exists (select from pg_roles where rolname='anon') then create role anon; end if; end $$;", db='postgres')
     sql(f'create database {database}', db='postgres')
     sql("""create schema auth;
 create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}');
@@ -109,12 +116,26 @@ grant usage on schema auth,public to authenticated,anon;
     sql(trip(resource=v,date='2026-11-11',time=None),ok=False)
     sql(trip(resource=v,time='23:40',status='cancelled'))
     print('PASS: cross-midnight overlaps denied; adjacent windows allowed; unknown time reserves day; cancellation releases')
-    sql(f"insert into trips(trip_date,client_name,driver_id,pickup_time) values('2026-11-12','Synthetic','{d}','09:00');")
-    sql(f"insert into trips(trip_date,client_name,driver_id,pickup_time) values('2026-11-12','Synthetic','{d}','09:30');",ok=False)
+    # The column default is 'completed' (history), so live jobs name their status.
+    sql(f"insert into trips(trip_date,client_name,driver_id,pickup_time,status) values('2026-11-12','Synthetic','{d}','09:00','assigned');")
+    sql(f"insert into trips(trip_date,client_name,driver_id,pickup_time,status) values('2026-11-12','Synthetic','{d}','09:30','assigned');",ok=False)
+    sql(f"insert into trips(trip_date,client_name,driver_id,pickup_time) values('2026-11-12','Synthetic','{d}','09:30');")
     free=uid(); sql(trip(free,date='2026-11-12',time='10:00'))
     sql(f"update trips set driver_id='{d}' where id='{free}';",ok=False)
     sql(trip(date='2026-11-12',time='25:00',resource=v),ok=False)
     print('PASS: driver conflicts and direct-edit bypass denied; invalid time rejected')
+    # Finished work is history, not a reservation: any number of completed trips
+    # may share a vehicle on a day, with or without pickup times.
+    sql(trip(date='2026-11-20',time=None,resource=v,status='completed')+trip(date='2026-11-20',time=None,resource=v,status='completed')
+        +trip(date='2026-11-20',time='09:10',resource=v,status='completed'))
+    sql(trip(date='2026-11-20',time='09:00',resource=v))
+    sql(trip(date='2026-11-20',time='09:30',resource=v),ok=False)
+    held=uid(); sql(trip(held,date='2026-11-21',time='09:00',resource=v))
+    sql(trip(date='2026-11-21',time='09:30',resource=v),ok=False)
+    sql(f"update trips set status='completed' where id='{held}';")
+    sql(trip(date='2026-11-21',time='09:30',resource=v))
+    sql(f"update trips set status='assigned' where id='{held}';",ok=False)
+    print('PASS: completed trips do not reserve; live jobs still cannot overlap; completing releases; reopening rechecks')
     with concurrent.futures.ThreadPoolExecutor(2) as pool:
         def race_dispatch(_):
             try:

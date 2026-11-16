@@ -101,6 +101,9 @@ grant execute on function public.create_invoice_for_trips(jsonb,uuid[]) to authe
 
 -- Nairobi local wall-clock ranges; [start,end) permits adjacent jobs.
 -- Unknown pickup conservatively reserves the whole day; known pickup two hours.
+-- Only work still to be done reserves a driver or vehicle. Completed and
+-- cancelled trips are history: they record who drove and must stay taggable,
+-- several per driver per day, with or without a pickup time.
 create or replace function public.dispatch_window(d date,t text)
 returns tsrange language plpgsql immutable strict as $$
 begin
@@ -110,8 +113,8 @@ begin
 end $$;
 alter table public.trips add constraint trips_driver_no_overlap exclude using gist
   (driver_id with =, (public.dispatch_window(trip_date,coalesce(pickup_time,''))) with &&)
-  where (driver_id is not null and status <> 'cancelled');
+  where (driver_id is not null and status not in ('cancelled','completed'));
 alter table public.trips add constraint trips_vehicle_no_overlap exclude using gist
   (vehicle_id with =, (public.dispatch_window(trip_date,coalesce(pickup_time,''))) with &&)
-  where (vehicle_id is not null and status <> 'cancelled');
+  where (vehicle_id is not null and status not in ('cancelled','completed'));
 commit;

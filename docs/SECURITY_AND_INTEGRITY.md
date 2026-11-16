@@ -29,7 +29,7 @@ Preview remains advisory. Trips added after an invoice is created are not includ
 
 ## Dispatch implementation
 
-GiST exclusion constraints enforce driver and vehicle reservation overlaps on every INSERT/UPDATE, including direct API calls, imports, changing dates, status reactivation, and simultaneous requests. Cancelled trips reserve nothing. Completed trips retain their historical window. Booked trips with resource attribution reserve it; unassigning through Dispatch clears resources. Adjacent windows are allowed.
+GiST exclusion constraints enforce driver and vehicle reservation overlaps on every INSERT/UPDATE, including direct API calls, imports, changing dates, status reactivation, and simultaneous requests. Cancelled and completed trips reserve nothing: finished work is a record of who drove, and must stay taggable (several trips per driver or vehicle per day, with or without a pickup time) because per-vehicle reporting is built from it. Reopening a completed trip re-enters the check. Booked trips with resource attribution reserve it; unassigning through Dispatch clears resources. Adjacent windows are allowed.
 
 Provisional assumption: known pickup reserves two hours; unknown pickup reserves the whole Nairobi local calendar day. Cross-midnight jobs reserve across dates. This is a conservative first rule, not route duration modelling. Add explicit start/end instants plus turnaround buffers for long hires and real journey lengths before treating availability as comprehensive. Existing route `duration_min` is not a reliable booked journey duration.
 
