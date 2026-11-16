@@ -1,49 +1,332 @@
-.invoice-filter {
+/* Receivables: position cards, aging and debtors, the invoice list with its
+   inline payment form. */
+.rcv {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 145px;
+  gap: 14px;
 }
-.invoice-filter > span {
-  font-size: 11px;
-  letter-spacing: 0.035em;
-  color: var(--ink2);
-}
-.invoice-filter .input {
-  min-width: 145px;
-  font-size: 12px;
-  padding: 8px 10px;
-}
-.invoice-action {
-  padding: 9px 13px;
-  font-size: 12px;
-  white-space: nowrap;
-}
-.invoice-list-summary {
+.rcv-kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1px;
-  background: var(--border);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  gap: 14px;
+}
+.rcv-aging-mini {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  margin: 11px 0;
+}
+.rcv-aging-mini i {
+  min-width: 3px;
+  border-radius: 2px;
+}
+.rcv-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.rcv-panel {
+  padding: 16px 18px 17px;
+  min-width: 0;
+}
+.rcv-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.rcv-panel-head h2 {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 650;
+}
+.rcv-panel-head span {
+  font-size: 12px;
+  color: var(--ink3);
+  white-space: nowrap;
+}
+.rcv-quiet {
+  margin: 0;
+  padding: 16px 0;
+  color: var(--ink3);
+  font-size: 13.5px;
+  text-align: center;
+}
+.rcv-aging,
+.rcv-debtors {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rcv-aging li {
+  display: grid;
+  grid-template-columns: 124px minmax(40px, 1fr) auto 78px;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 13px;
+}
+.rcv-aging li > span:first-child {
+  color: var(--ink2);
+}
+.rcv-aging-bar {
+  height: 8px;
+  border-radius: 5px;
+  background: var(--surface2);
   overflow: hidden;
 }
-.invoice-list-summary > div {
-  background: var(--surface);
-  padding: 13px 16px;
-}
-.invoice-list-summary span {
+.rcv-aging-bar i {
   display: block;
-  font-size: 11px;
+  height: 100%;
+  border-radius: 5px;
+}
+.rcv-aging b {
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: right;
+}
+.rcv-aging em {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--ink3);
+  text-align: right;
+  white-space: nowrap;
+}
+.rcv-debtors {
+  margin: 0 -8px -6px;
+}
+.rcv-debtors li + li {
+  border-top: 1px solid var(--border);
+}
+.rcv-debtors button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rcv-debtors button:hover {
+  background: var(--surface2);
+}
+.rcv-debtors span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.rcv-debtors strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+.rcv-debtors small {
+  font-size: 12px;
+  color: var(--ink3);
+}
+.rcv-debtors b {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ---- Toolbar ---- */
+.rcv-bar {
+  padding: 12px 14px;
+}
+.rcv-bar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.rcv-search {
+  flex: 1;
+  min-width: 200px;
+  max-width: 360px;
+}
+.rcv-filter {
+  width: auto;
+  min-height: 36px;
+  padding: 5px 30px 5px 10px;
+  font-size: 12.5px;
   color: var(--ink2);
-  margin-bottom: 5px;
 }
-.invoice-list-summary strong {
-  display: block;
-  font-size: 16px;
-  letter-spacing: -0.02em;
+.rcv-filter[data-on] {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  color: var(--accent);
+  font-weight: 600;
+}
+.rcv-clear {
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.rcv-bar-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.rcv-action {
+  padding: 8px 14px;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.rcv-bar-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--ink2);
+}
+.rcv-bar-foot strong {
   color: var(--ink);
 }
+.rcv-list-totals b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ---- Forms ---- */
+.rcv-form {
+  padding: 18px 20px;
+}
+.rcv-form-title {
+  font-size: 15px;
+  font-weight: 650;
+}
+.rcv-form-note {
+  margin: 4px 0 14px;
+  font-size: 13px;
+  color: var(--ink2);
+}
+.rcv-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+.rcv-preview {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-light);
+}
+.rcv-preview-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+.rcv-preview-total {
+  font-size: 22px;
+  font-weight: 700;
+}
+.rcv-preview-note {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  font-size: 13.5px;
+}
+.rcv-preview-note[data-tone="warn"] {
+  background: var(--gold-light);
+  color: var(--gold);
+}
+
+/* ---- List cells ---- */
+.rcv-link {
+  color: inherit;
+}
+.rcv-link:hover strong {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.rcv-sub {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink3);
+}
+.rcv-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 12px;
+}
+.rcv-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-mid);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.rcv-btn:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.rcv-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.rcv-btn-danger {
+  color: var(--danger);
+}
+
+/* Payment form, opened under the row's actions. */
+.rcv-pay {
+  flex-basis: 100%;
+  margin-top: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-med);
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  text-align: left;
+}
+.rcv-pay-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.rcv-pay-grid .input {
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.rcv-pay-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .invoice-error {
   padding: 13px 15px;
   border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
@@ -53,43 +336,46 @@
   color: var(--danger);
   font-size: 13px;
 }
-.invoice-clear {
-  border: 0;
-  background: none;
-  padding: 4px;
-  color: var(--accent);
-  font: inherit;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-.invoice-list-scroll {
-  overscroll-behavior-x: contain;
-}
-.invoice-list-scroll button:disabled {
-  opacity: 0.5;
-  cursor: wait;
-}
-@media (max-width: 760px) {
-  .invoice-list-summary {
+
+@media (max-width: 1100px) {
+  .rcv-kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .invoice-list-summary > div {
-    padding: 12px;
+}
+@media (max-width: 860px) {
+  .rcv,
+  .rcv-kpis,
+  .rcv-row {
+    gap: 10px;
   }
-  .invoice-list-summary strong {
-    font-size: 15px;
+  .rcv-row {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .invoice-filter {
-    min-width: 135px;
+  .rcv-search {
+    max-width: none;
+    flex-basis: 100%;
+  }
+  .rcv-filter {
+    flex: 1;
+    min-width: 0;
+  }
+  .rcv-bar-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+  .rcv-bar-actions .rcv-action {
     flex: 1;
   }
-  .invoice-filter .input {
-    min-width: 0;
-    width: 100%;
+  .rcv-aging li {
+    grid-template-columns: 104px minmax(24px, 1fr) auto;
   }
-  .invoice-action {
-    font-size: 12px;
-    padding: 9px 11px;
+  .rcv-aging em {
+    display: none;
+  }
+  .rcv-actions {
+    justify-content: flex-start;
+  }
+  .rcv-pay-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

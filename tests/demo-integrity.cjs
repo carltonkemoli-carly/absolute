@@ -12,11 +12,12 @@ function compile(path, dependencies) {
   return module.exports
 }
 const rules = compile('lib/dispatch-rules.ts', {})
-let store = { trips: [], invoices: [] }, n=0
+const payments = compile('lib/payments.ts', {})
+let store = { trips: [], invoices: [], payments: [] }, n=0
 const db = compile('lib/db.ts', {
   '@/lib/supabase/server': { createClient() { throw new Error('Demo must never access Supabase') } },
   '@/lib/devmode': { DEV_MODE: true }, '@/lib/types': { DEFAULT_COMPANY: {} },
-  '@/lib/dispatch-rules': rules,
+  '@/lib/dispatch-rules': rules, '@/lib/payments': payments,
   '@/lib/devstore': { loadStore: () => store, saveStore: (s) => {store=s}, uid: () => `synthetic-${++n}` }
 })
 const trip = (id, time='10:00') => ({ id,trip_date:'2026-11-10',pickup_time:time,status:'completed',vehicle_id:'v',driver_id:null,contractor_id:'c',amount:250,invoice_id:null })
@@ -61,5 +62,19 @@ const invoice = {contractor_id:'c',period_start:'2026-11-01',period_end:'2026-11
   assert.ok((await db.updateInvoicePayment(paymentId,700,'2026-11-10',500,100)).error)
   assert.equal(store.invoices[0].amount_paid,100)
   assert.equal((await db.updateInvoicePayment(paymentId,500,'2026-11-11',500,100)).error,null)
-  console.log('PASS: live-job overlaps, completed trips as history, completed-only invoice selection, concurrent invoices, and stale/overpaid payment protection')
+  // Payment ledger in demo mode: receipts drive the totals, overpayment and stale totals are refused.
+  await db.saveRecord('invoices',{contractor_id:'c',amount:900,amount_paid:0,paid_date:null},null)
+  const ledgerId=store.invoices.find(i=>i.amount===900).id
+  const receipt=(amount,paid_on)=>({amount,paid_on,method:'mpesa',reference:null,note:null})
+  assert.equal((await db.addPayment(ledgerId,receipt(400,'2026-11-10'),0,null)).error,null)
+  assert.ok((await db.addPayment(ledgerId,receipt(100,'2026-11-11'),0,null)).error,'stale expected total refused')
+  assert.deepEqual([store.invoices.find(i=>i.id===ledgerId).amount_paid,store.invoices.find(i=>i.id===ledgerId).paid_date],[400,null])
+  assert.equal((await db.addPayment(ledgerId,receipt(500,'2026-11-12'),400,null)).error,null)
+  assert.deepEqual([store.invoices.find(i=>i.id===ledgerId).amount_paid,store.invoices.find(i=>i.id===ledgerId).paid_date],[900,'2026-11-12'])
+  assert.equal((await db.listPayments([ledgerId])).length,2)
+  assert.equal((await db.deletePayment(store.payments[1].id)).error,null)
+  assert.deepEqual([store.invoices.find(i=>i.id===ledgerId).amount_paid,store.invoices.find(i=>i.id===ledgerId).paid_date],[400,null],'removing a receipt reopens the balance')
+  await db.deleteRecord('invoices',ledgerId)
+  assert.equal(store.payments.length,0,'receipts go with their invoice')
+  console.log('PASS: live-job overlaps, completed trips as history, completed-only invoice selection, concurrent invoices, stale/overpaid payment protection, and the demo payment ledger')
 })().catch(e=>{console.error(e);process.exitCode=1})

@@ -5,7 +5,7 @@ import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import type {
   Contractor, Driver, FuelEntry, Organization, Profile, Trip, Vehicle,
-  VehicleService, Route, ComplianceDoc, Expense, Target, Invoice, Company,
+  VehicleService, Route, ComplianceDoc, Expense, Target, Invoice, InvoicePayment, Company,
 } from '@/lib/types'
 
 const FILE = join(process.cwd(), '.devdata.json')
@@ -33,6 +33,7 @@ export interface StoreData {
   expenses: Expense[]
   targets: Target[]
   invoices: Invoice[]
+  payments: InvoicePayment[]
   company?: Company
 }
 
@@ -381,8 +382,10 @@ function seed(): StoreData {
     targets.push({ id: uid('tgt'), period: thisMonth, kind: 'trips', category: null, contractor_id: c.id, amount: [88, 84, 80][i] ?? 75, created_at: '' })
   }
 
-  // Invoices (receivables) — a mix of paid, outstanding and overdue
+  // Invoices (receivables) — a mix of paid, outstanding and overdue, each paid
+  // amount backed by receipts in the payment ledger.
   const invoices: Invoice[] = []
+  const payments: InvoicePayment[] = []
   const inv = (con: Contractor, monthsAgo: number, amount: number, paid: number) => {
     const issue = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1)
     const due = new Date(issue.getFullYear(), issue.getMonth(), issue.getDate() + 30)
@@ -397,6 +400,17 @@ function seed(): StoreData {
       amount, amount_paid: paid, paid_date: paid >= amount ? iso(due) : null,
       notes: null, created_by: null, created_at: '',
     })
+    const invoice = invoices[invoices.length - 1]
+    if (paid > 0) {
+      // A full settlement arrives as one bank transfer; a part payment as M-Pesa.
+      const settledOn = paid >= amount ? iso(due) : iso(new Date(due.getFullYear(), due.getMonth(), due.getDate() - 12))
+      payments.push({
+        id: uid('pay'), invoice_id: invoice.id, amount: paid, paid_on: settledOn,
+        method: paid >= amount ? 'bank' : 'mpesa',
+        reference: paid >= amount ? `TRF${settledOn.replace(/-/g, '').slice(2)}${invoices.length}` : `QK${settledOn.replace(/-/g, '').slice(4)}X${invoices.length}P`,
+        note: null, created_by: null, created_at: `${settledOn}T09:00:00.000Z`,
+      })
+    }
   }
   inv(contractors[0], 3, 540000, 540000) // BCD, paid
   inv(contractors[0], 2, 610000, 610000) // BCD, paid
@@ -406,5 +420,5 @@ function seed(): StoreData {
   inv(contractors[1], 0, 380000, 0)      // FCM, current
   inv(contractors[0], 0, 600000, 0)      // BCD, current
 
-  return { contractors, vehicles, drivers, organizations, profiles: [DEV_PROFILE], trips, fuel, services, routes, documents, expenses, targets, invoices }
+  return { contractors, vehicles, drivers, organizations, profiles: [DEV_PROFILE], trips, fuel, services, routes, documents, expenses, targets, invoices, payments }
 }

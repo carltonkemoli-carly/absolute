@@ -1,6 +1,8 @@
 import { notFound, redirect } from 'next/navigation'
 import { requireProfile, canSeeFinance } from '@/lib/auth'
-import { getInvoice, listContractors, listContractorTrips, listInvoiceTrips, getCompany } from '@/lib/db'
+import { getInvoice, listContractors, listContractorTrips, listInvoiceTrips, listPayments, getCompany } from '@/lib/db'
+import PaymentLedger from './PaymentLedger'
+import './invoice.css'
 import { kes, fmtDate } from '@/lib/format'
 import PrintBar from './PrintButton'
 
@@ -14,7 +16,7 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
   const invoice = await getInvoice(id)
   if (!invoice) notFound()
 
-  const [contractors, COMPANY] = await Promise.all([listContractors(), getCompany()])
+  const [contractors, COMPANY, payments] = await Promise.all([listContractors(), getCompany(), listPayments([invoice.id])])
   const contractor = contractors.find((c) => c.id === invoice.contractor_id) ?? null
 
   // Line items: exactly the trips this invoice bills. Older invoices (raised before
@@ -101,6 +103,8 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
             </div>
           </div>
         </div>
+
+        <PaymentLedger invoiceId={invoice.id} payments={payments} />
 
         {/* Footer */}
         <div style={{ marginTop: 36, paddingTop: 18, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--ink3)', textAlign: 'center' }}>

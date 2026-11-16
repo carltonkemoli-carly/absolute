@@ -3,10 +3,13 @@
 import { revalidatePath } from 'next/cache'
 import {
   saveRecord, deleteRecord, listContractorTrips,
-  findInvoiceForPeriod, createInvoiceForTrips, getInvoice, updateInvoicePayment,
+  findInvoiceForPeriod, createInvoiceForTrips, getInvoice, addPayment, deletePayment,
 } from '@/lib/db'
 import { requireFinance } from '@/lib/auth'
 import { isoDate, addDays } from '@/lib/format'
+import { nairobiToday } from '@/lib/nairobi-date'
+import { paymentProblem, PAYMENT_METHODS, type PaymentInput } from '@/lib/payments'
+import type { PaymentMethod } from '@/lib/types'
 
 // month is "YYYY-MM" → first/last day of that month.
 function monthRange(month: string): { start: string; end: string; label: string } | null {
@@ -127,38 +130,66 @@ export async function saveInvoice(formData: FormData) {
   revalidatePath('/receivables')
 }
 
-// Record a payment: set amount_paid (and paid_date if cleared).
-export async function recordPayment(formData: FormData) {
-  await requireFinance()
+export type PaymentResult = { ledger: boolean }
+
+// Record one receipt against an invoice. amount_paid and paid_date follow from
+// the ledger (or, before the migration, are adjusted directly — `ledger: false`).
+export async function addInvoicePayment(formData: FormData): Promise<PaymentResult> {
+  const profile = await requireFinance()
   const id = String(formData.get('id') || '')
-  if (!id) return
+  if (!id) throw new Error('Invoice not found. Refresh and try again.')
   const invoice = await getInvoice(id)
   if (!invoice) throw new Error('Invoice not found. Refresh and try again.')
-  const amount = Number(invoice.amount)
   assertFreshInvoice(formData, invoice)
-  const amount_paid = money(formData.get('amount_paid'))
-  if (amount_paid < 0 || amount_paid > amount) throw new Error('Paid total must be between zero and the invoice amount.')
-  const paid_date = amount_paid >= amount && amount > 0
-    ? (emptyToNull(formData.get('paid_date')) ?? isoDate(new Date()))
-    : amount_paid > 0 ? emptyToNull(formData.get('paid_date')) : null
-  const result = await updateInvoicePayment(id, amount_paid, paid_date, amount, Number(invoice.amount_paid))
+  const input = readPayment(formData)
+  const problem = paymentProblem(invoice, input)
+  if (problem) throw new Error(problem)
+  const result = await addPayment(id, input, Number(invoice.amount_paid), profile.id ?? null)
   if (result.error) throw new Error(result.error)
-  revalidatePath('/receivables')
+  revalidatePath('/receivables'); revalidatePath(`/receivables/${id}`); revalidatePath('/')
+  return { ledger: result.ledger }
 }
 
-// Mark fully paid in one click.
-export async function markPaid(formData: FormData) {
-  await requireFinance()
+// Settle the balance in one step: a single receipt for whatever is still owed.
+export async function markPaid(formData: FormData): Promise<PaymentResult> {
+  const profile = await requireFinance()
   const id = String(formData.get('id') || '')
-  if (!id) return
+  if (!id) throw new Error('Invoice not found. Refresh and try again.')
   const invoice = await getInvoice(id)
   if (!invoice) throw new Error('Invoice not found. Refresh and try again.')
   assertFreshInvoice(formData, invoice)
-  const amount = Number(invoice.amount)
-  if (!Number.isFinite(amount) || amount <= 0) throw new Error('Invoice amount must be positive before it can be marked paid.')
-  const result = await updateInvoicePayment(id, amount, isoDate(new Date()), amount, Number(invoice.amount_paid))
+  const owed = Math.round((Number(invoice.amount) - Number(invoice.amount_paid)) * 100) / 100
+  if (!(Number(invoice.amount) > 0) || owed <= 0) throw new Error('Nothing is owed on this invoice.')
+  const input: PaymentInput = { amount: owed, paid_on: nairobiToday(), method: readMethod(formData.get('method')), reference: emptyToNull(formData.get('reference')), note: null }
+  const result = await addPayment(id, input, Number(invoice.amount_paid), profile.id ?? null)
   if (result.error) throw new Error(result.error)
-  revalidatePath('/receivables')
+  revalidatePath('/receivables'); revalidatePath(`/receivables/${id}`); revalidatePath('/')
+  return { ledger: result.ledger }
+}
+
+// Remove a receipt entered in error; the invoice's totals follow.
+export async function removeInvoicePayment(formData: FormData) {
+  await requireFinance()
+  const paymentId = String(formData.get('payment_id') || '')
+  const invoiceId = String(formData.get('id') || '')
+  if (!paymentId) throw new Error('Payment not found.')
+  const result = await deletePayment(paymentId)
+  if (result.error) throw new Error(result.error)
+  revalidatePath('/receivables'); if (invoiceId) revalidatePath(`/receivables/${invoiceId}`); revalidatePath('/')
+}
+
+function readPayment(formData: FormData): PaymentInput {
+  return {
+    amount: money(formData.get('amount')),
+    paid_on: String(formData.get('paid_on') || '').trim(),
+    method: readMethod(formData.get('method')),
+    reference: emptyToNull(formData.get('reference')),
+    note: emptyToNull(formData.get('note')),
+  }
+}
+function readMethod(value: FormDataEntryValue | null): PaymentMethod {
+  const method = String(value ?? 'other').trim() as PaymentMethod
+  return PAYMENT_METHODS.includes(method) ? method : 'other'
 }
 
 export async function deleteInvoice(formData: FormData) {
@@ -180,8 +211,8 @@ function num(v: FormDataEntryValue | null): number {
   return Number.isFinite(n) ? n : 0
 }
 function money(v: FormDataEntryValue | null): number {
-  const raw = String(v ?? '').trim()
-  if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) throw new Error('Enter a paid total with at most two decimal places.')
+  const raw = String(v ?? '').trim().replace(/,/g, '')
+  if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) throw new Error('Enter an amount with at most two decimal places.')
   return Number(raw)
 }
 function assertFreshInvoice(formData: FormData, invoice: { amount: number; amount_paid: number }) {

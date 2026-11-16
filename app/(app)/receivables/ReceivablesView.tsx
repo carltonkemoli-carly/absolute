@@ -4,38 +4,32 @@ import { useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { StatCard, Card, Section } from '@/components/ui'
-import RecordToolbar from '@/components/RecordToolbar'
-import { nairobiToday } from '@/lib/nairobi-date'
+import { KpiCard, Badge } from '@/components/ui'
+import DataTable, { type Column } from '@/components/DataTable'
 import { EMPTY_INVOICE_FILTERS, filterInvoices, invoiceListTotals, invoiceOutstanding, invoiceOverdueDays, type InvoicePaymentFilter } from '@/lib/invoice-filters'
+import { agingBuckets, debtors } from '@/lib/dashboard'
+import { CHART_COLORS, STATUS_COLORS } from '@/lib/chart'
+import { kes, fmtDate } from '@/lib/format'
+import { PAYMENT_METHOD_LABELS, type Contractor, type Invoice, type PaymentMethod } from '@/lib/types'
+import { saveInvoice, addInvoicePayment, markPaid, deleteInvoice, previewInvoiceFromTrips, generateInvoiceFromTrips, type InvoicePreview, type PaymentResult } from './actions'
 import './receivables-workspace.css'
-import SegmentDonut, { type Seg } from '@/components/SegmentDonut'
-import { STATUS_COLORS } from '@/lib/chart'
-import { kes, kesPlain, fmtDate } from '@/lib/format'
-import type { Contractor, Invoice } from '@/lib/types'
-import { saveInvoice, recordPayment, markPaid, deleteInvoice, previewInvoiceFromTrips, generateInvoiceFromTrips, type InvoicePreview } from './actions'
 
-// Read fresh on each call: as module-level constants these froze the date for the
-// life of the process, and took the UTC day — a day behind between midnight and
-// 3am in Nairobi, which is exactly when an invoice tips into "overdue".
-const todayIso = () => nairobiToday()
-const thisMonthIso = () => todayIso().slice(0, 7)
+const AGING_COLORS = [CHART_COLORS[0], STATUS_COLORS.warn, CHART_COLORS[5], STATUS_COLORS.bad]
 
-const outstanding = invoiceOutstanding
-const overdueDays = (i: Invoice) => invoiceOverdueDays(i, todayIso())
-
-function statusOf(i: Invoice): { label: string; color: string } {
-  const out = outstanding(i)
-  if (out <= 0) return { label: 'Paid', color: 'var(--accent)' }
-  if (overdueDays(i) > 0) return { label: `Overdue ${overdueDays(i)}d`, color: 'var(--danger)' }
-  if (Number(i.amount_paid) > 0) return { label: 'Part-paid', color: 'var(--gold)' }
-  return { label: 'Unpaid', color: 'var(--gold)' }
+function statusOf(invoice: Invoice, today: string): { label: string; tone: 'green' | 'gold' | 'red' | 'neutral' } {
+  const owed = invoiceOutstanding(invoice)
+  if (owed <= 0) return { label: 'Paid', tone: 'green' }
+  const late = invoiceOverdueDays(invoice, today)
+  if (late > 0) return { label: `${late}d late`, tone: 'red' }
+  if (Number(invoice.amount_paid) > 0) return { label: 'Part paid', tone: 'gold' }
+  return { label: 'Unpaid', tone: 'neutral' }
 }
 
 export default function ReceivablesView({
-  invoices, contractors, unbilledValue = 0, unbilledCount = 0,
+  invoices, contractors, receipts, today, unbilledValue = 0, unbilledCount = 0,
 }: {
   invoices: Invoice[]; contractors: Contractor[]
+  receipts: Record<string, number>; today: string
   unbilledValue?: number; unbilledCount?: number
 }) {
   const router = useRouter()
@@ -43,128 +37,168 @@ export default function ReceivablesView({
   const [mutationError, setMutationError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const savingRef = useRef(false)
-  const [creating, setCreating] = useState(false)
-  const [generating, setGenerating] = useState(false)
+  const [panel, setPanel] = useState<'generate' | 'manual' | null>(null)
   const [payId, setPayId] = useState<string | null>(null)
   const cname = (id: string | null) => contractors.find((c) => c.id === id)?.name ?? '—'
 
   // Generate-from-trips state
   const [genContractor, setGenContractor] = useState('')
-  const [genMonth, setGenMonth] = useState(thisMonthIso())
+  const [genMonth, setGenMonth] = useState(today.slice(0, 7))
   const [preview, setPreview] = useState<InvoicePreview | null>(null)
   const [busy, startBusy] = useTransition()
 
-  async function mutate(action: (fd: FormData) => Promise<void>, fd: FormData, success: () => void) {
+  async function mutate<T>(action: (fd: FormData) => Promise<T>, fd: FormData, success: (result: T) => void) {
     if (savingRef.current) return
     savingRef.current = true
     setSaving(true); setMutationError(null)
-    try { await action(fd); success(); router.refresh() }
+    try { const result = await action(fd); success(result); router.refresh() }
     catch (error) { setMutationError(error instanceof Error ? error.message : 'The change could not be saved. Please try again.') }
     finally { savingRef.current = false; setSaving(false) }
+  }
+  function paymentSaved(result: PaymentResult) {
+    toast.success(result.ledger ? 'Payment recorded.' : 'Payment recorded. (The payment ledger is not set up on the database yet, so only the paid total was updated.)')
+    setPayId(null)
   }
   function doPreview() {
     if (busy || saving) return
     setMutationError(null)
     setPreview(null)
     startBusy(async () => {
-      // The outcome renders inline below the form and stays put — a duplicate
-      // warning is a decision point, not something to flash for four seconds.
       try { setPreview(await previewInvoiceFromTrips(genContractor, genMonth)) }
       catch (error) { setMutationError(error instanceof Error ? error.message : 'The invoice preview could not be loaded.') }
     })
   }
-  function doGenerate(fd: FormData) {
-    if (busy) return
-    void mutate(generateInvoiceFromTrips, fd, () => {
-      toast.success('Invoice created from trips.')
-      setGenerating(false); setPreview(null); setGenContractor('')
-    })
-  }
 
+  // ---- Position: a running balance, not a monthly flow ----
   const totalBilled = invoices.reduce((s, i) => s + Number(i.amount), 0)
   const totalCollected = invoices.reduce((s, i) => s + Number(i.amount_paid), 0)
-  const totalOutstanding = invoices.reduce((s, i) => s + outstanding(i), 0)
-  const overdue = invoices.reduce((s, i) => s + (overdueDays(i) > 0 ? outstanding(i) : 0), 0)
+  const aging = agingBuckets(invoices, today)
+  const outstanding = aging.reduce((s, b) => s + b.amount, 0)
+  const overdue = outstanding - aging[0].amount
+  const agingMax = Math.max(1, ...aging.map((b) => b.amount))
+  const owing = debtors(invoices, contractors, today)
 
-  // Who owes you, by contractor
-  const byContractor = contractors.map((c) => {
-    const mine = invoices.filter((i) => i.contractor_id === c.id)
-    const out = mine.reduce((s, i) => s + outstanding(i), 0)
-    const od = mine.reduce((s, i) => s + (overdueDays(i) > 0 ? outstanding(i) : 0), 0)
-    const worst = Math.max(0, ...mine.map(overdueDays))
-    return { id: c.id, name: c.name, out, od, worst }
-  }).filter((c) => c.out > 0).sort((a, b) => b.out - a.out)
+  const sorted = filterInvoices(invoices, contractors, filters, today)
+  const listTotals = invoiceListTotals(sorted, today)
+  const isFiltered = filters.search.trim() !== '' || filters.contractorId !== '' || filters.payment !== 'all'
 
-  const sorted = filterInvoices(invoices, contractors, filters, todayIso())
-  const listTotals = invoiceListTotals(sorted, todayIso())
-  const paymentLabel = { all: 'All payment states', unpaid: 'Unpaid', 'part-paid': 'Part-paid', paid: 'Paid', overdue: 'Overdue' }[filters.payment]
-  const filterSummary = [filters.search.trim() ? `Search: ${filters.search.trim()}` : '', filters.contractorId ? cname(filters.contractorId) : '', filters.payment !== 'all' ? paymentLabel : ''].filter(Boolean).join(' · ')
-
-  const statusSegs: Seg[] = [
-    { label: 'Collected', value: totalCollected, color: STATUS_COLORS.good },
-    { label: 'Outstanding', value: Math.max(0, totalOutstanding - overdue), color: STATUS_COLORS.warn },
-    { label: 'Overdue', value: overdue, color: STATUS_COLORS.bad },
-  ].filter((s) => s.value > 0)
+  const columns: Column<Invoice>[] = [
+    { label: 'Invoice', role: 'primary', render: (i) => (
+      <>
+        <Link href={`/receivables/${i.id}`} className="rcv-link"><strong>{cname(i.contractor_id)}</strong></Link>
+        <div className="rcv-sub">{[i.invoice_no, i.period_label].filter(Boolean).join(' · ') || 'No number'}</div>
+      </>
+    ) },
+    { label: 'Due', nowrap: true, render: (i) => i.due_date ? fmtDate(i.due_date) : '—' },
+    { label: 'Amount', align: 'right', render: (i) => kes(i.amount) },
+    { label: 'Paid', align: 'right', render: (i) => (
+      <>
+        {kes(i.amount_paid)}
+        {receipts[i.id] > 0 && <div className="rcv-sub">{receipts[i.id]} {receipts[i.id] === 1 ? 'receipt' : 'receipts'}</div>}
+      </>
+    ) },
+    { label: 'Owed', align: 'right', render: (i) => <strong>{kes(invoiceOutstanding(i))}</strong> },
+    { label: 'Status', render: (i) => { const s = statusOf(i, today); return <Badge tone={s.tone}>{s.label}</Badge> } },
+    { label: '', role: 'actions', render: (i) => (
+      <div className="rcv-actions">
+        {invoiceOutstanding(i) > 0 && (
+          <button type="button" className="rcv-btn" disabled={saving} onClick={() => { setPayId(payId === i.id ? null : i.id); setMutationError(null) }} aria-expanded={payId === i.id}>
+            {payId === i.id ? 'Cancel' : 'Record payment'}
+          </button>
+        )}
+        <Link href={`/receivables/${i.id}`} className="rcv-btn">View</Link>
+        <form onSubmit={(event) => { event.preventDefault(); if (confirm(`Delete this invoice for ${cname(i.contractor_id)}? Its receipts are deleted with it.`)) void mutate(deleteInvoice, new FormData(event.currentTarget), () => toast.success('Invoice deleted.')) }}>
+          <input type="hidden" name="id" value={i.id} />
+          <button type="submit" disabled={saving} className="rcv-btn rcv-btn-danger">Delete</button>
+        </form>
+        {payId === i.id && <PaymentForm invoice={i} today={today} saving={saving}
+          onSubmit={(fd) => void mutate(addInvoicePayment, fd, paymentSaved)}
+          onSettle={(fd) => void mutate(markPaid, fd, paymentSaved)} />}
+      </div>
+    ) },
+  ]
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <Section title="Current position · all invoices">
-        <div className="grid-stats">
-          <StatCard label="Outstanding" value={kes(totalOutstanding)} hint="owed to you" accent={totalOutstanding > 0 ? 'var(--gold)' : 'var(--accent)'} />
-          <StatCard label="Overdue" value={kes(overdue)} hint="past due date" accent={overdue > 0 ? 'var(--danger)' : 'var(--accent)'} />
-          <StatCard label="Collected" value={kes(totalCollected)} hint={`of ${kes(totalBilled)} billed`} accent="var(--accent)" />
-          <StatCard label="Not yet invoiced" value={kes(unbilledValue)}
-            hint={unbilledCount > 0 ? `${unbilledCount} trip${unbilledCount === 1 ? '' : 's'} ready to bill` : 'all recent work billed'}
-            accent={unbilledValue > 0 ? 'var(--gold)' : 'var(--accent)'} />
-          <StatCard label="Invoices" value={String(invoices.length)} />
-        </div>
-      </Section>
+    <div className="rcv">
+      <div className="rcv-kpis">
+        <KpiCard label="Owed to you" value={kes(outstanding)} tone={overdue > 0 ? 'var(--danger)' : outstanding > 0 ? 'var(--gold)' : 'var(--ink)'}
+          sub={overdue > 0 ? `${kes(overdue)} past its due date` : outstanding > 0 ? 'Nothing overdue' : 'Everything collected'}
+          chart={outstanding > 0 ? <span className="rcv-aging-mini" role="img" aria-label="Share of the balance by how late it is">{aging.map((b, index) => b.amount > 0 && <i key={b.key} style={{ flex: b.amount, background: AGING_COLORS[index] }} />)}</span> : undefined} />
+        <KpiCard label="Collected" value={kes(totalCollected)} tone="var(--ok)" sub={totalBilled > 0 ? `${Math.round((totalCollected / totalBilled) * 100)}% of ${kes(totalBilled)} billed` : 'Nothing billed yet'} />
+        <KpiCard label="Not yet invoiced" value={kes(unbilledValue)} tone={unbilledValue > 0 ? 'var(--gold)' : 'var(--ink)'}
+          sub={unbilledCount > 0 ? `${unbilledCount} completed ${unbilledCount === 1 ? 'trip' : 'trips'} from the last 60 days` : 'All recent work is billed'} />
+        <KpiCard label="Invoices" value={String(invoices.length)} sub={`${invoices.filter((i) => invoiceOutstanding(i) > 0).length} still open`} />
+      </div>
 
       {invoices.length > 0 && (
-        <div className={byContractor.length > 0 ? 'grid-2' : undefined}>
-          <Card title="Collection status">
-            {statusSegs.length === 0
-              ? <p style={{ fontSize: 13.5, color: 'var(--ink3)' }}>Nothing billed yet.</p>
-              : <SegmentDonut data={statusSegs} centerValue={kesPlain(totalBilled)} centerLabel="Ksh billed" centerSize={18} money />}
-          </Card>
-          {byContractor.length > 0 && (
-            <Card title="Who owes you">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
-                {byContractor.map((c) => (
-                  <div key={c.id} style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: c.od > 0 ? 'var(--danger-light)' : 'var(--surface2)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                      <strong>{c.name}</strong>
-                      <span className="font-display" style={{ fontWeight: 700 }}>{kes(c.out)}</span>
-                    </div>
-                    <div style={{ fontSize: 12, color: c.od > 0 ? 'var(--danger)' : 'var(--ink3)', marginTop: 3 }}>
-                      {c.od > 0 ? `${kes(c.od)} overdue · up to ${c.worst} days late` : 'within terms'}
-                    </div>
-                  </div>
+        <div className="rcv-row">
+          <section className="card rcv-panel" aria-labelledby="rcv-aging">
+            <header className="rcv-panel-head"><h2 id="rcv-aging">How late the money is</h2><span>As of today</span></header>
+            {outstanding <= 0 ? <p className="rcv-quiet">Every invoice is settled.</p> : (
+              <ul className="rcv-aging">
+                {aging.map((b, index) => (
+                  <li key={b.key}>
+                    <span>{b.label}</span>
+                    <span className="rcv-aging-bar"><i style={{ width: `${b.amount > 0 ? Math.max(2, (b.amount / agingMax) * 100) : 0}%`, background: AGING_COLORS[index] }} /></span>
+                    <b>{kes(b.amount)}</b>
+                    <em>{b.count ? `${b.count} ${b.count === 1 ? 'invoice' : 'invoices'}` : '—'}</em>
+                  </li>
                 ))}
-              </div>
-            </Card>
-          )}
+              </ul>
+            )}
+          </section>
+          <section className="card rcv-panel" aria-labelledby="rcv-debtors">
+            <header className="rcv-panel-head"><h2 id="rcv-debtors">Who owes you</h2><span>Largest balance first</span></header>
+            {owing.length === 0 ? <p className="rcv-quiet">Nobody owes anything.</p> : (
+              <ul className="rcv-debtors">
+                {owing.map((row) => (
+                  <li key={row.contractorId ?? 'direct'}>
+                    <button type="button" onClick={() => setFilters({ ...EMPTY_INVOICE_FILTERS, contractorId: row.contractorId ?? '', payment: 'all' })} title="Show this supplier's invoices">
+                      <span><strong>{row.name}</strong><small>{row.oldestDaysLate > 0 ? `${kes(row.overdue)} overdue, up to ${row.oldestDaysLate} days late` : `${row.invoices} ${row.invoices === 1 ? 'invoice' : 'invoices'} within terms`}</small></span>
+                      <b style={{ color: row.overdue > 0 ? 'var(--danger)' : undefined }}>{kes(row.outstanding)}</b>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </div>
       )}
 
-      <RecordToolbar search={filters.search} onSearchChange={value => setFilters(current => ({ ...current, search: value }))}
-        searchLabel="Search invoices" searchPlaceholder="Invoice no., contractor or period…" count={sorted.length} countLabel={`of ${invoices.length} invoices`}
-        filterSummary={filterSummary} onClearFilters={() => setFilters({ ...EMPTY_INVOICE_FILTERS })}
-        action={<><button type="button" className="btn-primary invoice-action" disabled={saving || busy} onClick={() => { setGenerating(value => !value); setCreating(false); setPreview(null); setMutationError(null) }}>{generating ? 'Close generator' : 'Generate invoices'}</button><button type="button" className="btn-ghost invoice-action" disabled={saving || busy} onClick={() => { setCreating(value => !value); setGenerating(false); setMutationError(null) }}>{creating ? 'Close form' : 'New manual invoice'}</button></>}>
-        <label className="invoice-filter"><span>Contractor</span><select className="input" aria-label="Filter invoices by contractor" value={filters.contractorId} onChange={event => setFilters(current => ({ ...current, contractorId: event.target.value }))}><option value="">All contractors</option>{contractors.map(contractor => <option key={contractor.id} value={contractor.id}>{contractor.name}</option>)}</select></label>
-        <label className="invoice-filter"><span>Payment state</span><select className="input" aria-label="Filter invoices by payment state" value={filters.payment} onChange={event => setFilters(current => ({ ...current, payment: event.target.value as InvoicePaymentFilter }))}><option value="all">All payment states</option><option value="unpaid">Unpaid</option><option value="part-paid">Part-paid</option><option value="paid">Paid</option><option value="overdue">Overdue</option></select></label>
-      </RecordToolbar>
-      {mutationError && <div className="invoice-error" role="alert">{mutationError}</div>}
-      <div className="invoice-list-summary" aria-label="Current invoice list totals">
-        <div><span>Current list · billed</span><strong>{kes(listTotals.billed)}</strong></div><div><span>Collected</span><strong>{kes(listTotals.collected)}</strong></div><div><span>Outstanding</span><strong>{kes(listTotals.outstanding)}</strong></div><div><span>Overdue</span><strong>{kes(listTotals.overdue)}</strong></div>
+      <div className="card rcv-bar">
+        <div className="rcv-bar-row">
+          <label className="record-search rcv-search">
+            <span className="workspace-sr-only">Search invoices</span>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5" /></svg>
+            <input type="search" value={filters.search} onChange={(event) => setFilters((c) => ({ ...c, search: event.target.value }))} placeholder="Invoice no., supplier or period…" />
+          </label>
+          <select className="input rcv-filter" aria-label="Supplier" data-on={filters.contractorId ? '' : undefined} value={filters.contractorId} onChange={(event) => setFilters((c) => ({ ...c, contractorId: event.target.value }))}>
+            <option value="">All suppliers</option>
+            {contractors.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select className="input rcv-filter" aria-label="Payment state" data-on={filters.payment !== 'all' ? '' : undefined} value={filters.payment} onChange={(event) => setFilters((c) => ({ ...c, payment: event.target.value as InvoicePaymentFilter }))}>
+            <option value="all">Any state</option><option value="unpaid">Unpaid</option><option value="part-paid">Part paid</option><option value="overdue">Overdue</option><option value="paid">Paid</option>
+          </select>
+          {isFiltered && <button type="button" className="rcv-clear" onClick={() => setFilters({ ...EMPTY_INVOICE_FILTERS })}>Clear</button>}
+          <div className="rcv-bar-actions">
+            <button type="button" className="btn-primary rcv-action" disabled={saving || busy} onClick={() => { setPanel(panel === 'generate' ? null : 'generate'); setPreview(null); setMutationError(null) }}>{panel === 'generate' ? 'Close' : 'Invoice a month'}</button>
+            <button type="button" className="btn-ghost rcv-action" disabled={saving || busy} onClick={() => { setPanel(panel === 'manual' ? null : 'manual'); setMutationError(null) }}>{panel === 'manual' ? 'Close' : 'Manual invoice'}</button>
+          </div>
+        </div>
+        <div className="rcv-bar-foot" role="status" aria-live="polite">
+          <span><strong>{sorted.length}</strong>{isFiltered ? ` of ${invoices.length}` : ''} {invoices.length === 1 && !isFiltered ? 'invoice' : 'invoices'}</span>
+          {isFiltered && sorted.length > 0 && <span className="rcv-list-totals">{kes(listTotals.billed)} billed · {kes(listTotals.collected)} paid · <b>{kes(listTotals.outstanding)} owed</b>{listTotals.overdue > 0 && <> · <b style={{ color: 'var(--danger)' }}>{kes(listTotals.overdue)} overdue</b></>}</span>}
+        </div>
       </div>
 
-      {generating && (
-        <div className="card" style={{ padding: 20 }}>
-          <div className="font-display" style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Generate an invoice from logged trips</div>
-          <p style={{ fontSize: 13, color: 'var(--ink2)', margin: '0 0 14px' }}>Pick a contractor and month. The invoice totals every logged trip for them.</p>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <label className="field" style={{ minWidth: 200 }}><span>Contractor *</span>
+      {mutationError && <div className="invoice-error" role="alert">{mutationError}</div>}
+
+      {panel === 'generate' && (
+        <div className="card rcv-form">
+          <div className="rcv-form-title">Invoice a supplier for a month</div>
+          <p className="rcv-form-note">Every completed trip for the supplier in that month goes on one invoice. Trips already on an invoice are left out.</p>
+          <div className="rcv-form-row">
+            <label className="field" style={{ minWidth: 200 }}><span>Supplier *</span>
               <select className="input" value={genContractor} onChange={(e) => { setGenContractor(e.target.value); setPreview(null) }}>
                 <option value="">Choose…</option>
                 {contractors.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -173,62 +207,42 @@ export default function ReceivablesView({
             <label className="field"><span>Month *</span>
               <input type="month" className="input" value={genMonth} onChange={(e) => { setGenMonth(e.target.value); setPreview(null) }} />
             </label>
-            <button className="btn-ghost" style={{ padding: '9px 16px', fontSize: 14, cursor: 'pointer' }} disabled={busy || saving || !genContractor} onClick={doPreview}>
-              {busy && !preview ? 'Checking…' : 'Preview'}
-            </button>
+            <button className="btn-ghost rcv-action" disabled={busy || saving || !genContractor} onClick={doPreview}>{busy && !preview ? 'Checking…' : 'Preview'}</button>
           </div>
 
           {preview?.ok && (
-            <form onSubmit={event => { event.preventDefault(); doGenerate(new FormData(event.currentTarget)) }} className="animate-fadeup" style={{ marginTop: 16, padding: 16, background: 'var(--accent-light)', borderRadius: 'var(--radius-sm)' }}>
+            <form onSubmit={(event) => { event.preventDefault(); void mutate(generateInvoiceFromTrips, new FormData(event.currentTarget), () => { toast.success('Invoice created.'); setPanel(null); setPreview(null); setGenContractor('') }) }} className="rcv-preview animate-fadeup">
               <input type="hidden" name="contractor_id" value={genContractor} />
               <input type="hidden" name="month" value={genMonth} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
-                <div style={{ fontSize: 14 }}>
-                  <strong>{cname(genContractor)}</strong> · {preview.label} · <strong>{preview.count}</strong> un-billed trip{preview.count === 1 ? '' : 's'}
-                  {preview.alreadyBilled ? (
-                    <div style={{ fontSize: 12.5, color: 'var(--ink3)', marginTop: 2 }}>
-                      {preview.alreadyBilled} further trip{preview.alreadyBilled === 1 ? '' : 's'} in this period {preview.alreadyBilled === 1 ? 'is' : 'are'} already on an invoice and {preview.alreadyBilled === 1 ? 'has' : 'have'} been left out.
-                    </div>
-                  ) : null}
+              <div className="rcv-preview-head">
+                <div>
+                  <strong>{cname(genContractor)}</strong> · {preview.label} · {preview.count} {preview.count === 1 ? 'trip' : 'trips'}
+                  {preview.alreadyBilled ? <div className="rcv-sub">{preview.alreadyBilled} more {preview.alreadyBilled === 1 ? 'trip is' : 'trips are'} already on an invoice and left out.</div> : null}
                 </div>
-                <div className="font-display" style={{ fontSize: 22, fontWeight: 700 }}>{kes(preview.total)}</div>
+                <div className="font-display rcv-preview-total">{kes(preview.total)}</div>
               </div>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 14 }}>
-                <label className="field"><span>Invoice no. (optional)</span><input name="invoice_no" className="input" placeholder="INV-1042" /></label>
+              <div className="rcv-form-row">
+                <label className="field"><span>Invoice no.</span><input name="invoice_no" className="input" placeholder="INV-1042" /></label>
                 <label className="field"><span>Payment terms</span>
                   <select name="due_days" className="input" defaultValue="30">
-                    <option value="7">Due in 7 days</option>
-                    <option value="14">Due in 14 days</option>
-                    <option value="30">Due in 30 days</option>
-                    <option value="45">Due in 45 days</option>
+                    <option value="7">Due in 7 days</option><option value="14">Due in 14 days</option><option value="30">Due in 30 days</option><option value="45">Due in 45 days</option>
                   </select>
                 </label>
-                <button type="submit" className="btn-primary" style={{ padding: '10px 20px', fontSize: 14, cursor: 'pointer' }} disabled={busy || saving}>
-                  {saving ? 'Creating…' : 'Create invoice →'}
-                </button>
+                <button type="submit" className="btn-primary rcv-action" disabled={busy || saving}>{saving ? 'Creating…' : 'Create invoice'}</button>
               </div>
             </form>
           )}
-
-          {/* Nothing to bill, or already billed — say so plainly instead of
-              appearing to do nothing when Preview is pressed. */}
           {preview && !preview.ok && preview.message && (
-            <div className="animate-fadeup" style={{
-              marginTop: 16, padding: '13px 16px', borderRadius: 'var(--radius-sm)',
-              background: preview.duplicate ? 'var(--gold-light)' : 'var(--surface2)',
-              display: 'flex', gap: 10, alignItems: 'flex-start',
-            }}>
-              <span style={{ fontSize: 15 }}>{preview.duplicate ? '⚠' : 'ℹ'}</span>
-              <div style={{ fontSize: 13.5, color: 'var(--ink)' }}>{preview.message}</div>
-            </div>
+            <div className="rcv-preview-note animate-fadeup" data-tone={preview.duplicate ? 'warn' : undefined}>{preview.message}</div>
           )}
         </div>
       )}
 
-      {creating && (
-        <form onSubmit={event => { event.preventDefault(); void mutate(saveInvoice, new FormData(event.currentTarget), () => setCreating(false)) }} className="card" style={{ padding: 20 }}>
+      {panel === 'manual' && (
+        <form onSubmit={(event) => { event.preventDefault(); void mutate(saveInvoice, new FormData(event.currentTarget), () => { toast.success('Invoice saved.'); setPanel(null) }) }} className="card rcv-form">
+          <div className="rcv-form-title">Manual invoice</div>
           <div className="grid-form">
-            <label className="field"><span>Contractor *</span>
+            <label className="field"><span>Supplier *</span>
               <select name="contractor_id" className="input" required defaultValue="">
                 <option value="" disabled>Choose…</option>
                 {contractors.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -236,81 +250,51 @@ export default function ReceivablesView({
             </label>
             <label className="field"><span>Period</span><input name="period_label" className="input" placeholder="e.g. June 2026" /></label>
             <label className="field"><span>Invoice no.</span><input name="invoice_no" className="input" placeholder="INV-1042" /></label>
-            <label className="field"><span>Amount (KES) *</span><input name="amount" type="number" step="1" className="input" required /></label>
-            <label className="field"><span>Issue date</span><input name="issue_date" type="date" className="input" defaultValue={todayIso()} /></label>
+            <label className="field"><span>Amount (KES) *</span><input name="amount" type="number" step="1" min="1" className="input" required /></label>
+            <label className="field"><span>Issue date</span><input name="issue_date" type="date" className="input" defaultValue={today} /></label>
             <label className="field"><span>Due date</span><input name="due_date" type="date" className="input" /></label>
             <label className="field" style={{ gridColumn: 'span 2' }}><span>Notes</span><input name="notes" className="input" /></label>
           </div>
           <div style={{ marginTop: 14 }}>
-            <button type="submit" disabled={saving} className="btn-primary" style={{ padding: '9px 20px', fontSize: 14, cursor: 'pointer' }}>{saving ? 'Saving…' : 'Save invoice'}</button>
+            <button type="submit" disabled={saving} className="btn-primary rcv-action">{saving ? 'Saving…' : 'Save invoice'}</button>
           </div>
         </form>
       )}
 
-      <div className="card invoice-list-scroll" style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5, minWidth: 820 }}>
-          <thead>
-            <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>Contractor</Th><Th>Period</Th><Th>Due</Th><Th right>Amount</Th><Th right>Paid</Th><Th right>Outstanding</Th><Th>Status</Th><Th></Th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.length === 0 && (
-              <tr><td colSpan={8} style={{ padding: '30px 18px', textAlign: 'center' }}>
-                <div style={{ fontSize: 26, opacity: 0.6 }}>🧾</div>
-                <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink2)', marginTop: 6 }}>{invoices.length ? 'No invoices match these filters' : 'No invoices yet'}</div>
-                <div style={{ fontSize: 13, color: 'var(--ink3)', marginTop: 4 }}>{invoices.length ? <button type="button" className="invoice-clear" onClick={() => setFilters({ ...EMPTY_INVOICE_FILTERS })}>Clear filters to see all invoices</button> : <>Use <strong>Generate invoices</strong> above to bill a contractor for a month, or add a manual invoice.</>}</div>
-              </td></tr>
-            )}
-            {sorted.map((i) => {
-              const st = statusOf(i)
-              return (
-                <tr key={i.id} style={{ borderTop: '1px solid var(--border)' }}>
-                  <Td><strong>{cname(i.contractor_id)}</strong>{i.invoice_no && <div style={{ fontSize: 12, color: 'var(--ink3)' }}>{i.invoice_no}</div>}</Td>
-                  <Td>{i.period_label ?? '—'}</Td>
-                  <Td>{i.due_date ? fmtDate(i.due_date) : '—'}</Td>
-                  <Td right>{kes(i.amount)}</Td>
-                  <Td right>{kes(i.amount_paid)}</Td>
-                  <Td right><strong>{kes(outstanding(i))}</strong></Td>
-                  <Td><span style={{ fontSize: 12, fontWeight: 700, color: st.color }}>{st.label}</span></Td>
-                  <Td>
-                    <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <Link href={`/receivables/${i.id}`} style={linkBtn}>View / print</Link>
-                      {outstanding(i) > 0 && (
-                        <form onSubmit={event => { event.preventDefault(); void mutate(markPaid, new FormData(event.currentTarget), () => toast.success('Invoice marked paid.')) }}>
-                          <input type="hidden" name="id" value={i.id} /><input type="hidden" name="expected_amount" value={i.amount} /><input type="hidden" name="expected_amount_paid" value={i.amount_paid} />
-                          <button type="submit" disabled={saving} style={linkBtn}>Mark paid</button>
-                        </form>
-                      )}
-                      <button onClick={() => setPayId(payId === i.id ? null : i.id)} style={linkBtn}>Record</button>
-                      <form onSubmit={event => { event.preventDefault(); if (confirm('Delete this invoice?')) void mutate(deleteInvoice, new FormData(event.currentTarget), () => toast.success('Invoice deleted.')) }}>
-                        <input type="hidden" name="id" value={i.id} />
-                        <button type="submit" disabled={saving} style={{ ...linkBtn, color: 'var(--danger)' }}>Delete</button>
-                      </form>
-                    </div>
-                    {payId === i.id && (
-                      <form onSubmit={event => { event.preventDefault(); void mutate(recordPayment, new FormData(event.currentTarget), () => setPayId(null)) }} style={{ display: 'flex', gap: 6, marginTop: 8, justifyContent: 'flex-end' }}>
-                        <input type="hidden" name="id" value={i.id} /><input type="hidden" name="expected_amount" value={i.amount} /><input type="hidden" name="expected_amount_paid" value={i.amount_paid} />
-                        <input name="amount_paid" type="number" step="1" className="input" defaultValue={i.amount_paid} style={{ width: 120, padding: '6px 9px' }} placeholder="Paid so far" />
-                        <input name="paid_date" type="date" className="input" defaultValue={todayIso()} style={{ width: 150, padding: '6px 9px' }} />
-                        <button type="submit" disabled={saving} className="btn-primary" style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer' }}>{saving ? 'Saving…' : 'Save'}</button>
-                      </form>
-                    )}
-                  </Td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+      <DataTable rows={sorted} rowKey={(i) => i.id} minWidth={820} columns={columns}
+        empty={invoices.length ? 'No invoices match these filters.' : 'No invoices yet. Use "Invoice a month" to bill a supplier for their completed trips.'} />
     </div>
   )
 }
 
-const linkBtn: React.CSSProperties = { background: 'none', border: 'none', color: 'var(--accent-mid)', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }
-function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <th style={{ padding: '11px 14px', fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: right ? 'right' : 'left' }}>{children}</th>
-}
-function Td({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <td style={{ padding: '11px 14px', textAlign: right ? 'right' : 'left', verticalAlign: 'top' }}>{children}</td>
+// Record one receipt: how much, when, how, and the reference on the statement.
+function PaymentForm({ invoice, today, saving, onSubmit, onSettle }: {
+  invoice: Invoice; today: string; saving: boolean
+  onSubmit: (fd: FormData) => void; onSettle: (fd: FormData) => void
+}) {
+  const owed = Math.round((Number(invoice.amount) - Number(invoice.amount_paid)) * 100) / 100
+  const [amount, setAmount] = useState(String(owed))
+  const [method, setMethod] = useState<PaymentMethod>('mpesa')
+  const full = Number(amount) === owed
+  return (
+    <form className="rcv-pay animate-fadeup" onSubmit={(event) => { event.preventDefault(); const fd = new FormData(event.currentTarget); (full ? onSettle : onSubmit)(fd) }}>
+      <input type="hidden" name="id" value={invoice.id} />
+      <input type="hidden" name="expected_amount" value={invoice.amount} />
+      <input type="hidden" name="expected_amount_paid" value={invoice.amount_paid} />
+      <div className="rcv-pay-grid">
+        <label className="field"><span>Amount received</span><input name="amount" className="input" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} required /></label>
+        <label className="field"><span>Date</span><input name="paid_on" type="date" className="input" defaultValue={today} max={today} required /></label>
+        <label className="field"><span>How</span>
+          <select name="method" className="input" value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
+            {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((m) => <option key={m} value={m}>{PAYMENT_METHOD_LABELS[m]}</option>)}
+          </select>
+        </label>
+        <label className="field"><span>{method === 'mpesa' ? 'M-Pesa code' : method === 'cheque' ? 'Cheque no.' : 'Reference'}</span><input name="reference" className="input" placeholder={method === 'mpesa' ? 'e.g. QKJ7H2X9PL' : ''} /></label>
+      </div>
+      <div className="rcv-pay-foot">
+        <span className="rcv-sub">{full ? 'This settles the invoice.' : `${kes(owed - Number(amount || 0))} will still be owed.`}</span>
+        <button type="submit" className="btn-primary rcv-action" disabled={saving}>{saving ? 'Saving…' : full ? 'Record & settle' : 'Record payment'}</button>
+      </div>
+    </form>
+  )
 }

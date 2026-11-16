@@ -226,6 +226,24 @@ export interface Invoice {
   created_at: string
 }
 
+// One receipt against an invoice. The invoice's amount_paid is the sum of
+// these; see lib/payments.ts and migration-invoice-payments.sql.
+export type PaymentMethod = 'mpesa' | 'bank' | 'cash' | 'cheque' | 'other'
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  mpesa: 'M-Pesa', bank: 'Bank transfer', cash: 'Cash', cheque: 'Cheque', other: 'Other',
+}
+export interface InvoicePayment {
+  id: string
+  invoice_id: string
+  amount: number
+  paid_on: string            // YYYY-MM-DD
+  method: PaymentMethod
+  reference: string | null   // M-Pesa code, bank reference, cheque number
+  note: string | null
+  created_by: string | null
+  created_at: string
+}
+
 // Company profile shown on invoices (editable in Settings → Company)
 export interface Company {
   name: string

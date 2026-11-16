@@ -54,6 +54,7 @@ create function auth.uid() returns uuid language sql stable as $$ select nullif(
 grant usage on schema auth,public to authenticated,anon;
 """ + (root/'lib/schema.sql').read_text() + (root/'lib/migration-company.sql').read_text()
         + (root/'lib/migration-integrity.sql').read_text()
+        + (root/'lib/migration-invoice-payments.sql').read_text()
         + '\ngrant select,insert,update,delete on all tables in schema public to authenticated;')
     for user, role in [(owner,'owner'),(accountant,'accountant'),(office,'office'),(driver,'driver')]:
         sql(f"insert into auth.users(id,email) values('{user}','synthetic-{role}@example.invalid'); update profiles set role='{role}' where id='{user}';")
@@ -144,5 +145,35 @@ grant usage on schema auth,public to authenticated,anon;
             except AssertionError: return False
         assert sum(pool.map(race_dispatch,range(2)))==1
     print('PASS: concurrent dispatch requests cannot double book')
+
+    # Payment ledger: amount_paid and paid_date follow the receipts by trigger.
+    pa, pb = uid(), uid()
+    sql(trip(pa, date='2026-12-01', status='completed') + trip(pb, date='2026-12-02', amount=2750, status='completed'))
+    sql(as_user(accountant, invoice([pa, pb], start='2026-12-01', end='2026-12-31')))
+    inv = sql("select id from invoices where period_start='2026-12-01'").stdout.strip()
+    pay = lambda amount, day, method="'mpesa'", ref="'QK1'", user=accountant: as_user(user, f"insert into invoice_payments(invoice_id,amount,paid_on,method,reference) values('{inv}',{amount},'{day}',{method},{ref});")
+    sql(pay(1000, '2026-12-05'))
+    assert sql(f"select amount_paid, paid_date is null from invoices where id='{inv}'").stdout.strip() == '1000.00|t'
+    sql(pay(3001, '2026-12-06'), ok=False)                       # over the invoice
+    sql(pay(0, '2026-12-06'), ok=False)                          # nothing received
+    sql(pay(10, '2026-12-06', method="'crypto'"), ok=False)      # unknown method
+    sql(pay(10, '2026-12-06', user=office), ok=False)            # finance only
+    assert sql(as_user(office, 'select count(*) from invoice_payments;')).stdout.strip().endswith('0')
+    sql(pay(3000, '2026-12-09', method="'bank'", ref="'TRF9'"))
+    assert sql(f"select amount_paid, paid_date from invoices where id='{inv}'").stdout.strip() == '4000.00|2026-12-09'
+    sql(as_user(owner, f"update invoices set amount=3500 where id='{inv}';"), ok=False)   # below what was received
+    sql(as_user(accountant, f"delete from invoice_payments where invoice_id='{inv}' and amount=3000;"))
+    assert sql(f"select amount_paid, paid_date is null from invoices where id='{inv}'").stdout.strip() == '1000.00|t'
+    sql(as_user(owner, f"delete from invoices where id='{inv}';"))
+    assert sql(f"select count(*) from invoice_payments where invoice_id='{inv}'").stdout.strip() == '0'
+    # An invoice that carried amount_paid before the ledger existed gets one opening row.
+    legacy = uid()
+    sql(f"insert into invoices(id,contractor_id,amount,amount_paid,paid_date,issue_date) values('{legacy}','{contractor}',500,500,'2026-10-01','2026-09-01');")
+    sql((root/'lib/migration-invoice-payments.sql').read_text())
+    assert sql(f"select count(*), sum(amount) from invoice_payments where invoice_id='{legacy}'").stdout.strip() == '1|500.00'
+    assert sql(f"select amount_paid, paid_date from invoices where id='{legacy}'").stdout.strip() == '500.00|2026-10-01'
+    sql((root/'lib/migration-invoice-payments.sql').read_text())
+    assert sql(f"select count(*) from invoice_payments where invoice_id='{legacy}'").stdout.strip() == '1', 'rerunning the migration adds nothing'
+    print('PASS: payment ledger drives amount_paid and paid_date; overpayment, zero, unknown method and office writes refused; removal reopens; cascade on delete; opening balances once')
 finally:
     sql(f'drop database if exists {database} with (force)', db='postgres')

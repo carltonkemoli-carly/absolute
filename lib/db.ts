@@ -5,10 +5,11 @@ import { DEV_MODE } from '@/lib/devmode'
 import { loadStore, saveStore, uid, type StoreData } from '@/lib/devstore'
 import type {
   Contractor, Driver, FuelEntry, Organization, Profile, Trip, Vehicle,
-  VehicleService, Route, ComplianceDoc, Expense, Target, Invoice, Company,
+  VehicleService, Route, ComplianceDoc, Expense, Target, Invoice, InvoicePayment, Company,
 } from '@/lib/types'
 import { DEFAULT_COMPANY } from '@/lib/types'
 import { assertNoDispatchOverlap } from '@/lib/dispatch-rules'
+import { settle, round2, type PaymentInput } from '@/lib/payments'
 
 type Row = Record<string, unknown>
 
@@ -195,6 +196,86 @@ export async function updateInvoicePayment(
   if (error) return { error: error.message }
   return { error: data ? null : changed }
 }
+// ---------- Payment ledger ----------
+// Each receipt is a row; the invoice's amount_paid is the sum. Before the
+// migration that creates invoice_payments has run, the table is missing: these
+// functions then fall back to adjusting amount_paid directly and say so with
+// `ledger: false`, so nothing breaks on the day the code goes live first.
+
+const NO_TABLE = (error: { code?: string; message: string } | null) =>
+  !!error && (error.code === '42P01' || error.code === 'PGRST205' || /invoice_payments/.test(error.message) && /not (find|exist)/.test(error.message))
+
+export async function listPayments(invoiceIds?: string[]): Promise<InvoicePayment[]> {
+  const order = (a: InvoicePayment, b: InvoicePayment) => b.paid_on.localeCompare(a.paid_on) || b.created_at.localeCompare(a.created_at)
+  if (DEV_MODE) {
+    const all = loadStore().payments ?? []
+    return (invoiceIds ? all.filter((payment) => invoiceIds.includes(payment.invoice_id)) : [...all]).sort(order)
+  }
+  const client = await sb()
+  let query = client.from('invoice_payments').select('*').order('paid_on', { ascending: false }).order('created_at', { ascending: false })
+  if (invoiceIds) query = query.in('invoice_id', invoiceIds)
+  const { data, error } = await query
+  if (error) { if (!NO_TABLE(error)) console.error(`[db] listPayments failed: ${error.message}`); return [] }
+  return (data ?? []) as InvoicePayment[]
+}
+
+// Record one receipt. `expectedPaid` is the amount_paid the caller saw, so two
+// people recording against the same invoice cannot both succeed on stale totals.
+export async function addPayment(
+  invoiceId: string, input: PaymentInput, expectedPaid: number, createdBy: string | null,
+): Promise<{ error: string | null; ledger: boolean }> {
+  const changed = 'Invoice changed since this page loaded. Refresh and try again.'
+  if (DEV_MODE) {
+    const data = loadStore()
+    const invoice = data.invoices.find((item) => item.id === invoiceId)
+    if (!invoice) return { error: 'Invoice not found. Refresh and try again.', ledger: true }
+    if (Number(invoice.amount_paid) !== expectedPaid) return { error: changed, ledger: true }
+    data.payments ??= []
+    data.payments.push({
+      id: uid('pay'), invoice_id: invoiceId, amount: round2(input.amount), paid_on: input.paid_on, method: input.method,
+      reference: input.reference, note: input.note, created_by: createdBy, created_at: new Date().toISOString(),
+    })
+    Object.assign(invoice, settle(invoice, data.payments.filter((payment) => payment.invoice_id === invoiceId)))
+    saveStore(data)
+    return { error: null, ledger: true }
+  }
+  const client = await sb()
+  const { data: invoice, error: readError } = await client.from('invoices').select('amount, amount_paid').eq('id', invoiceId).maybeSingle()
+  if (readError) return { error: readError.message, ledger: true }
+  if (!invoice) return { error: 'Invoice not found. Refresh and try again.', ledger: true }
+  if (Number(invoice.amount_paid) !== expectedPaid) return { error: changed, ledger: true }
+  const { error } = await client.from('invoice_payments').insert({
+    invoice_id: invoiceId, amount: round2(input.amount), paid_on: input.paid_on, method: input.method,
+    reference: input.reference, note: input.note, created_by: createdBy,
+  })
+  if (!error) return { error: null, ledger: true }
+  if (!NO_TABLE(error)) {
+    console.error(`[db] addPayment failed: ${error.message}`)
+    return { error: error.code === '23514' ? 'That is more than is still owed on this invoice.' : error.message, ledger: true }
+  }
+  // No ledger table yet: keep the running total correct at least.
+  const total = round2(expectedPaid + input.amount)
+  const cleared = total >= Number(invoice.amount) && Number(invoice.amount) > 0 ? input.paid_on : null
+  const fallback = await updateInvoicePayment(invoiceId, total, cleared, Number(invoice.amount), expectedPaid)
+  return { error: fallback.error, ledger: false }
+}
+
+export async function deletePayment(paymentId: string): Promise<{ error: string | null }> {
+  if (DEV_MODE) {
+    const data = loadStore()
+    const index = (data.payments ?? []).findIndex((payment) => payment.id === paymentId)
+    if (index < 0) return { error: 'Payment not found.' }
+    const [removed] = data.payments.splice(index, 1)
+    const invoice = data.invoices.find((item) => item.id === removed.invoice_id)
+    if (invoice) Object.assign(invoice, settle(invoice, data.payments.filter((payment) => payment.invoice_id === invoice.id)))
+    saveStore(data)
+    return { error: null }
+  }
+  const { error } = await (await sb()).from('invoice_payments').delete().eq('id', paymentId)
+  if (error) console.error(`[db] deletePayment failed: ${error.message}`)
+  return { error: error?.message ?? null }
+}
+
 // Is this contractor-period already invoiced? Stops the same month being billed
 // twice, which would silently double Outstanding on the dashboard.
 export async function findInvoiceForPeriod(contractorId: string, start: string, end: string): Promise<Invoice | null> {
@@ -431,7 +512,10 @@ export async function deleteRecord(table: TableName, id: string): Promise<void> 
     const arr = data[DEV_KEY[table]] as unknown as { id: string }[]
     const i = arr.findIndex((x) => x.id === id)
     if (i >= 0) arr.splice(i, 1)
-    if (table === 'invoices') for (const t of data.trips) if (t.invoice_id === id) t.invoice_id = null
+    if (table === 'invoices') {
+      for (const t of data.trips) if (t.invoice_id === id) t.invoice_id = null
+      data.payments = (data.payments ?? []).filter((payment) => payment.invoice_id !== id)
+    }
     saveStore(data)
     return
   }

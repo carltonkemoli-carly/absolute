@@ -33,9 +33,11 @@ cash reconciliation or a claim of final net profit.
    described historical imported trips and fuel but zero expense entries and
    zero recorded wages. Those counts are historical notes, not current verified
    live figures.
-3. Record individual payment events with date, method and reference, and
-   reconcile them with bank/M-Pesa statements. The current invoice row stores
-   only a cumulative `amount_paid`, so it cannot prove every receipt or refund.
+3. Reconcile the payment ledger with bank/M-Pesa statements. Each receipt is
+   now its own row in `invoice_payments` (amount, date, method, reference),
+   and `invoices.amount_paid` / `paid_date` are derived from those rows by
+   trigger (`lib/migration-invoice-payments.sql`). Until that migration is
+   applied, the app still adjusts `amount_paid` directly and says so.
 4. Preserve issued invoice line amounts or a versioned snapshot. Linked trips
    can be edited later, leaving their current value different from the issued
    invoice total. Decide on credit-note/correction rules before production use.
