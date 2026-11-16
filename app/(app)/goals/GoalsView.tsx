@@ -43,8 +43,8 @@ export default function GoalsView({
       <div className="grid-stats">
         <Stat label="Revenue" value={kes(revenue)} hint={revenueTarget ? `${pct(revenue / revenueTarget)} of ${kes(revenueTarget)} target` : 'no target set'} tone="var(--accent)" />
         <Stat label="Total costs" value={kes(totalCost)} hint={`${pct(fareRevenue > 0 ? totalCost / fareRevenue : 0)} of fare revenue`} />
-        <Stat label={profitLabel} value={kes(netProfit)} hint={profitTarget ? `${pct(profitTarget > 0 ? netProfit / profitTarget : 0)} of ${kes(profitTarget)} target` : profitHint} tone={netProfit < 0 ? 'var(--danger)' : costsComplete ? 'var(--accent)' : 'var(--gold)'} />
-        <Stat label={costsComplete ? 'Margin on recorded costs' : 'Margin before wages'} value={pct(margin)} tone={margin < 0.1 ? 'var(--danger)' : costsComplete ? 'var(--accent)' : 'var(--gold)'} />
+        <Stat label={profitLabel} value={kes(netProfit)} hint={profitTarget ? `${pct(profitTarget > 0 ? netProfit / profitTarget : 0)} of ${kes(profitTarget)} target` : profitHint} tone={netProfit < 0 ? 'var(--danger)' : costsComplete ? 'var(--ok)' : 'var(--gold)'} />
+        <Stat label={costsComplete ? 'Margin on recorded costs' : 'Margin before wages'} value={pct(margin)} tone={margin < 0.1 ? 'var(--danger)' : costsComplete ? 'var(--ok)' : 'var(--gold)'} />
       </div>
 
       <div className={costSegs.length > 0 ? 'grid-2' : undefined}>
@@ -63,7 +63,7 @@ export default function GoalsView({
           ))}
           <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0' }} />
           <Row label="Total costs" value={`(${kes(totalCost)})`} />
-          <Row label={profitLabel} value={kes(netProfit)} strong tone={netProfit < 0 ? 'var(--danger)' : costsComplete ? 'var(--accent)' : 'var(--gold)'} />
+          <Row label={profitLabel} value={kes(netProfit)} strong tone={netProfit < 0 ? 'var(--danger)' : costsComplete ? 'var(--ok)' : 'var(--gold)'} />
           <Row label={costsComplete ? 'Margin on recorded costs' : 'Margin before wages'} value={pct(margin)} sub="" />
         </Card>
       </div>
@@ -108,7 +108,7 @@ export default function GoalsView({
           </div>
           <div style={{ background: 'var(--surface2)', borderRadius: 12, padding: 18, alignSelf: 'start' }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Projected {profitLabel.toLowerCase()}</div>
-            <div className="font-display" style={{ fontSize: 30, fontWeight: 700, margin: '6px 0 2px', color: projNet < 0 ? 'var(--danger)' : 'var(--accent)' }}>{kes(projNet)}</div>
+            <div className="font-display" style={{ fontSize: 30, fontWeight: 700, margin: '6px 0 2px', color: projNet < 0 ? 'var(--danger)' : 'var(--ok)' }}>{kes(projNet)}</div>
             <div style={{ fontSize: 13.5, color: 'var(--ink2)' }}>
               margin {pct(projMargin)}
               {anyCut && <span style={{ color: 'var(--accent)', fontWeight: 600 }}> · {projNet >= netProfit ? '+' : ''}{kes(projNet - netProfit)} vs now</span>}
@@ -194,7 +194,7 @@ function Goal({ label, actual, target, higherIsBetter }: { label: string; actual
   const ratio = target > 0 ? actual / target : 0
   // For caps (spend), over target is bad. For revenue/profit, under is "still working toward".
   const color = higherIsBetter
-    ? (ratio >= 1 ? 'var(--accent)' : 'var(--gold)')
+    ? (ratio >= 1 ? 'var(--ok)' : 'var(--gold)')
     : (ratio >= 1 ? 'var(--danger)' : ratio >= 0.85 ? 'var(--gold)' : 'var(--accent-mid)')
   return (
     <div style={{ marginBottom: 12 }}>

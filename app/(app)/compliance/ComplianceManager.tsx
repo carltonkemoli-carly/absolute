@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { fmtDate, isoDate } from '@/lib/format'
+import DataTable from '@/components/DataTable'
 import {
   VEHICLE_DOC_TYPES, DRIVER_DOC_TYPES,
   type ComplianceDoc, type Driver, type Vehicle, type DocOwnerKind,
@@ -69,56 +70,35 @@ export default function ComplianceManager({
         </div>
       )}
 
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 820 }}>
-          <thead>
-            <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>For</Th><Th>Document</Th><Th>Expiry</Th><Th>Status</Th><Th>Attended</Th><Th></Th>
-            </tr>
-          </thead>
-          <tbody>
-            {documents.length === 0 && (
-              <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: 'var(--ink3)' }}>No documents yet.</td></tr>
+      <DataTable rows={documents} rowKey={(d) => d.id} minWidth={820} empty="No documents are tracked yet." columns={[
+        { label: 'For', role: 'primary', render: (d) => <><strong>{subject(d)}</strong> <span style={{ color: 'var(--ink3)', fontSize: 12, fontWeight: 400 }}>{d.owner_kind}</span></> },
+        { label: 'Document', render: (d) => <>{d.doc_type}{d.reference && <div style={{ fontSize: 12, color: 'var(--ink3)' }}>{d.reference}</div>}</> },
+        { label: 'Expiry', nowrap: true, render: (d) => (d.expiry_date ? fmtDate(d.expiry_date) : '—') },
+        { label: 'Status', render: (d) => { const st = statusOf(d); return <span style={{ fontSize: 12.5, fontWeight: 600, color: st.tone, background: st.bg, padding: '2px 9px', borderRadius: 99, whiteSpace: 'nowrap' }}>{st.label}</span> } },
+        { label: 'Attended', render: (d) => d.attended ? (
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ok)' }}>Done · {d.attended_on ? fmtDate(d.attended_on) : 'today'}</div>
+            {d.attended_note && <div style={{ fontSize: 12, color: 'var(--ink3)', maxWidth: 220 }}>{d.attended_note}</div>}
+          </div>
+        ) : needsAttention(d) ? (
+          <button onClick={() => { setEditing(null); setAttending(d) }} style={{ ...linkBtn, color: 'var(--gold)' }}>Mark attended</button>
+        ) : <span style={{ color: 'var(--ink3)' }}>—</span> },
+        { label: '', role: 'actions', render: (d) => (
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            {d.attended && (
+              <form action={unmarkAttended}>
+                <input type="hidden" name="id" value={d.id} />
+                <button type="submit" style={linkBtn}>Undo</button>
+              </form>
             )}
-            {documents.map((d) => {
-              const st = statusOf(d)
-              return (
-                <tr key={d.id} style={{ borderTop: '1px solid var(--border)' }}>
-                  <Td><strong>{subject(d)}</strong> <span style={{ color: 'var(--ink3)', fontSize: 12 }}>{d.owner_kind}</span></Td>
-                  <Td>{d.doc_type}{d.reference && <div style={{ fontSize: 12, color: 'var(--ink3)' }}>{d.reference}</div>}</Td>
-                  <Td>{d.expiry_date ? fmtDate(d.expiry_date) : '—'}</Td>
-                  <Td><span style={{ fontSize: 12.5, fontWeight: 600, color: st.tone, background: st.bg, padding: '2px 9px', borderRadius: 99 }}>{st.label}</span></Td>
-                  <Td>
-                    {d.attended ? (
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>Done · {d.attended_on ? fmtDate(d.attended_on) : 'today'}</div>
-                        {d.attended_note && <div style={{ fontSize: 12, color: 'var(--ink3)', maxWidth: 220 }}>{d.attended_note}</div>}
-                      </div>
-                    ) : needsAttention(d) ? (
-                      <button onClick={() => { setEditing(null); setAttending(d) }} style={{ ...linkBtn, color: 'var(--gold)' }}>Mark attended</button>
-                    ) : <span style={{ color: 'var(--ink3)' }}>—</span>}
-                  </Td>
-                  <Td>
-                    <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                      {d.attended && (
-                        <form action={unmarkAttended}>
-                          <input type="hidden" name="id" value={d.id} />
-                          <button type="submit" style={linkBtn}>Undo</button>
-                        </form>
-                      )}
-                      <button onClick={() => { setAttending(null); setEditing(d) }} style={linkBtn}>Edit</button>
-                      <form action={deleteDocument} onSubmit={(e) => { if (!confirm('Delete this document?')) e.preventDefault() }}>
-                        <input type="hidden" name="id" value={d.id} />
-                        <button type="submit" style={{ ...linkBtn, color: 'var(--danger)' }}>Delete</button>
-                      </form>
-                    </div>
-                  </Td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+            <button onClick={() => { setAttending(null); setEditing(d) }} style={linkBtn}>Edit</button>
+            <form action={deleteDocument} onSubmit={(e) => { if (!confirm('Delete this document?')) e.preventDefault() }}>
+              <input type="hidden" name="id" value={d.id} />
+              <button type="submit" style={{ ...linkBtn, color: 'var(--danger)' }}>Delete</button>
+            </form>
+          </div>
+        ) },
+      ]} />
     </>
   )
 }
@@ -182,9 +162,3 @@ function DocForm({ doc, vehicles, drivers, onDone }: { doc: ComplianceDoc | null
 }
 
 const linkBtn: React.CSSProperties = { background: 'none', border: 'none', color: 'var(--accent-mid)', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }
-function Th({ children }: { children?: React.ReactNode }) {
-  return <th style={{ padding: '11px 14px', fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{children}</th>
-}
-function Td({ children }: { children?: React.ReactNode }) {
-  return <td style={{ padding: '11px 14px', verticalAlign: 'top' }}>{children}</td>
-}

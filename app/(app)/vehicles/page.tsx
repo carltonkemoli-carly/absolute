@@ -48,7 +48,7 @@ export default async function VehiclesPage() {
           <StatCard label="Vehicles" value={String(vehicles.length)} hint={`${owned} owned · ${vehicles.length - owned} hired`} />
           <StatCard label="On the road" value={String(active)}
             hint={inShop > 0 ? `${inShop} in the shop` : undefined}
-            accent={inShop > 0 ? 'var(--gold)' : 'var(--accent)'} />
+            accent={inShop > 0 ? 'var(--gold)' : 'var(--ok)'} />
           {canFinance && <StatCard label="Monthly hire" value={kes(hireCost)} accent={hireCost > 0 ? 'var(--gold)' : undefined} />}
           {canFinance && <StatCard label="Loan repayment" value={kes(loanMonthly)} hint="monthly" accent={loanMonthly > 0 ? 'var(--gold)' : undefined} />}
         </div>

@@ -63,7 +63,7 @@ export default async function RoutesPage() {
           <StatCard label="Fully priced" value={String(full)} hint="all four classes" accent="var(--accent)" />
           <StatCard label="Still to price" value={String(gaps)}
             hint={gaps > 0 ? 'missing at least one class' : 'nothing missing'}
-            accent={gaps > 0 ? 'var(--gold)' : 'var(--accent)'} />
+            accent={gaps > 0 ? 'var(--gold)' : 'var(--ok)'} />
           <StatCard label="Average van fare" value={kes(avgVan)} hint="across priced routes" />
         </div>
 

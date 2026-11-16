@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { kes, fmtDate, isoDate } from '@/lib/format'
+import DataTable from '@/components/DataTable'
 import type { Vehicle, VehicleService } from '@/lib/types'
 import { saveService, deleteService } from './actions'
 
@@ -67,50 +68,28 @@ export default function ServiceManager({ services, vehicles }: { services: Vehic
         </div>
       )}
 
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
-          <thead>
-            <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>Date</Th><Th>Vehicle</Th><Th>Type</Th><Th>What was done</Th><Th>Garage</Th><Th right>Odometer</Th><Th right>Cost</Th><Th>Next due</Th><Th></Th>
-            </tr>
-          </thead>
-          <tbody>
-            {services.length === 0 && (
-              <tr><td colSpan={9} style={{ padding: 28, textAlign: 'center', color: 'var(--ink3)' }}>No services logged yet.</td></tr>
-            )}
-            {services.map((s) => (
-              <tr key={s.id} style={{ borderTop: '1px solid var(--border)' }}>
-                <Td>{fmtDate(s.service_date)}</Td>
-                <Td><strong>{plate(s.vehicle_id)}</strong></Td>
-                <Td>{s.service_type ?? '—'}</Td>
-                <Td>{s.description ?? '—'}</Td>
-                <Td>{s.garage ?? '—'}</Td>
-                <Td right>{s.odometer?.toLocaleString() ?? '—'}</Td>
-                <Td right><strong>{kes(s.cost)}</strong></Td>
-                <Td>{s.next_service_date ? fmtDate(s.next_service_date) : (s.next_service_odometer ? `${s.next_service_odometer.toLocaleString()} km` : '—')}</Td>
-                <Td>
-                  <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                    <button onClick={() => setEditing(s)} style={linkBtn}>Edit</button>
-                    <form action={deleteService} onSubmit={(e) => { if (!confirm('Delete this service record?')) e.preventDefault() }}>
-                      <input type="hidden" name="id" value={s.id} />
-                      <button type="submit" style={{ ...linkBtn, color: 'var(--danger)' }}>Delete</button>
-                    </form>
-                  </div>
-                </Td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataTable rows={services} rowKey={(s) => s.id} minWidth={900} empty="No services are logged yet." columns={[
+        { label: 'Date', nowrap: true, render: (s) => fmtDate(s.service_date) },
+        { label: 'Vehicle', role: 'primary', render: (s) => <strong>{plate(s.vehicle_id)}</strong> },
+        { label: 'Type', render: (s) => s.service_type ?? '—' },
+        { label: 'What was done', render: (s) => s.description ?? '—' },
+        { label: 'Garage', render: (s) => s.garage ?? '—' },
+        { label: 'Odometer', align: 'right', render: (s) => s.odometer?.toLocaleString() ?? '—' },
+        { label: 'Cost', align: 'right', render: (s) => <strong>{kes(s.cost)}</strong> },
+        { label: 'Next due', nowrap: true, render: (s) => (s.next_service_date ? fmtDate(s.next_service_date) : (s.next_service_odometer ? `${s.next_service_odometer.toLocaleString()} km` : '—')) },
+        { label: '', role: 'actions', render: (s) => (
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <button onClick={() => setEditing(s)} style={linkBtn}>Edit</button>
+            <form action={deleteService} onSubmit={(e) => { if (!confirm('Delete this service record?')) e.preventDefault() }}>
+              <input type="hidden" name="id" value={s.id} />
+              <button type="submit" style={{ ...linkBtn, color: 'var(--danger)' }}>Delete</button>
+            </form>
+          </div>
+        ) },
+      ]} />
     </>
   )
 }
 
 function today() { return isoDate(new Date()) }
 const linkBtn: React.CSSProperties = { background: 'none', border: 'none', color: 'var(--accent-mid)', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }
-function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <th style={{ padding: '11px 14px', fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: right ? 'right' : 'left' }}>{children}</th>
-}
-function Td({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <td style={{ padding: '11px 14px', textAlign: right ? 'right' : 'left', verticalAlign: 'top' }}>{children}</td>
-}

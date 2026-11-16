@@ -65,10 +65,10 @@ export default async function CompliancePage() {
           <StatCard label="Documents tracked" value={String(documents.length)} hint={`${vehicles.length} vehicles · ${drivers.length} drivers`} />
           <StatCard label="Expired" value={String(n('expired'))}
             hint={n('expired') > 0 ? 'renew these first' : 'none overdue'}
-            accent={n('expired') > 0 ? 'var(--danger)' : 'var(--accent)'} />
+            accent={n('expired') > 0 ? 'var(--danger)' : 'var(--ok)'} />
           <StatCard label="Expiring in 30 days" value={String(n('due'))}
             hint={n('due') > 0 ? 'book these now' : 'nothing falling due'}
-            accent={n('due') > 0 ? 'var(--gold)' : 'var(--accent)'} />
+            accent={n('due') > 0 ? 'var(--gold)' : 'var(--ok)'} />
           <StatCard label="Attended" value={String(n('attended'))} hint="marked as actioned" accent="var(--accent)" />
         </div>
 

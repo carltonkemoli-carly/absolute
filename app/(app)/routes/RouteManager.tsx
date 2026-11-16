@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Badge } from '@/components/ui'
 import { kes } from '@/lib/format'
+import DataTable from '@/components/DataTable'
 import type { Route } from '@/lib/types'
 import { saveRoute, deleteRoute } from './actions'
 
@@ -19,41 +20,22 @@ export default function RouteManager({ routes, canManage }: { routes: Route[]; c
 
       {canManage && editing && <RouteForm key={editing === 'new' ? 'new' : editing.id} route={editing === 'new' ? null : editing} onDone={() => setEditing(null)} />}
 
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 640 }}>
-          <thead>
-            <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>Route</Th><Th right>Saloon</Th><Th right>Wagon</Th><Th right>Van</Th><Th right>Coaster</Th>{canManage && <Th></Th>}
-            </tr>
-          </thead>
-          <tbody>
-            {routes.length === 0 && (
-              <tr><td colSpan={canManage ? 6 : 5} style={{ padding: 28, textAlign: 'center', color: 'var(--ink3)' }}>{canManage ? 'No routes yet. Add your common routes and prices.' : 'No routes have been priced yet.'}</td></tr>
-            )}
-            {routes.map((r) => (
-              <tr key={r.id} style={{ borderTop: '1px solid var(--border)' }}>
-                <Td>
-                  <strong>{r.pickup} → {r.dropoff}</strong>
-                  {!r.active && <span style={{ marginLeft: 8 }}><Badge>inactive</Badge></span>}
-                </Td>
-                <Td right>{kes(r.price_saloon)}</Td>
-                <Td right>{kes(r.price_wagon)}</Td>
-                <Td right>{kes(r.price_van)}</Td>
-                <Td right>{kes(r.price_bus)}</Td>
-                {canManage && <Td>
-                  <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                    <button onClick={() => setEditing(r)} style={linkBtn}>Edit</button>
-                    <form action={deleteRoute} onSubmit={(e) => { if (!confirm(`Delete ${r.pickup} → ${r.dropoff}?`)) e.preventDefault() }}>
-                      <input type="hidden" name="id" value={r.id} />
-                      <button type="submit" style={{ ...linkBtn, color: 'var(--danger)' }}>Delete</button>
-                    </form>
-                  </div>
-                </Td>}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataTable rows={routes} rowKey={(r) => r.id} minWidth={640} empty={canManage ? 'No routes yet. Add your common routes and prices.' : 'No routes have been priced yet.'} columns={[
+        { label: 'Route', role: 'primary', render: (r: Route) => <><strong>{r.pickup} → {r.dropoff}</strong>{!r.active && <span style={{ marginLeft: 8 }}><Badge>inactive</Badge></span>}</> },
+        { label: 'Saloon', align: 'right', render: (r: Route) => kes(r.price_saloon) },
+        { label: 'Wagon', align: 'right', render: (r: Route) => kes(r.price_wagon) },
+        { label: 'Van', align: 'right', render: (r: Route) => kes(r.price_van) },
+        { label: 'Coaster', align: 'right', render: (r: Route) => kes(r.price_bus) },
+        ...(canManage ? [{ label: '', role: 'actions' as const, render: (r: Route) => (
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <button onClick={() => setEditing(r)} style={linkBtn}>Edit</button>
+            <form action={deleteRoute} onSubmit={(e) => { if (!confirm(`Delete ${r.pickup} → ${r.dropoff}?`)) e.preventDefault() }}>
+              <input type="hidden" name="id" value={r.id} />
+              <button type="submit" style={{ ...linkBtn, color: 'var(--danger)' }}>Delete</button>
+            </form>
+          </div>
+        ) }] : []),
+      ]} />
     </>
   )
 }
@@ -99,9 +81,3 @@ function RouteForm({ route, onDone }: { route: Route | null; onDone: () => void 
 }
 
 const linkBtn: React.CSSProperties = { background: 'none', border: 'none', color: 'var(--accent-mid)', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }
-function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <th style={{ padding: '11px 14px', fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: right ? 'right' : 'left' }}>{children}</th>
-}
-function Td({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <td style={{ padding: '11px 14px', textAlign: right ? 'right' : 'left', verticalAlign: 'top' }}>{children}</td>
-}

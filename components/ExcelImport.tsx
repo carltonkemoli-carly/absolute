@@ -65,7 +65,7 @@ export default function ExcelImport({
   if (!open) {
     return (
       <button className="btn-ghost" style={{ padding: '9px 16px', fontSize: 14, cursor: 'pointer' }} onClick={() => setOpen(true)}>
-        ⬆ {label}
+        {label}
       </button>
     )
   }

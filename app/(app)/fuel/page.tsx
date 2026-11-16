@@ -70,7 +70,7 @@ export default async function FuelPage({
           <StatCard label="Fuel this month" value={kes(totalFuel)} hint={`${entries.length} payments`} accent="var(--gold)" />
           <StatCard label="Fuel-to-sales" value={fuelPct === null ? '—' : `${Math.round(fuelPct * 100)}%`}
             hint={fuelPct !== null && fuelPct > 0.32 ? 'watch fuel spend' : undefined}
-            accent={fuelPct !== null && fuelPct > 0.32 ? 'var(--danger)' : 'var(--accent)'} />
+            accent={fuelPct !== null && fuelPct > 0.32 ? 'var(--danger)' : 'var(--ok)'} />
           <StatCard label="Fare revenue this month" value={kes(revenue)} hint={`${monthTrips.length} completed trips · excluding tolls`} />
         </div>
       </Section>

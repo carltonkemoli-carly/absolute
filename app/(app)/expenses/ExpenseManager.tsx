@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { Card } from '@/components/ui'
 import { kes, fmtDate } from '@/lib/format'
+import DataTable from '@/components/DataTable'
 import { EXPENSE_CATEGORIES, type Driver, type Expense, type Vehicle } from '@/lib/types'
 import { saveExpense, deleteExpense, postMonthlyWages, copyLastMonthExpenses } from './actions'
 
@@ -127,38 +128,22 @@ export default function ExpenseManager({
         </div>
       )}
 
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 760 }}>
-          <thead>
-            <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>Date</Th><Th>Category</Th><Th>Payee</Th><Th>For</Th><Th right>Amount</Th><Th></Th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 && (
-              <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: 'var(--ink3)' }}>No expenses logged for {monthLabel}. Use the quick-add buttons above to get started.</td></tr>
-            )}
-            {filtered.map((e) => (
-              <tr key={e.id} style={{ borderTop: '1px solid var(--border)' }}>
-                <Td>{fmtDate(e.expense_date)}</Td>
-                <Td><strong>{e.category}</strong>{e.description && <div style={{ fontSize: 12, color: 'var(--ink3)' }}>{e.description}</div>}</Td>
-                <Td>{e.payee ?? '—'}</Td>
-                <Td>{[plate(e.vehicle_id), dname(e.driver_id)].filter(Boolean).join(' · ') || '—'}</Td>
-                <Td right><strong>{kes(e.amount)}</strong></Td>
-                <Td>
-                  <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                    <button onClick={() => { setPresetCat(''); setEditing(e) }} style={linkBtn}>Edit</button>
-                    <form action={async (fd) => { await deleteExpense(fd); router.refresh() }} onSubmit={(ev) => { if (!confirm('Delete this expense?')) ev.preventDefault() }}>
-                      <input type="hidden" name="id" value={e.id} />
-                      <button type="submit" style={{ ...linkBtn, color: 'var(--danger)' }}>Delete</button>
-                    </form>
-                  </div>
-                </Td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataTable rows={filtered} rowKey={(e) => e.id} minWidth={760} empty={`No expenses are logged for ${monthLabel}. Use the quick-add buttons above to start.`} columns={[
+        { label: 'Date', nowrap: true, render: (e) => fmtDate(e.expense_date) },
+        { label: 'Category', role: 'primary', render: (e) => <><strong>{e.category}</strong>{e.description && <div style={{ fontSize: 12, color: 'var(--ink3)', fontWeight: 400 }}>{e.description}</div>}</> },
+        { label: 'Payee', render: (e) => e.payee ?? '—' },
+        { label: 'For', render: (e) => [plate(e.vehicle_id), dname(e.driver_id)].filter(Boolean).join(' · ') || '—' },
+        { label: 'Amount', align: 'right', render: (e) => <strong>{kes(e.amount)}</strong> },
+        { label: '', role: 'actions', render: (e) => (
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <button onClick={() => { setPresetCat(''); setEditing(e) }} style={linkBtn}>Edit</button>
+            <form action={async (fd) => { await deleteExpense(fd); router.refresh() }} onSubmit={(ev) => { if (!confirm('Delete this expense?')) ev.preventDefault() }}>
+              <input type="hidden" name="id" value={e.id} />
+              <button type="submit" style={{ ...linkBtn, color: 'var(--danger)' }}>Delete</button>
+            </form>
+          </div>
+        ) },
+      ]} />
     </>
   )
 }
@@ -166,9 +151,3 @@ export default function ExpenseManager({
 const genBtn: React.CSSProperties = { padding: '9px 16px', fontSize: 13.5, cursor: 'pointer' }
 const chipStyle: React.CSSProperties = { padding: '5px 11px', fontSize: 12.5, fontWeight: 600, border: '1px solid var(--border-med)', background: 'var(--surface)', color: 'var(--ink2)', borderRadius: 999, cursor: 'pointer' }
 const linkBtn: React.CSSProperties = { background: 'none', border: 'none', color: 'var(--accent-mid)', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }
-function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <th style={{ padding: '11px 14px', fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: right ? 'right' : 'left' }}>{children}</th>
-}
-function Td({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <td style={{ padding: '11px 14px', textAlign: right ? 'right' : 'left', verticalAlign: 'top' }}>{children}</td>
-}

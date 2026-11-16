@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui'
+import DataTable from '@/components/DataTable'
 import { OWNERSHIP_LABELS, type Vehicle } from '@/lib/types'
 import { saveVehicle, deleteVehicle } from './actions'
 
@@ -86,50 +87,30 @@ export default function VehicleManager({ vehicles, canFinance }: { vehicles: Veh
         </div>
       )}
 
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 760 }}>
-          <thead>
-            <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>Plate</Th><Th>Model</Th><Th>Type</Th><Th>Ownership</Th><Th>Status</Th><Th></Th>
-            </tr>
-          </thead>
-          <tbody>
-            {vehicles.length === 0 && (
-              <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: 'var(--ink3)' }}>No vehicles yet.</td></tr>
-            )}
-            {vehicles.map((v) => (
-              <tr key={v.id} style={{ borderTop: '1px solid var(--border)' }}>
-                <Td><Link href={`/vehicles/${encodeURIComponent(v.id)}`} className="vehicle-record-link"><strong>{v.plate}</strong><span aria-hidden="true"> ↗</span></Link></Td>
-                <Td>{v.model ?? '—'}</Td>
-                <Td>{v.vehicle_type ?? '—'}</Td>
-                <Td>
-                  <Badge tone={v.ownership === 'owned' ? 'green' : 'gold'}>{OWNERSHIP_LABELS[v.ownership]}</Badge>
-                  {v.ownership === 'monthly_hire' && <div style={{ fontSize: 12, color: 'var(--ink3)' }}>{v.owner_name ?? ''}{canFinance && v.monthly_fee ? ` · KES ${v.monthly_fee.toLocaleString()}/mo` : ''}</div>}
-                  {v.ownership === 'casual_hire' && v.owner_name && <div style={{ fontSize: 12, color: 'var(--ink3)' }}>{v.owner_name}</div>}
-                </Td>
-                <Td><Badge tone={STATUS_TONE[v.status]}>{v.status.replace('_', ' ')}</Badge></Td>
-                <Td>
-                  <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                    <button onClick={() => setEditing(v)} style={linkBtn}>Edit</button>
-                    {canFinance && <form action={deleteVehicle} onSubmit={(e) => { if (!confirm(`Delete ${v.plate}?`)) e.preventDefault() }}>
-                      <input type="hidden" name="id" value={v.id} />
-                      <button type="submit" style={{ ...linkBtn, color: 'var(--danger)' }}>Delete</button>
-                    </form>}
-                  </div>
-                </Td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataTable rows={vehicles} rowKey={(v) => v.id} minWidth={760} empty="No vehicles yet." columns={[
+        { label: 'Plate', role: 'primary', render: (v) => <Link href={`/vehicles/${encodeURIComponent(v.id)}`} className="vehicle-record-link"><strong>{v.plate}</strong></Link> },
+        { label: 'Model', render: (v) => v.model ?? '—' },
+        { label: 'Type', render: (v) => v.vehicle_type ?? '—' },
+        { label: 'Ownership', render: (v) => (
+          <>
+            <Badge tone={v.ownership === 'owned' ? 'blue' : 'gold'}>{OWNERSHIP_LABELS[v.ownership]}</Badge>
+            {v.ownership === 'monthly_hire' && <div style={{ fontSize: 12, color: 'var(--ink3)' }}>{v.owner_name ?? ''}{canFinance && v.monthly_fee ? ` · KES ${v.monthly_fee.toLocaleString()}/mo` : ''}</div>}
+            {v.ownership === 'casual_hire' && v.owner_name && <div style={{ fontSize: 12, color: 'var(--ink3)' }}>{v.owner_name}</div>}
+          </>
+        ) },
+        { label: 'Status', render: (v) => <Badge tone={STATUS_TONE[v.status]}>{v.status.replace('_', ' ')}</Badge> },
+        { label: '', role: 'actions', render: (v) => (
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <button onClick={() => setEditing(v)} style={linkBtn}>Edit</button>
+            {canFinance && <form action={deleteVehicle} onSubmit={(e) => { if (!confirm(`Delete ${v.plate}?`)) e.preventDefault() }}>
+              <input type="hidden" name="id" value={v.id} />
+              <button type="submit" style={{ ...linkBtn, color: 'var(--danger)' }}>Delete</button>
+            </form>}
+          </div>
+        ) },
+      ]} />
     </>
   )
 }
 
 const linkBtn: React.CSSProperties = { background: 'none', border: 'none', color: 'var(--accent-mid)', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }
-function Th({ children }: { children?: React.ReactNode }) {
-  return <th style={{ padding: '11px 16px', fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{children}</th>
-}
-function Td({ children }: { children?: React.ReactNode }) {
-  return <td style={{ padding: '11px 16px' }}>{children}</td>
-}

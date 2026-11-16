@@ -30,9 +30,9 @@ export default function InsightsView({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {/* Headline P&L */}
       <div className="grid-stats">
-        <StatCard label="Revenue" value={kes(pl.revenue)} hint={delta === null ? period : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% ${pl.prevLabel}`} accent={delta !== null && delta < 0 ? 'var(--danger)' : 'var(--accent)'} />
-        <StatCard label={profitLabel} value={kes(pl.net)} hint={profitHint} accent={pl.net < 0 ? 'var(--danger)' : pl.costsComplete ? 'var(--accent)' : 'var(--gold)'} />
-        <StatCard label="Fuel-to-sales" value={`${pl.fuelPct}%`} hint={`${kes(pl.fuel)} fuel`} accent={pl.fuelPct > 32 ? 'var(--gold)' : 'var(--accent)'} />
+        <StatCard label="Revenue" value={kes(pl.revenue)} hint={delta === null ? period : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% ${pl.prevLabel}`} accent={delta !== null && delta < 0 ? 'var(--danger)' : 'var(--ok)'} />
+        <StatCard label={profitLabel} value={kes(pl.net)} hint={profitHint} accent={pl.net < 0 ? 'var(--danger)' : pl.costsComplete ? 'var(--ok)' : 'var(--gold)'} />
+        <StatCard label="Fuel-to-sales" value={`${pl.fuelPct}%`} hint={`${kes(pl.fuel)} fuel`} accent={pl.fuelPct > 32 ? 'var(--gold)' : 'var(--ok)'} />
         <StatCard label="Costs logged" value={kes(pl.costs)} hint={pl.costsComplete ? undefined : 'wages still missing'} />
       </div>
 
@@ -47,7 +47,7 @@ export default function InsightsView({
               <div key={i}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 3 }}>
                   <span style={{ fontWeight: 500 }}>{t.label}</span>
-                  <span style={{ color: 'var(--ink2)' }}>{kes(t.revenue)} <span style={{ color: t.net >= 0 ? 'var(--accent)' : 'var(--danger)' }}>· {kes(t.net)} ({m}%)</span></span>
+                  <span style={{ color: 'var(--ink2)' }}>{kes(t.revenue)} <span style={{ color: t.net >= 0 ? 'var(--ok)' : 'var(--danger)' }}>· {kes(t.net)} ({m}%)</span></span>
                 </div>
                 <div style={{ height: 8, borderRadius: 6, background: 'var(--surface2)', overflow: 'hidden', position: 'relative' }}>
                   <div style={{ height: '100%', width: `${(t.revenue / max) * 100}%`, background: 'var(--accent-light)', position: 'absolute' }} />

@@ -102,12 +102,12 @@ export default async function PaybackPage() {
 
       {/* Coverage — per-car numbers are only as complete as trip attribution. */}
       <div className="card" style={{ padding: '12px 16px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
-        borderLeft: `3px solid ${coverage >= 0.9 ? 'var(--accent)' : 'var(--gold)'}` }}>
+        borderLeft: `3px solid ${coverage >= 0.9 ? 'var(--ok)' : 'var(--gold)'}` }}>
         <span style={{ fontSize: 13.5 }}>
           Based on <strong>{attributedTrips}</strong> of <strong>{totalTrips}</strong> trips assigned to a vehicle ({Math.round(coverage * 100)}%).
         </span>
         <div style={{ flex: 1, minWidth: 120, height: 7, background: 'var(--surface2)', borderRadius: 99, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${Math.round(coverage * 100)}%`, background: coverage >= 0.9 ? 'var(--accent)' : 'var(--gold)' }} />
+          <div style={{ height: '100%', width: `${Math.round(coverage * 100)}%`, background: coverage >= 0.9 ? 'var(--ok)' : 'var(--gold)' }} />
         </div>
         <Link href="/trips" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--accent-mid)' }}>Assign trips →</Link>
       </div>
@@ -116,7 +116,7 @@ export default async function PaybackPage() {
         <div className="grid-stats">
           <StatCard label="Capital in fleet" value={kes(fleetInvested)} hint={`${cards.length} owned`} />
           <StatCard label="Contribution" value={kes(fleetContribution)} hint="net of allocated costs" accent="var(--accent)" />
-          <StatCard label="Outstanding loans" value={kes(fleetLoanBalance)} accent={fleetLoanBalance > 0 ? 'var(--gold)' : 'var(--accent)'} />
+          <StatCard label="Outstanding loans" value={kes(fleetLoanBalance)} accent={fleetLoanBalance > 0 ? 'var(--gold)' : 'var(--ok)'} />
           <StatCard label="Data window" value={`${Math.max(1, ...cards.map((c) => c.dataMonths))} mo`} hint="of trip history" />
         </div>
       </Section>
@@ -140,7 +140,7 @@ export default async function PaybackPage() {
         )}
         {cards.map((c) => (
           <div key={c.v.id} className="card card-hover" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ height: 3, background: c.paidBack ? 'var(--accent)' : c.hasLoan && c.surplus < 0 ? 'var(--danger)' : 'var(--gold)' }} />
+            <div style={{ height: 3, background: c.paidBack ? 'var(--ok)' : c.hasLoan && c.surplus < 0 ? 'var(--danger)' : 'var(--gold)' }} />
             <div style={{ padding: 18 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
                 <div>
@@ -148,7 +148,7 @@ export default async function PaybackPage() {
                   <div style={{ fontSize: 13, color: 'var(--ink3)' }}>{c.v.model ?? ''} · {OWNERSHIP_LABELS[c.v.ownership]}</div>
                 </div>
                 {c.price > 0 && (
-                  <span style={{ fontSize: 11.5, fontWeight: 700, color: c.paidBack ? 'var(--accent)' : 'var(--gold)', background: 'var(--surface2)', padding: '3px 9px', borderRadius: 'var(--radius-pill)' }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: c.paidBack ? 'var(--ok)' : 'var(--gold)', background: 'var(--surface2)', padding: '3px 9px', borderRadius: 'var(--radius-pill)' }}>
                     {c.paidBack ? 'Paid back' : `${c.recoveredPct}% recovered`}
                   </span>
                 )}
@@ -161,7 +161,7 @@ export default async function PaybackPage() {
                   {/* recovery bar */}
                   <div style={{ margin: '14px 0 4px' }}>
                     <div style={{ height: 8, borderRadius: 6, background: 'var(--surface2)', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${Math.min(100, c.recoveredPct)}%`, background: c.paidBack ? 'var(--accent)' : 'var(--gold)', borderRadius: 6 }} />
+                      <div style={{ height: '100%', width: `${Math.min(100, c.recoveredPct)}%`, background: c.paidBack ? 'var(--ok)' : 'var(--gold)', borderRadius: 6 }} />
                     </div>
                     <div style={{ fontSize: 12.5, color: 'var(--ink2)', marginTop: 5 }}>
                       {kes(Math.round(c.projectedToDate))} earned of {kes(c.price)}{c.v.purchase_date ? ` · owned ${c.monthsOwned} mo (since ${fmtDate(c.v.purchase_date)})` : ''}
@@ -184,7 +184,7 @@ export default async function PaybackPage() {
                           <Row label="Clears on" value={c.clearDate ? `${fmtDate(c.clearDate)} (${c.monthsLeft} mo)` : '—'} />
                           <Row label="Instalment / month" value={kes(c.loanMo)} />
                           <div style={{ marginTop: 8, padding: '9px 11px', borderRadius: 'var(--radius-sm)', fontSize: 12.5,
-                            background: c.surplus >= 0 ? 'var(--accent-light)' : 'var(--danger-light)', color: c.surplus >= 0 ? 'var(--accent)' : 'var(--danger)' }}>
+                            background: c.surplus >= 0 ? 'var(--accent-light)' : 'var(--danger-light)', color: c.surplus >= 0 ? 'var(--ok)' : 'var(--danger)' }}>
                             {c.surplus >= 0
                               ? `Self-financing: earns ${kes(Math.round(c.surplus))}/mo after its loan instalment.`
                               : `Shortfall: earns ${kes(Math.round(c.avgMonthly))}/mo against a ${kes(c.loanMo)} instalment. You top up ${kes(Math.round(-c.surplus))}/mo.`}
@@ -192,7 +192,7 @@ export default async function PaybackPage() {
                           {c.breakevenTrips !== null && (
                             <div style={{ fontSize: 12.5, color: 'var(--ink2)', marginTop: 8 }}>
                               <strong>Break-even:</strong> needs ~{c.breakevenTrips} trips/mo to cover the instalment · currently doing ~{Math.round(c.tripsPerMonth)}/mo
-                              {c.tripsPerMonth < c.breakevenTrips ? <span style={{ color: 'var(--danger)' }}> ({c.breakevenTrips - Math.round(c.tripsPerMonth)} short)</span> : <span style={{ color: 'var(--accent)' }}> on track</span>}
+                              {c.tripsPerMonth < c.breakevenTrips ? <span style={{ color: 'var(--danger)' }}> ({c.breakevenTrips - Math.round(c.tripsPerMonth)} short)</span> : <span style={{ color: 'var(--ok)' }}> on track</span>}
                             </div>
                           )}
                         </>

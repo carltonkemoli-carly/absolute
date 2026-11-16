@@ -8,7 +8,7 @@ import './workspace.css'
 import './operations-depth.css'
 
 export const metadata: Metadata = {
-  title: 'Absolute Comfort Travel — Operations',
+  title: 'Absolute Comfort Travel · Operations',
   description: 'Bookings, fleet, fuel and finance for Absolute Comfort Travel.',
 }
 

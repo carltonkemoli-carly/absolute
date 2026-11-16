@@ -16,7 +16,7 @@ import './dispatch-workspace.css'
 type Lookups = { drivers: Driver[]; vehicles: Vehicle[]; organizations: Organization[]; contractors: Contractor[] }
 const LABELS: Record<TripStatus, string> = { booked: 'Unassigned', assigned: 'Assigned', dispatched: 'Dispatched', confirmed: 'Confirmed', enroute: 'En route', completed: 'Completed', cancelled: 'Cancelled' }
 const HINTS: Record<TripStatus, string> = { booked: 'Choose driver and vehicle', assigned: 'Send the journey details', dispatched: 'Await driver confirmation', confirmed: 'Ready to set off', enroute: 'Journey in progress', completed: 'Closed jobs', cancelled: 'Not travelling' }
-const STAGE_COLORS: Record<TripStatus, string> = { booked: 'var(--danger)', assigned: 'var(--gold)', dispatched: 'var(--accent-mid)', confirmed: 'var(--accent)', enroute: 'var(--accent)', completed: 'var(--ink3)', cancelled: 'var(--ink3)' }
+const STAGE_COLORS: Record<TripStatus, string> = { booked: 'var(--danger)', assigned: 'var(--gold)', dispatched: 'var(--accent-mid)', confirmed: 'var(--ok)', enroute: 'var(--ok)', completed: 'var(--ink3)', cancelled: 'var(--ink3)' }
 
 export default function DispatchBoard({ day, trips, pendingTrips = [], pendingTotal = 0, lookups, canClearPending = false }: {
   day: string; trips: Trip[]; pendingTrips?: Trip[]; pendingTotal?: number; lookups: Lookups; canClearPending?: boolean

@@ -45,7 +45,7 @@ export default async function ServicesPage() {
           <StatCard label="Records" value={String(services.length)} hint={`${thisYear.length} this year`} />
           <StatCard label="Due in 30 days" value={String(dueSoon)}
             hint={dueSoon > 0 ? 'booked by next service date' : 'nothing falling due'}
-            accent={dueSoon > 0 ? 'var(--gold)' : 'var(--accent)'} />
+            accent={dueSoon > 0 ? 'var(--gold)' : 'var(--ok)'} />
         </div>
 
         {ytdCost > 0 && (

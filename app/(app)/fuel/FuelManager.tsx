@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { kes, fmtDate } from '@/lib/format'
+import DataTable from '@/components/DataTable'
 import type { Driver, FuelEntry, Vehicle } from '@/lib/types'
 import { saveFuel, deleteFuel } from './actions'
 
@@ -65,48 +66,26 @@ export default function FuelManager({
         </div>
       )}
 
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-          <thead>
-            <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>Date</Th><Th>Vehicle</Th><Th>Driver</Th><Th>Station</Th><Th right>Litres</Th><Th right>Odometer</Th><Th right>Amount</Th><Th></Th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.length === 0 && (
-              <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: 'var(--ink3)' }}>No fuel logged this month.</td></tr>
-            )}
-            {entries.map((f) => (
-              <tr key={f.id} style={{ borderTop: '1px solid var(--border)' }}>
-                <Td>{fmtDate(f.fuel_date)}</Td>
-                <Td><strong>{plate(f.vehicle_id)}</strong></Td>
-                <Td>{dname(f.driver_id)}</Td>
-                <Td>{f.station ?? '—'}</Td>
-                <Td right>{f.litres ?? '—'}</Td>
-                <Td right>{f.odometer ?? '—'}</Td>
-                <Td right><strong>{kes(f.amount)}</strong></Td>
-                <Td>
-                  <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                    <button onClick={() => setEditing(f)} style={linkBtn}>Edit</button>
-                    <form action={deleteFuel} onSubmit={(e) => { if (!confirm('Delete this fuel entry?')) e.preventDefault() }}>
-                      <input type="hidden" name="id" value={f.id} />
-                      <button type="submit" style={{ ...linkBtn, color: 'var(--danger)' }}>Delete</button>
-                    </form>
-                  </div>
-                </Td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataTable rows={entries} rowKey={(f) => f.id} minWidth={760} empty="No fuel is logged for this month." columns={[
+        { label: 'Date', nowrap: true, render: (f) => fmtDate(f.fuel_date) },
+        { label: 'Station', role: 'primary', render: (f) => <strong>{f.station ?? 'Fuel'}</strong> },
+        { label: 'Vehicle', render: (f) => plate(f.vehicle_id) },
+        { label: 'Driver', render: (f) => dname(f.driver_id) },
+        { label: 'Litres', align: 'right', render: (f) => f.litres ?? '—' },
+        { label: 'Odometer', align: 'right', render: (f) => f.odometer ?? '—' },
+        { label: 'Amount', align: 'right', render: (f) => <strong>{kes(f.amount)}</strong> },
+        { label: '', role: 'actions', render: (f) => (
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <button onClick={() => setEditing(f)} style={linkBtn}>Edit</button>
+            <form action={deleteFuel} onSubmit={(e) => { if (!confirm('Delete this fuel entry?')) e.preventDefault() }}>
+              <input type="hidden" name="id" value={f.id} />
+              <button type="submit" style={{ ...linkBtn, color: 'var(--danger)' }}>Delete</button>
+            </form>
+          </div>
+        ) },
+      ]} />
     </>
   )
 }
 
 const linkBtn: React.CSSProperties = { background: 'none', border: 'none', color: 'var(--accent-mid)', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }
-function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <th style={{ padding: '11px 14px', fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: right ? 'right' : 'left' }}>{children}</th>
-}
-function Td({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <td style={{ padding: '11px 14px', textAlign: right ? 'right' : 'left' }}>{children}</td>
-}

@@ -113,10 +113,10 @@ export default async function DataHealthPage() {
           <StatCard label="Checks run" value={String(checks.length)} hint="across every record" />
           <StatCard label="Needs attention" value={String(issues.length)}
             hint={issues.length > 0 ? 'fix these first' : 'nothing broken'}
-            accent={issues.length > 0 ? 'var(--danger)' : 'var(--accent)'} />
+            accent={issues.length > 0 ? 'var(--danger)' : 'var(--ok)'} />
           <StatCard label="Worth a look" value={String(infos.length)}
             hint={infos.length > 0 ? 'not urgent' : 'nothing pending'}
-            accent={infos.length > 0 ? 'var(--gold)' : 'var(--accent)'} />
+            accent={infos.length > 0 ? 'var(--gold)' : 'var(--ok)'} />
           <StatCard label="Healthy" value={String(clean.length)} hint="passing cleanly" accent="var(--accent)" />
         </div>
 
@@ -156,8 +156,8 @@ function CheckList({ title, children }: { title: string; children: React.ReactNo
   )
 }
 function Row({ c }: { c: Check }) {
-  const color = c.level === 'warn' ? 'var(--danger)' : c.level === 'info' ? 'var(--gold)' : 'var(--accent)'
-  const icon = c.level === 'warn' ? '⚠' : c.level === 'info' ? 'ℹ' : '✓'
+  const color = c.level === 'warn' ? 'var(--danger)' : c.level === 'info' ? 'var(--gold)' : 'var(--ok)'
+  const icon = c.level === 'warn' ? '!' : c.level === 'info' ? 'i' : '✓'
   return (
     <Link href={c.href} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderTop: '1px solid var(--border)' }}>
       <span style={{ color, fontSize: 15, width: 16, textAlign: 'center' }}>{icon}</span>

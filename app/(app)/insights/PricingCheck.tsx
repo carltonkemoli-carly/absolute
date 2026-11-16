@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { kes } from '@/lib/format'
+import DataTable from '@/components/DataTable'
 
 type PriceRow = { route: string; trips: number; card: number; actual: number; deltaPct: number; totalVar: number }
 type Unmatched = { area: string; trips: number; revenue: number }
@@ -30,33 +31,22 @@ export default function PricingCheck({
         <>
           <div className="grid-stats" style={{ marginBottom: 14 }}>
             <Mini label="Trips checked" value={String(matched)} />
-            <Mini label="Under-charged" value={kes(underRecovery)} tone={underRecovery > 0 ? 'var(--danger)' : 'var(--accent)'} hint="below card rate" />
+            <Mini label="Under-charged" value={kes(underRecovery)} tone={underRecovery > 0 ? 'var(--danger)' : 'var(--ok)'} hint="below card rate" />
             <Mini label="Over card" value={kes(overCharge)} tone="var(--ink)" hint="charged above card" />
           </div>
 
           {under.length > 0 && (
             <>
               <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink2)', margin: '2px 0 8px' }}>Routes charged below the card</div>
-              <div style={{ overflowX: 'auto', marginBottom: 14 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ textAlign: 'left', color: 'var(--ink3)' }}>
-                      <Th>Route</Th><Th right>Trips</Th><Th right>Card</Th><Th right>Avg charged</Th><Th right>Δ</Th><Th right>Month gap</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {under.slice(0, 12).map((r, i) => (
-                      <tr key={i} style={{ borderTop: '1px solid var(--border)' }}>
-                        <Td>{r.route}</Td>
-                        <Td right>{r.trips}</Td>
-                        <Td right>{kes(r.card)}</Td>
-                        <Td right>{kes(r.actual)}</Td>
-                        <Td right><span style={{ color: 'var(--danger)', fontWeight: 600 }}>{r.deltaPct.toFixed(0)}%</span></Td>
-                        <Td right><span style={{ color: 'var(--danger)', fontWeight: 600 }}>{kes(r.totalVar)}</span></Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div style={{ marginBottom: 14 }}>
+                <DataTable rows={under.slice(0, 12)} rowKey={(r) => r.route} empty="No routes are charged below the card." columns={[
+                  { label: 'Route', role: 'primary', render: (r) => <strong>{r.route}</strong> },
+                  { label: 'Trips', align: 'right', render: (r) => r.trips },
+                  { label: 'Card', align: 'right', render: (r) => kes(r.card) },
+                  { label: 'Avg charged', align: 'right', render: (r) => kes(r.actual) },
+                  { label: 'Below card', align: 'right', render: (r) => <span style={{ color: 'var(--danger)', fontWeight: 600 }}>{r.deltaPct.toFixed(0)}%</span> },
+                  { label: 'Month gap', align: 'right', render: (r) => <span style={{ color: 'var(--danger)', fontWeight: 600 }}>{kes(r.totalVar)}</span> },
+                ]} />
               </div>
             </>
           )}
@@ -87,10 +77,4 @@ function Mini({ label, value, hint, tone }: { label: string; value: string; hint
       {hint && <div style={{ fontSize: 11.5, color: 'var(--ink3)', marginTop: 2 }}>{hint}</div>}
     </div>
   )
-}
-function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <th style={{ padding: '8px 10px', fontSize: 11.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', textAlign: right ? 'right' : 'left' }}>{children}</th>
-}
-function Td({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <td style={{ padding: '8px 10px', textAlign: right ? 'right' : 'left', whiteSpace: 'nowrap' }}>{children}</td>
 }

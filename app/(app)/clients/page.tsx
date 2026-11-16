@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { PageHeader, StatCard, Card, Section } from '@/components/ui'
 import PrintButton from '@/components/PrintButton'
+import DataTable from '@/components/DataTable'
 import { Bars } from '@/components/Bars'
 import SegmentDonut from '@/components/SegmentDonut'
 import { topSegments } from '@/lib/chart'
@@ -50,15 +51,15 @@ export default async function ClientsPage() {
       <Section title="This month">
         <div className="grid-stats">
           <StatCard label="Active clients" value={String(clients.length)} hint="with logged trips" />
-          <StatCard label="Top client" value={top?.name ?? '—'} hint={top ? `${Math.round(top.share * 100)}% of revenue` : undefined} accent={concentrated ? 'var(--gold)' : 'var(--accent)'} />
-          <StatCard label="Top 3 share" value={`${Math.round(top3 * 100)}%`} hint="of all revenue" accent={top3 > 0.6 ? 'var(--gold)' : 'var(--accent)'} />
+          <StatCard label="Top client" value={top?.name ?? '—'} hint={top ? `${Math.round(top.share * 100)}% of revenue` : undefined} accent={concentrated ? 'var(--gold)' : 'var(--ok)'} />
+          <StatCard label="Top 3 share" value={`${Math.round(top3 * 100)}%`} hint="of all revenue" accent={top3 > 0.6 ? 'var(--gold)' : 'var(--ok)'} />
           <StatCard label="Total revenue" value={kes(totalRev)} hint="all clients" />
         </div>
       </Section>
 
       {concentrated && (
         <div className="card" style={{ padding: '13px 16px', marginBottom: 16, background: 'var(--gold-light)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-          <span style={{ fontSize: 16 }}>⚠</span>
+          <span style={{ width: 8, height: 8, borderRadius: 99, background: 'var(--gold)', flexShrink: 0, marginTop: 6 }} aria-hidden="true" />
           <div style={{ fontSize: 13.5, color: 'var(--ink)' }}>
             <strong>Concentration risk.</strong> {Math.round((top?.share ?? 0) * 100)}% of your revenue comes from <strong>{top?.name}</strong>. Worth building up the next tier of clients.
           </div>
@@ -80,40 +81,20 @@ export default async function ClientsPage() {
         </div>
       </Section>
 
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
-            <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>Client</Th><Th right>Revenue</Th><Th right>Share</Th><Th right>Trips</Th><Th right>Avg fare</Th><Th>Top route</Th><Th>Last trip</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {clients.map((c) => {
-              const ds = daysSince(c.lastTrip)
-              const stale = ds != null && ds > 45
-              return (
-                <tr key={c.id} style={{ borderTop: '1px solid var(--border)' }}>
-                  <Td><Link href={`/clients/${encodeURIComponent(c.id)}`} className="client-record-link"><strong>{c.name}</strong><span aria-hidden="true"> ↗</span></Link></Td>
-                  <Td right>{kes(c.revenue)}</Td>
-                  <Td right>{Math.round(c.share * 100)}%</Td>
-                  <Td right>{c.trips}</Td>
-                  <Td right>{kes(c.avgFare)}</Td>
-                  <Td><span style={{ color: 'var(--ink2)' }}>{c.topRoute}</span></Td>
-                  <Td><span style={{ color: stale ? 'var(--danger)' : 'var(--ink2)' }}>{c.lastTrip ? `${fmtDate(c.lastTrip)}${stale ? ` · ${ds}d ago` : ''}` : '—'}</span></Td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+      <DataTable rows={clients} rowKey={(c) => c.id} minWidth={760} empty="No client trips are recorded yet." columns={[
+        { label: 'Client', role: 'primary', render: (c) => <Link href={`/clients/${encodeURIComponent(c.id)}`} className="client-record-link"><strong>{c.name}</strong></Link> },
+        { label: 'Revenue', align: 'right', render: (c) => kes(c.revenue) },
+        { label: 'Share', align: 'right', render: (c) => `${Math.round(c.share * 100)}%` },
+        { label: 'Trips', align: 'right', render: (c) => c.trips },
+        { label: 'Avg fare', align: 'right', render: (c) => kes(c.avgFare) },
+        { label: 'Top route', render: (c) => <span style={{ color: 'var(--ink2)' }}>{c.topRoute}</span> },
+        { label: 'Last trip', nowrap: true, render: (c) => {
+          const ds = daysSince(c.lastTrip)
+          const stale = ds != null && ds > 45
+          return <span style={{ color: stale ? 'var(--danger)' : 'var(--ink2)' }}>{c.lastTrip ? `${fmtDate(c.lastTrip)}${stale ? ` · ${ds}d ago` : ''}` : '—'}</span>
+        } },
+      ]} />
       <p style={{ fontSize: 12.5, color: 'var(--ink3)', marginTop: 10 }}>Red = no trip in 45+ days.</p>
     </>
   )
-}
-
-function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <th style={{ padding: '10px 12px', fontSize: 11.5, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.03em', textAlign: right ? 'right' : 'left' }}>{children}</th>
-}
-function Td({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <td style={{ padding: '10px 12px', textAlign: right ? 'right' : 'left', whiteSpace: 'nowrap' }}>{children}</td>
 }

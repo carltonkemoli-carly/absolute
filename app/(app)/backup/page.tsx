@@ -48,7 +48,7 @@ export default async function BackupPage() {
 
       <div className="card" style={{ padding: 18, marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <div className="font-display" style={{ fontSize: 15, fontWeight: 600 }}>📊 Back up to a Google Sheet</div>
+          <div className="font-display" style={{ fontSize: 15, fontWeight: 600 }}>Back up to a Google Sheet</div>
           <PushToSheetButton />
         </div>
         <div style={{ fontSize: 13.5, color: 'var(--ink2)', marginTop: 8, marginBottom: 10, maxWidth: 760 }}>

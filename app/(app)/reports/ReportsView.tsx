@@ -1,6 +1,7 @@
 'use client'
 
 import { kes } from '@/lib/format'
+import DataTable from '@/components/DataTable'
 import { Section } from '@/components/ui'
 
 export interface MonthRow {
@@ -27,15 +28,15 @@ export default function ReportsView({ months, costsComplete = false, delta = nul
     <div>
       <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
         <button className="btn-ghost" style={{ padding: '8px 16px', fontSize: 13.5, cursor: 'pointer' }} onClick={() => window.print()}>
-          🖨 Print / Save as PDF
+          Print / Save as PDF
         </button>
       </div>
 
       <Section title="Latest month">
         <div className="grid-stats">
-          <Stat label="Revenue" value={kes(latest?.revenue ?? 0)} hint={delta === null ? latest?.label : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(0)}% ${deltaLabel}`} tone={delta !== null && delta < 0 ? 'var(--danger)' : 'var(--accent)'} />
-          <Stat label={profitLabel} value={kes(latest?.profit ?? 0)} hint={`${((latest?.margin ?? 0) * 100).toFixed(0)}% · ${profitNote}`} tone={(latest?.profit ?? 0) < 0 ? 'var(--danger)' : 'var(--accent)'} />
-          <Stat label="Fuel index" value={`${((latest?.index ?? 0) * 100).toFixed(1)}%`} tone={(latest?.index ?? 0) > 0.3 ? 'var(--danger)' : 'var(--accent)'} />
+          <Stat label="Revenue" value={kes(latest?.revenue ?? 0)} hint={delta === null ? latest?.label : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(0)}% ${deltaLabel}`} tone={delta !== null && delta < 0 ? 'var(--danger)' : 'var(--ok)'} />
+          <Stat label={profitLabel} value={kes(latest?.profit ?? 0)} hint={`${((latest?.margin ?? 0) * 100).toFixed(0)}% · ${profitNote}`} tone={(latest?.profit ?? 0) < 0 ? 'var(--danger)' : 'var(--ok)'} />
+          <Stat label="Fuel index" value={`${((latest?.index ?? 0) * 100).toFixed(1)}%`} tone={(latest?.index ?? 0) > 0.3 ? 'var(--danger)' : 'var(--ok)'} />
           <Stat label="6-month revenue" value={kes(months.reduce((a, m) => a + m.revenue, 0))} />
         </div>
       </Section>
@@ -61,28 +62,15 @@ export default function ReportsView({ months, costsComplete = false, delta = nul
       </div>
 
       {/* Monthly table */}
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
-          <thead>
-            <tr style={{ background: 'var(--surface2)', textAlign: 'left' }}>
-              <Th>Month</Th><Th right>Trips</Th><Th right>Revenue</Th><Th right>Fuel</Th><Th right>{profitLabel}</Th><Th right>Margin</Th><Th right>Fuel index</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {months.map((m) => (
-              <tr key={m.ym} style={{ borderTop: '1px solid var(--border)' }}>
-                <Td><strong>{m.label}</strong></Td>
-                <Td right>{m.trips}</Td>
-                <Td right>{kes(m.revenue)}</Td>
-                <Td right>{kes(m.fuel)}</Td>
-                <Td right><strong style={{ color: m.profit < 0 ? 'var(--danger)' : 'var(--ink)' }}>{kes(m.profit)}</strong></Td>
-                <Td right><span style={{ color: m.margin < 0 ? 'var(--danger)' : 'var(--ink2)', fontWeight: 600 }}>{(m.margin * 100).toFixed(0)}%</span></Td>
-                <Td right><span style={{ color: m.index > 0.35 ? 'var(--danger)' : 'var(--accent)', fontWeight: 600 }}>{(m.index * 100).toFixed(1)}%</span></Td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataTable rows={months} rowKey={(m) => m.ym} minWidth={700} empty="No months to show." columns={[
+        { label: 'Month', role: 'primary', render: (m) => <strong>{m.label}</strong> },
+        { label: 'Trips', align: 'right', render: (m) => m.trips },
+        { label: 'Revenue', align: 'right', render: (m) => kes(m.revenue) },
+        { label: 'Fuel', align: 'right', render: (m) => kes(m.fuel) },
+        { label: profitLabel, align: 'right', render: (m) => <strong style={{ color: m.profit < 0 ? 'var(--danger)' : 'var(--ink)' }}>{kes(m.profit)}</strong> },
+        { label: 'Margin', align: 'right', render: (m) => <span style={{ color: m.margin < 0 ? 'var(--danger)' : 'var(--ink2)', fontWeight: 600 }}>{(m.margin * 100).toFixed(0)}%</span> },
+        { label: 'Fuel index', align: 'right', render: (m) => <span style={{ color: m.index > 0.35 ? 'var(--danger)' : 'var(--ok)', fontWeight: 600 }}>{(m.index * 100).toFixed(1)}%</span> },
+      ]} />
 
       <style>{`@media print { .no-print { display: none } aside { display: none } }`}</style>
     </div>
@@ -100,10 +88,4 @@ function Stat({ label, value, hint, tone }: { label: string; value: string; hint
 }
 function Legend({ color, text }: { color: string; text: string }) {
   return <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 11, height: 11, borderRadius: 3, background: color }} />{text}</span>
-}
-function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <th style={{ padding: '11px 14px', fontSize: 12, fontWeight: 600, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: right ? 'right' : 'left' }}>{children}</th>
-}
-function Td({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <td style={{ padding: '11px 14px', textAlign: right ? 'right' : 'left' }}>{children}</td>
 }

@@ -46,7 +46,7 @@ export default function ExpresswayInsights({
         <div className="grid-stats">
           <StatCard label="Expressway tolls" value={kes(stats.totalToll)}
             hint={delta === null ? period : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% vs last month`}
-            accent={delta !== null && delta > 0 ? 'var(--gold)' : 'var(--accent)'} />
+            accent={delta !== null && delta > 0 ? 'var(--gold)' : 'var(--ok)'} />
           <StatCard label="Expressway trips" value={String(stats.expressCount)} hint={`${pct}% of ${stats.totalTrips} trips`} />
           <StatCard label="Average toll" value={kes(stats.avgToll)} hint="per expressway trip" />
           <StatCard label="Non-expressway" value={String(stats.totalTrips - stats.expressCount)} hint="trips with no toll" />
@@ -135,7 +135,7 @@ export default function ExpresswayInsights({
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div className="font-display" style={{ fontWeight: 700 }}>{kes(r.toll)}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: r.billed ? 'var(--accent)' : 'var(--danger)' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: r.billed ? 'var(--ok)' : 'var(--danger)' }}>
                   {r.billed ? 'invoiced' : 'not invoiced'}
                 </div>
               </div>

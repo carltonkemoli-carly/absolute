@@ -156,11 +156,11 @@ function AllSuppliers({ rows, pace }: { rows: SupplierRow[]; pace: number }) {
             hint={revenueTarget > 0 ? `${Math.round((revenue / revenueTarget) * 100)}% of ${kes(revenueTarget)} target` : `${rows.length} supplier${rows.length === 1 ? '' : 's'}`}
             accent="var(--accent)" />
           <StatCard label="Trips" value={String(trips)} hint="this month" />
-          <StatCard label="Outstanding" value={kes(outstanding)} hint="owed · all time" accent={outstanding > 0 ? 'var(--gold)' : 'var(--accent)'} />
-          <StatCard label="Overdue" value={kes(overdue)} hint="past due · all time" accent={overdue > 0 ? 'var(--danger)' : 'var(--accent)'} />
+          <StatCard label="Outstanding" value={kes(outstanding)} hint="owed · all time" accent={outstanding > 0 ? 'var(--gold)' : 'var(--ok)'} />
+          <StatCard label="Overdue" value={kes(overdue)} hint="past due · all time" accent={overdue > 0 ? 'var(--danger)' : 'var(--ok)'} />
           <StatCard label="Average days to pay" value={avgDays === null ? '—' : `${avgDays}`}
             hint={avgDays === null ? 'no settled invoices yet' : 'from issue to settled'}
-            accent={avgDays !== null && avgDays > 45 ? 'var(--danger)' : avgDays !== null && avgDays > 30 ? 'var(--gold)' : 'var(--accent)'} />
+            accent={avgDays !== null && avgDays > 45 ? 'var(--danger)' : avgDays !== null && avgDays > 30 ? 'var(--gold)' : 'var(--ok)'} />
         </div>
 
         {revenue > 0 && (
@@ -202,7 +202,7 @@ function supplierColumns(pace: number): Column<SupplierRow>[] {
     { label: 'Target', align: 'right', render: (r) => {
       const pct = r.revenueTarget > 0 ? r.revenue / r.revenueTarget : null
       if (pct === null) return <span style={{ color: 'var(--ink3)' }}>—</span>
-      return <span style={{ fontWeight: 700, color: pct >= 1 || pct >= pace ? 'var(--accent)' : pct >= pace * 0.7 ? 'var(--gold)' : 'var(--danger)' }}>{Math.round(pct * 100)}%</span>
+      return <span style={{ fontWeight: 700, color: pct >= 1 || pct >= pace ? 'var(--ok)' : pct >= pace * 0.7 ? 'var(--gold)' : 'var(--danger)' }}>{Math.round(pct * 100)}%</span>
     } },
     { label: 'Avg fare', align: 'right', render: (r) => kes(r.avgFare) },
     { label: 'Outstanding', align: 'right', render: (r) => kes(r.outstanding) },
@@ -257,11 +257,11 @@ function SupplierDetail({
         <div className="grid-stats" style={{ marginBottom: 16 }}>
           <StatCard label="Revenue" value={kes(row.revenue)} hint={`net ${kes(row.netFare)} (excl. expressway)`} accent="var(--accent)" />
           <StatCard label="Trips" value={String(row.trips)} hint={row.trips > 0 ? `avg fare ${kes(row.avgFare)}` : 'none this month'} />
-          <StatCard label="Outstanding" value={kes(row.outstanding)} hint={`${row.invoices} invoice${row.invoices === 1 ? '' : 's'} · all time`} accent={row.outstanding > 0 ? 'var(--gold)' : 'var(--accent)'} />
-          <StatCard label="Overdue" value={kes(row.overdue)} hint={row.overdue > 0 ? 'chase this' : 'nothing late'} accent={row.overdue > 0 ? 'var(--danger)' : 'var(--accent)'} />
+          <StatCard label="Outstanding" value={kes(row.outstanding)} hint={`${row.invoices} invoice${row.invoices === 1 ? '' : 's'} · all time`} accent={row.outstanding > 0 ? 'var(--gold)' : 'var(--ok)'} />
+          <StatCard label="Overdue" value={kes(row.overdue)} hint={row.overdue > 0 ? 'chase this' : 'nothing late'} accent={row.overdue > 0 ? 'var(--danger)' : 'var(--ok)'} />
           <StatCard label="Days to pay" value={row.daysToPay === null ? '—' : `${row.daysToPay}`}
             hint={row.daysToPay === null ? 'no settled invoices yet' : 'average, issue to settled'}
-            accent={row.daysToPay !== null && row.daysToPay > 45 ? 'var(--danger)' : row.daysToPay !== null && row.daysToPay > 30 ? 'var(--gold)' : 'var(--accent)'} />
+            accent={row.daysToPay !== null && row.daysToPay > 45 ? 'var(--danger)' : row.daysToPay !== null && row.daysToPay > 30 ? 'var(--gold)' : 'var(--ok)'} />
         </div>
 
         <div className="grid-2">
