@@ -44,8 +44,10 @@ Run these in the Supabase SQL Editor, **on a staging copy first**, in order:
    invoice creation, dispatch overlap constraints.
 3. `lib/migration-invoice-payments.sql` — the payment ledger.
 
-The app works before step 3 (payments fall back to adjusting the paid total
-and say so), but not before step 2 for invoices. Then deploy the branch.
+The app works before any of these run: invoices are created and their trips
+linked without the database function (undone if any trip cannot be linked),
+and payments fall back to adjusting the paid total. Running them adds the
+database-level guarantees.
 The Supabase project was reported inactive on 11 November; it may need
 restoring first.
 

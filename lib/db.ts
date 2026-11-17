@@ -311,9 +311,39 @@ export async function createInvoiceForTrips(invoice: Row, tripIds: string[]): Pr
     saveStore(data)
     return { id, error: null }
   }
-  // No fallback: a missing RPC must fail rather than leave a partial invoice.
-  const { data, error } = await (await sb()).rpc('create_invoice_for_trips', { p_invoice: invoice, p_trip_ids: tripIds })
-  return { id: error ? null : data as string, error: error?.message ?? null }
+  const client = await sb()
+  const { data, error } = await client.rpc('create_invoice_for_trips', { p_invoice: invoice, p_trip_ids: tripIds })
+  if (!error) return { id: data as string, error: null }
+  // Until migration-integrity.sql has run, the database has no such function.
+  // Fall back to creating the invoice and then linking its trips, undoing the
+  // invoice if the trips cannot all be linked, so nothing is left half made.
+  const missingFunction = error.code === 'PGRST202' || error.code === '42883'
+  if (!missingFunction) return { id: null, error: error.message }
+  return createInvoiceWithoutRpc(client, invoice, tripIds)
+}
+
+type Client = Awaited<ReturnType<typeof sb>>
+async function createInvoiceWithoutRpc(client: Client, invoice: Row, tripIds: string[]): Promise<{ id: string | null; error: string | null }> {
+  const { data: created, error: insertError } = await client.from('invoices').insert(invoice).select('id').single()
+  if (insertError || !created) return { id: null, error: insertError?.message ?? 'The invoice could not be created.' }
+  const id = (created as { id: string }).id
+  let linked = 0
+  for (let i = 0; i < tripIds.length; i += 100) {
+    const batch = tripIds.slice(i, i + 100)
+    const { data: rows, error: linkError } = await client.from('trips').update({ invoice_id: id })
+      .in('id', batch).is('invoice_id', null).eq('status', 'completed').select('id')
+    if (linkError) {
+      // Older databases have no trips.invoice_id yet: keep the invoice, unlinked,
+      // as the app did before invoices were linked to trips.
+      if (linkError.code === '42703' || linkError.code === 'PGRST204') return { id, error: null }
+      break
+    }
+    linked += rows?.length ?? 0
+  }
+  if (linked === tripIds.length) return { id, error: null }
+  await client.from('trips').update({ invoice_id: null }).eq('invoice_id', id)
+  await client.from('invoices').delete().eq('id', id)
+  return { id: null, error: 'Trips changed or are already billed. Refresh and retry.' }
 }
 
 // The trips an invoice actually bills. Empty for invoices raised before trips
