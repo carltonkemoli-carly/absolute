@@ -60,6 +60,9 @@ restoring first.
 | Profit and loss (one engine) | `lib/finance.ts` — `monthlyPL`, `periodPL`, `profitHeadline`. Only completed trips earn revenue; tolls are pass-through. |
 | Dashboard maths | `lib/dashboard.ts` — receivables aging, debtors, like-for-like comparison |
 | Payments | `lib/payments.ts` (validation, settlement), `invoice_payments` table |
+| Supplier statements | `lib/statement.ts` (open invoices, receipts, reminder message), page `app/(app)/suppliers/[id]/statement` |
+| Driver figures | `lib/driver-stats.ts`, page `app/(app)/drivers/[id]` |
+| Month close | `lib/month-close.ts` (the checks), page `app/(app)/close` |
 | Dispatch rules | `lib/dispatch-rules.ts` — only jobs still to be done hold a driver or vehicle |
 | Search | `lib/record-search.ts`, command palette `components/CommandPalette.tsx`, server action `app/(app)/search/actions.ts` |
 | Shell and navigation | `components/AppShell.tsx` |
@@ -98,6 +101,14 @@ restoring first.
   and vehicle, or mark them completed.
 - **Receivables:** aging, who owes what, a payment ledger (amount, date,
   M-Pesa / bank / cash / cheque, reference), receipts printed on the invoice.
+- **Supplier statement:** per supplier, what is owed and how late, receipts per
+  invoice, printable, with a ready-to-send payment reminder (copy or WhatsApp).
+- **Driver record:** a month of one driver's work (completed trips with a fair
+  comparison, fares net of tolls, days worked, vehicles, documents), reached
+  from the Drivers list and from search. Wages show to finance roles only.
+- **Month close:** a checklist saying whether a month's profit is complete
+  enough to trust (open trips, fares, tagging, invoicing, wages, fuel, other
+  costs, overdue), each with a link to fix it. Finance roles only.
 - From the ChatGPT session: Today's work, Dispatch board/list, attention
   centre, vehicle and client record pages, saved trip views and CSV export.
 

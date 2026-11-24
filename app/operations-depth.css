@@ -86,12 +86,14 @@ summary:focus-visible {
   }
 }
 .vehicle-record-link,
-.client-record-link {
+.client-record-link,
+.driver-record-link {
   color: var(--accent-mid);
   text-decoration: none;
 }
 .vehicle-record-link:hover,
-.client-record-link:hover {
+.client-record-link:hover,
+.driver-record-link:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
 }

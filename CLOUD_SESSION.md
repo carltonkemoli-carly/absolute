@@ -204,3 +204,19 @@ Verified: `npm test` (10/10), `python3 tests/integrity.py local` (all pass),
 lint clean, production build clean, 25 routes at 1440px and 390px with no
 overflow, console errors or failed requests. Nothing deployed and no live
 data touched.
+
+## 11. Three further updates (24 November 2026)
+
+- **Supplier statements** (`/suppliers/[id]/statement`): open invoices oldest
+  first, receipts under each, aging, balance due, printable on one page, and
+  `reminderMessage()` for WhatsApp or email. Linked from each supplier's page.
+- **Driver record pages** (`/drivers/[id]`) and a "Trips, month" column on the
+  Drivers list. Search now opens a driver or a supplier on their own page.
+- **Month close** (`/close`, Finance menu): `monthCloseChecks()` lists what is
+  missing before a month's profit can be relied on. A month still running is
+  called out as such.
+
+Pure logic in `lib/statement.ts`, `lib/driver-stats.ts`, `lib/month-close.ts`,
+covered by `tests/statement.cjs`, `tests/driver-stats.cjs`,
+`tests/month-close.cjs`. No migration, no live data touched. Not on `main` or
+deployed until merged.

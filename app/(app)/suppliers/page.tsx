@@ -290,7 +290,7 @@ function SupplierDetail({
         </Section>
       )}
 
-      <Section title="Open invoices" action={<Link href="/receivables" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--accent-mid)' }}>All receivables →</Link>}>
+      <Section title="Open invoices" action={<span style={{ display: 'flex', gap: 14 }}><Link href={`/suppliers/${encodeURIComponent(cid)}/statement`} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--accent-mid)' }}>Statement and reminder →</Link><Link href="/receivables" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--accent-mid)' }}>All receivables →</Link></span>}>
         <DataTable
           rows={openInvoices} rowKey={(i) => i.id}
           empty={`Nothing outstanding from ${row.contractor.name}.`}

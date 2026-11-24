@@ -41,6 +41,7 @@ const NAV_GROUPS: NavGroup[] = [
     { href: '/receivables', label: 'Receivables', icon: 'receivables', financeOnly: true, keywords: 'invoices payments owed debtors' },
     { href: '/expressway', label: 'Expressway', icon: 'expressway', financeOnly: true, keywords: 'tolls' },
     { href: '/expenses', label: 'Expenses', icon: 'expenses', financeOnly: true, keywords: 'costs wages spending' },
+    { href: '/close', label: 'Month close', icon: 'health', financeOnly: true, keywords: 'month end checklist reconcile complete figures ready trust' },
     { href: '/goals', label: 'Targets & P&L', icon: 'goals', financeOnly: true, keywords: 'profit and loss budget quarter' },
     { href: '/payback', label: 'Vehicle payback', icon: 'payback', financeOnly: true, keywords: 'loan return on vehicle' },
     { href: '/reports', label: 'Reports', icon: 'reports', financeOnly: true, keywords: 'monthly trends print' },

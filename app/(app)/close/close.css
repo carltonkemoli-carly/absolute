@@ -1,0 +1,124 @@
+/* Month close: a verdict, three figures, and a checklist. */
+.close-page {
+  max-width: 940px;
+}
+.close-verdict {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 18px 20px;
+  border-left: 4px solid var(--border-med);
+}
+.close-verdict[data-tone="ok"] {
+  border-left-color: var(--ok);
+}
+.close-verdict[data-tone="warn"] {
+  border-left-color: var(--gold);
+}
+.close-verdict[data-tone="bad"] {
+  border-left-color: var(--danger);
+}
+.close-mark {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--surface2);
+  font-size: 20px;
+  font-weight: 700;
+}
+.close-verdict[data-tone="ok"] .close-mark {
+  background: var(--ok-light);
+  color: var(--ok);
+}
+.close-verdict[data-tone="warn"] .close-mark {
+  background: var(--gold-light);
+  color: var(--gold);
+}
+.close-verdict[data-tone="bad"] .close-mark {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+.close-verdict h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.close-verdict p {
+  margin: 3px 0 0;
+  font-size: 13.5px;
+  color: var(--ink2);
+}
+.close-kpis {
+  margin-bottom: 22px;
+}
+.close-heading {
+  margin: 0 0 10px 2px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink3);
+}
+.close-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 22px;
+  padding: 0;
+  list-style: none;
+}
+.close-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 16px;
+}
+.close-dot {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ok);
+}
+.close-row[data-state="warn"] .close-dot {
+  background: var(--chart-warn);
+}
+.close-row[data-state="bad"] .close-dot {
+  background: var(--chart-bad);
+}
+.close-text {
+  flex: 1;
+  min-width: 0;
+}
+.close-text strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.close-text p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink2);
+}
+.close-fix {
+  flex: none;
+  padding: 8px 14px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+@media (max-width: 860px) {
+  .close-row {
+    flex-wrap: wrap;
+  }
+  .close-text {
+    flex-basis: calc(100% - 30px);
+  }
+  .close-fix {
+    margin-left: 24px;
+  }
+}

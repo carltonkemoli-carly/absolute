@@ -19,6 +19,9 @@ assert.equal(finder.searchRecords('syn-001',source,true).some(group=>group.key==
 assert.equal(finder.searchRecords('Synthetic Organization',source,false).some(group=>group.key==='clients'),false)
 assert.equal(finder.searchRecords('Synthetic Organization',source,true).some(group=>group.key==='clients'),true)
 assert.equal(finder.searchRecords('TEST001',source,false).find(group=>group.key==='vehicles').items[0].href,'/vehicles/vehicle')
+const people = {...source, drivers:[{id:'drv 1',name:'Synthetic Driver',phone:'0700 000 000',status:'active'}]}
+assert.equal(finder.searchRecords('Synthetic Driver',people,false).find(group=>group.key==='drivers').items[0].href,'/drivers/drv%201','a driver opens their own record')
+assert.equal(finder.searchRecords('Synthetic Supplier',source,true).find(group=>group.key==='contractors').items[0].href,'/suppliers?c=contractor','a supplier opens its own page')
 const issues = finder.deriveAttention([trip],[{id:'doc',expiry_date:'2026-11-09'}],source.invoices,'2026-11-10',false)
 assert.equal(issues.missingAssignments.length,1)
 assert.equal(issues.expiredDocuments.length,1)

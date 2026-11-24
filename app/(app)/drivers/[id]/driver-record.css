@@ -1,0 +1,174 @@
+/* Driver record: a month of one driver's work. */
+.driver-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.driver-kpis {
+  margin-bottom: 14px;
+}
+.driver-note {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--gold-light);
+  color: var(--gold);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.driver-note a {
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.driver-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+.driver-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.driver-panel {
+  padding: 16px 18px;
+  min-width: 0;
+}
+.driver-panel header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.driver-panel h2 {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 650;
+}
+.driver-panel header a {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.driver-empty,
+.driver-more {
+  margin: 0;
+  padding: 14px 0 4px;
+  font-size: 13px;
+  color: var(--ink3);
+}
+.driver-trips,
+.driver-cars,
+.driver-docs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.driver-trips li,
+.driver-docs li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--border);
+}
+.driver-trips li:first-child,
+.driver-docs li:first-child {
+  border-top: 0;
+}
+.driver-trips li > div:first-child,
+.driver-docs li > div:first-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.driver-trips strong,
+.driver-docs strong {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.driver-trips small,
+.driver-docs small {
+  font-size: 12px;
+  color: var(--ink3);
+}
+.driver-trip-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex: none;
+}
+.driver-trip-end b {
+  font-size: 13px;
+}
+.driver-cars li {
+  display: grid;
+  grid-template-columns: 82px minmax(30px, 1fr) 26px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.driver-cars a {
+  font-weight: 600;
+  color: var(--accent);
+}
+.driver-bar {
+  height: 8px;
+  border-radius: 5px;
+  background: var(--surface2);
+  overflow: hidden;
+}
+.driver-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background: var(--chart-7);
+}
+.driver-cars b {
+  text-align: right;
+}
+.driver-details {
+  margin: 0;
+}
+.driver-details > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+.driver-details > div:first-child {
+  border-top: 0;
+}
+.driver-details dt {
+  color: var(--ink3);
+}
+.driver-details dd {
+  margin: 0;
+  text-align: right;
+}
+.driver-details a {
+  color: var(--accent);
+  font-weight: 600;
+}
+@media (max-width: 1000px) {
+  .driver-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.driver-head-actions .btn-ghost {
+  padding: 8px 14px;
+  font-size: 13px;
+  white-space: nowrap;
+  text-decoration: none;
+}

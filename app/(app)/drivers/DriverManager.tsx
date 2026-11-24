@@ -1,13 +1,18 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Badge } from '@/components/ui'
 import { kes } from '@/lib/format'
 import DataTable from '@/components/DataTable'
 import type { Driver, Vehicle } from '@/lib/types'
 import { saveDriver, deleteDriver } from './actions'
 
-export default function DriverManager({ drivers, vehicles, canFinance }: { drivers: Driver[]; vehicles: Vehicle[]; canFinance: boolean }) {
+export default function DriverManager({ drivers, vehicles, canFinance, tripCounts, monthLabel }: {
+  drivers: Driver[]; vehicles: Vehicle[]; canFinance: boolean
+  /** Completed trips per driver in the month shown, or null when the role may not see trips. */
+  tripCounts: Record<string, number> | null; monthLabel: string
+}) {
   const [editing, setEditing] = useState<Driver | 'new' | null>(null)
   const plateOf = (id: string | null) => vehicles.find((v) => v.id === id)?.plate ?? '—'
 
@@ -61,10 +66,11 @@ export default function DriverManager({ drivers, vehicles, canFinance }: { drive
       )}
 
       <DataTable rows={drivers} rowKey={(d) => d.id} minWidth={680} empty="No drivers yet." columns={[
-        { label: 'Name', role: 'primary', render: (d: Driver) => <strong>{d.name}</strong> },
+        { label: 'Name', role: 'primary', render: (d: Driver) => tripCounts ? <Link href={`/drivers/${encodeURIComponent(d.id)}`} className="driver-record-link"><strong>{d.name}</strong></Link> : <strong>{d.name}</strong> },
         { label: 'Phone', render: (d: Driver) => d.phone ?? '—' },
         { label: 'Licence', render: (d: Driver) => d.license_no ?? '—' },
         { label: 'Usual vehicle', render: (d: Driver) => plateOf(d.default_vehicle_id) },
+        ...(tripCounts ? [{ label: `Trips, ${monthLabel}`, align: 'right' as const, render: (d: Driver) => tripCounts[d.id] ?? 0 }] : []),
         ...(canFinance ? [{ label: 'Monthly wage', align: 'right' as const, render: (d: Driver) => (d.monthly_wage > 0 ? kes(d.monthly_wage) : <span style={{ color: 'var(--ink3)' }}>—</span>) }] : []),
         { label: 'Status', render: (d: Driver) => <Badge tone={d.status === 'active' ? 'green' : 'neutral'}>{d.status}</Badge> },
         { label: '', role: 'actions', render: (d: Driver) => (
