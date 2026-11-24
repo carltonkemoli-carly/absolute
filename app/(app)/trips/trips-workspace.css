@@ -261,6 +261,15 @@
   margin: 5px 0 0;
   font-weight: 600;
 }
+.tw-quote-draft-note {
+  padding: 12px 15px;
+  margin: 0 0 20px;
+  border-left: 3px solid var(--accent);
+  background: var(--surface2);
+  color: var(--ink2);
+  font-size: 12px;
+  line-height: 1.6;
+}
 .tw-record-type {
   font-size: 11px;
   color: var(--ink2);

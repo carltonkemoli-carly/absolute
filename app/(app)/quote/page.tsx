@@ -2,6 +2,8 @@ import { PageHeader } from '@/components/ui'
 import { requireProfile } from '@/lib/auth'
 import { listRoutes, getCompany } from '@/lib/db'
 import QuoteCalculator, { type QuoteRoute } from './QuoteCalculator'
+import { nairobiToday } from '@/lib/nairobi-date'
+import './quote.css'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,7 +19,7 @@ export default async function QuotePage() {
   return (
     <>
       <PageHeader title="Quote" />
-      <QuoteCalculator routes={qr} companyName={company.name} />
+      <QuoteCalculator routes={qr} companyName={company.name} today={nairobiToday()} />
     </>
   )
 }

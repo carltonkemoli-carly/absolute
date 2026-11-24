@@ -1,6 +1,6 @@
 import { PageHeader } from '@/components/ui'
 import MonthNav from '@/components/MonthNav'
-import { listTrips, listContractors, listOrganizations, listVehicles, listDrivers } from '@/lib/db'
+import { listTrips, listContractors, listOrganizations, listVehicles, listDrivers, listRoutes } from '@/lib/db'
 import { monthRange, kes } from '@/lib/format'
 import { nairobiToday } from '@/lib/nairobi-date'
 import { requireOperations } from '@/lib/auth'
@@ -9,6 +9,7 @@ import ExcelImport from '@/components/ExcelImport'
 import type { FieldSpec } from '@/lib/import-types'
 import TripManager from './TripManager'
 import { importTrips } from './import-actions'
+import { parseQuoteDraft } from '@/lib/quote-draft'
 
 const TRIP_SPEC: FieldSpec[] = [
   { key: 'trip_date', label: 'Date', keywords: ['date'], required: true },
@@ -27,17 +28,18 @@ const TRIP_SPEC: FieldSpec[] = [
 
 export default async function TripsPage({
   searchParams,
-}: { searchParams: Promise<{ y?: string; m?: string }> }) {
+}: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const profile = await requireOperations()
   const sp = await searchParams
-  const { year, month } = await stickyPeriod(sp)
+  const { year, month } = await stickyPeriod({ y: typeof sp.y === 'string' ? sp.y : undefined, m: typeof sp.m === 'string' ? sp.m : undefined })
   const { start, end } = monthRange(year, month)
   const today = nairobiToday()
   const defaultDate = today >= start && today <= end ? today : start
 
-  const [rows, contractors, organizations, vehicles, drivers] = await Promise.all([
-    listTrips(start, end), listContractors(), listOrganizations(), listVehicles(), listDrivers(),
+  const [rows, contractors, organizations, vehicles, drivers, quoteRoutes] = await Promise.all([
+    listTrips(start, end), listContractors(), listOrganizations(), listVehicles(), listDrivers(), sp.quote === '1' ? listRoutes() : Promise.resolve([]),
   ])
+  const quoteDraft = parseQuoteDraft(sp, quoteRoutes)
   const completed = rows.filter((t) => t.status === 'completed')
   const total = completed.reduce((s, t) => s + Number(t.amount), 0)
 
@@ -70,6 +72,7 @@ export default async function TripsPage({
         defaultDate={defaultDate}
         lookups={{ contractors, organizations, vehicles, drivers }}
         storageKey={`trip-views:${profile.id}`}
+        quoteDraft={quoteDraft}
       />
     </>
   )

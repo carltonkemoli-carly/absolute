@@ -76,10 +76,12 @@ export async function saveTrip(formData: FormData) {
     amount: num(formData.get('amount')),
     hire_cost: num(formData.get('hire_cost')),
     payment: String(formData.get('payment') || 'account'),
-    status: String(formData.get('status') || 'completed'),
+    status: String(formData.get('status') || 'booked'),
   }
-  if (!row.trip_date || !row.client_name) return
+  if (!isCalendarDate(row.trip_date) || !row.client_name || row.client_name.length > 120) throw new Error('Enter a valid trip date and client name.')
   if (!TRIP_STATUSES.includes(row.status)) throw new Error('Choose a valid trip status.')
+  if (!['account', 'cash'].includes(row.payment)) throw new Error('Choose a valid payment type.')
+  if (row.express_charges > row.amount) throw new Error('Expressway tolls cannot exceed the trip amount.')
   const result = await saveRecord('trips', row, id || null)
   if (result.error) throw new Error(result.error)
   revalidatePath('/trips')
@@ -99,6 +101,16 @@ function emptyToNull(v: FormDataEntryValue | null): string | null {
   return s === '' ? null : s
 }
 function num(v: FormDataEntryValue | null): number {
-  const n = Number(String(v ?? '').trim())
-  return Number.isFinite(n) ? n : 0
+  const raw = String(v ?? '').trim()
+  if (!raw) return 0
+  const n = Number(raw)
+  if (!Number.isFinite(n) || n < 0 || n > 100_000_000) throw new Error('Enter a valid non-negative amount in KES.')
+  return n
+}
+
+function isCalendarDate(value: string): boolean {
+  if (!/^20\d{2}-\d{2}-\d{2}$/.test(value)) return false
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
 }
