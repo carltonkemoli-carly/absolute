@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { kes } from '@/lib/format'
+import { quoteDraftHref } from '@/lib/quote-draft'
 
 export type QuoteRoute = { id: string; pickup: string; dropoff: string; saloon: number; wagon: number; van: number; bus: number }
 const CLASSES = [
@@ -14,23 +15,25 @@ const CLASSES = [
 type ClassKey = typeof CLASSES[number]['key']
 const TOLLS = [0, 250, 330, 410]
 
-export default function QuoteCalculator({ routes, companyName }: { routes: QuoteRoute[]; companyName: string }) {
+export default function QuoteCalculator({ routes, companyName, today }: { routes: QuoteRoute[]; companyName: string; today: string }) {
   const [routeId, setRouteId] = useState(routes[0]?.id ?? '')
   const [cls, setCls] = useState<ClassKey>('saloon')
   const [toll, setToll] = useState(0)
   const [extras, setExtras] = useState(0)
   const [extraLabel, setExtraLabel] = useState('')
+  const [travelDate, setTravelDate] = useState('')
 
   const route = useMemo(() => routes.find((r) => r.id === routeId) ?? null, [routes, routeId])
   const base = route ? route[cls] : 0
   const total = base + toll + extras
   const routeLabel = route ? `${route.pickup} → ${route.dropoff}` : ''
+  const draftHref = route && base > 0 ? quoteDraftHref({ routeId: route.id, vehicleClass: cls, toll, extras, date: travelDate }) : null
 
   const quoteText = route
-    ? `${companyName}\nQuote: ${routeLabel}\nVehicle: ${CLASSES.find((c) => c.key === cls)!.label}\nFare: ${kes(base)}${toll ? `\nExpressway: ${kes(toll)}` : ''}${extras ? `\n${extraLabel || 'Extra'}: ${kes(extras)}` : ''}\nTotal: ${kes(total)}`
+    ? `${companyName}\nRate-card estimate: ${routeLabel}\nVehicle class: ${CLASSES.find((c) => c.key === cls)!.label}\nFare: ${kes(base)}${toll ? `\nExpressway: ${kes(toll)}` : ''}${extras ? `\n${extraLabel || 'Extra'}: ${kes(extras)}` : ''}\nEstimate: ${kes(total)}\nConfirm the current rate, vehicle and availability before booking.`
     : ''
 
-  function copy() { navigator.clipboard?.writeText(quoteText); toast.success('Quote copied') }
+  async function copy() { if (!base) return; try { await navigator.clipboard.writeText(quoteText); toast.success('Estimate copied') } catch { toast.error('Could not copy the estimate') } }
 
   if (routes.length === 0) {
     return <div className="card" style={{ padding: 24, color: 'var(--ink3)' }}>No routes on your rate card yet. Add some on Routes &amp; rates to quote fares.</div>
@@ -78,7 +81,7 @@ export default function QuoteCalculator({ routes, companyName }: { routes: Quote
 
         <div className="grid-2" style={{ gap: 10 }}>
           <label className="field"><span>Extra charge (KES)</span>
-            <input type="number" className="input" value={extras || ''} onChange={(e) => setExtras(Number(e.target.value) || 0)} placeholder="e.g. waiting" />
+            <input type="number" min="0" max="1000000" step="1" className="input" value={extras || ''} onChange={(e) => setExtras(Math.max(0, Math.min(1_000_000, Number(e.target.value) || 0)))} placeholder="e.g. waiting" />
           </label>
           <label className="field"><span>Extra label</span>
             <input className="input" value={extraLabel} onChange={(e) => setExtraLabel(e.target.value)} placeholder="Waiting time" />
@@ -88,7 +91,7 @@ export default function QuoteCalculator({ routes, companyName }: { routes: Quote
 
       {/* Quote output */}
       <div className="card" style={{ padding: 22 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ink3)' }}>Quote</div>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ink3)' }}>Rate-card estimate</div>
         <div className="font-display" style={{ fontSize: 16, fontWeight: 700, margin: '6px 0 14px' }}>{routeLabel}</div>
 
         <Line label={`Fare · ${CLASSES.find((c) => c.key === cls)!.label}`} value={kes(base)} />
@@ -100,9 +103,16 @@ export default function QuoteCalculator({ routes, companyName }: { routes: Quote
         </div>
         {base <= 0 && <p style={{ fontSize: 12.5, color: 'var(--danger)', marginTop: 10 }}>No rate set for this class on this route. Pick another class or add the rate on Routes & rates.</p>}
 
+        <div className="quote-booking-step">
+          <div><span>01 / ESTIMATE</span><span>02 / BOOKING</span><span>03 / DISPATCH</span></div>
+          <label className="field"><span>Travel date for this booking</span><input className="input" type="date" min={today} value={travelDate} onChange={(event) => setTravelDate(event.target.value)} /></label>
+          {draftHref ? <a className="btn-primary quote-booking-link" href={draftHref}>Continue as a booking <span aria-hidden="true">→</span></a> : <p className="quote-booking-hint">Choose a travel date and a route with a fare to continue.</p>}
+          <p className="quote-booking-note">Opens a trip for review. It starts as booked and does not count as earned revenue until completed.</p>
+        </div>
+
         <div style={{ display: 'flex', gap: 8, marginTop: 18, flexWrap: 'wrap' }}>
-          <button className="btn-primary" style={{ padding: '9px 16px', fontSize: 14, cursor: 'pointer' }} onClick={copy}>Copy quote</button>
-          <a className="btn-ghost" style={{ padding: '9px 16px', fontSize: 14, cursor: 'pointer' }} href={`https://wa.me/?text=${encodeURIComponent(quoteText)}`} target="_blank" rel="noopener noreferrer">Share on WhatsApp</a>
+          <button className="btn-ghost" style={{ padding: '9px 16px', fontSize: 14, cursor: 'pointer' }} onClick={copy} disabled={base <= 0}>Copy estimate</button>
+          {base > 0 && <a className="btn-ghost" style={{ padding: '9px 16px', fontSize: 14, cursor: 'pointer' }} href={`https://wa.me/?text=${encodeURIComponent(quoteText)}`} target="_blank" rel="noopener noreferrer">Share estimate</a>}
         </div>
       </div>
     </div>

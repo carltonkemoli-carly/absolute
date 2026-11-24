@@ -7,6 +7,7 @@ import TripViewTools from '@/components/TripViewTools'
 import DataTable, { CARD_ONLY, ROW_SELECTED, type Column } from '@/components/DataTable'
 import { EMPTY_TRIP_FILTERS, filterTrips, TRIP_STATUS_LABELS, type TripFilterState } from '@/lib/trip-filters'
 import { kes, kesPlain, fmtDate } from '@/lib/format'
+import type { BookingDraft } from '@/lib/quote-draft'
 import type { Contractor, Driver, Organization, Trip, TripStatus, Vehicle } from '@/lib/types'
 import { saveTrip, deleteTrip, attributeTrip, bulkAssignTrips, bulkCompleteTrips } from './actions'
 import './trips-workspace.css'
@@ -29,9 +30,9 @@ const STATUS_TONE: Record<TripStatus, 'green' | 'blue' | 'gold' | 'red'> = {
 }
 
 export default function TripManager({
-  trips, lookups, defaultDate, storageKey,
-}: { trips: Trip[]; lookups: Lookups; defaultDate: string; storageKey?: string }) {
-  const [editing, setEditing] = useState<Trip | 'new' | null>(null)
+  trips, lookups, defaultDate, storageKey, quoteDraft,
+}: { trips: Trip[]; lookups: Lookups; defaultDate: string; storageKey?: string; quoteDraft?: BookingDraft | null }) {
+  const [editing, setEditing] = useState<Trip | 'new' | null>(quoteDraft ? 'new' : null)
   const [filters, setFilters] = useState<TripFilterState>({ ...EMPTY_TRIP_FILTERS })
   const [filtersOpen, setFiltersOpen] = useState(false) // phone only; on a laptop the filters are always shown
   const [page, setPage] = useState(1)
@@ -190,6 +191,7 @@ export default function TripManager({
           trip={editing === 'new' ? null : editing}
           lookups={lookups}
           defaultDate={defaultDate}
+          draft={editing === 'new' ? quoteDraft : null}
           onDone={() => setEditing(null)}
         />
       )}
@@ -373,7 +375,7 @@ function isRecent(createdAt: string | null | undefined): boolean {
   return Number.isFinite(t) && Date.now() - t < 12 * 60 * 60 * 1000
 }
 
-function TripForm({ trip, lookups, defaultDate, onDone }: { trip: Trip | null; lookups: Lookups; defaultDate: string; onDone: () => void }) {
+function TripForm({ trip, lookups, defaultDate, draft, onDone }: { trip: Trip | null; lookups: Lookups; defaultDate: string; draft?: BookingDraft | null; onDone: () => void }) {
   const { contractors, organizations, vehicles, drivers } = lookups
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState('')
@@ -381,7 +383,8 @@ function TripForm({ trip, lookups, defaultDate, onDone }: { trip: Trip | null; l
   useEffect(() => { panel.current?.querySelector<HTMLInputElement>('[name="trip_date"]')?.focus() }, [])
   return (
     <div ref={panel} className="card tw-record-form">
-      <div className="tw-record-form-heading"><div><span>{trip ? 'Edit trip' : 'New trip'}</span><h2>{trip ? trip.client_name : 'Trip details'}</h2></div></div>
+      <div className="tw-record-form-heading"><div><span>{trip ? 'Edit trip' : draft ? 'Rate card draft' : 'New trip'}</span><h2>{trip ? trip.client_name : draft ? 'Review the booking' : 'Trip details'}</h2></div></div>
+      {draft && <p className="tw-quote-draft-note">The route and amount came from the current rate card. Add the client, check the fare and vehicle availability, then save. The trip starts as booked.</p>}
       <form onSubmit={event => {
         event.preventDefault()
         if (pending) return
@@ -397,7 +400,7 @@ function TripForm({ trip, lookups, defaultDate, onDone }: { trip: Trip | null; l
         {trip && <input type="hidden" name="id" value={trip.id} />}
         <div className="grid-form">
           <label className="field"><span>Date *</span>
-            <input name="trip_date" type="date" className="input" required defaultValue={trip?.trip_date ?? defaultDate} />
+            <input name="trip_date" type="date" className="input" required defaultValue={trip?.trip_date ?? draft?.date ?? defaultDate} />
           </label>
           <label className="field tw-client-field"><span>Client name *</span>
             <input name="client_name" className="input" required defaultValue={trip?.client_name ?? ''} />
@@ -406,17 +409,17 @@ function TripForm({ trip, lookups, defaultDate, onDone }: { trip: Trip | null; l
             <input name="slip_no" className="input" defaultValue={trip?.slip_no ?? ''} />
           </label>
           <label className="field"><span>From</span>
-            <input name="pickup" className="input" defaultValue={trip?.pickup ?? ''} placeholder="JKIA" />
+            <input name="pickup" className="input" defaultValue={trip?.pickup ?? draft?.pickup ?? ''} placeholder="JKIA" />
           </label>
           <label className="field"><span>Pickup time</span>
             <input name="pickup_time" type="time" className="input" defaultValue={trip?.pickup_time ?? ''} />
           </label>
           <label className="field"><span>To</span>
-            <input name="dropoff" className="input" defaultValue={trip?.dropoff ?? ''} placeholder="Westlands" />
+            <input name="dropoff" className="input" defaultValue={trip?.dropoff ?? draft?.dropoff ?? ''} placeholder="Westlands" />
           </label>
           {/* Only completed trips count as revenue, so the status is a choice, not a hidden default. */}
           <label className="field"><span>Status</span>
-            <select name="status" className="input" defaultValue={trip?.status ?? 'completed'}>
+            <select name="status" className="input" defaultValue={trip?.status ?? 'booked'}>
               {Object.entries(TRIP_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </label>
@@ -441,13 +444,13 @@ function TripForm({ trip, lookups, defaultDate, onDone }: { trip: Trip | null; l
             </select>
           </label>
           <label className="field"><span>Amount (KES) *</span>
-            <input name="amount" type="number" step="1" className="input" required defaultValue={trip?.amount ?? ''} />
+            <input name="amount" type="number" step="1" min="0" className="input" required defaultValue={trip?.amount ?? draft?.amount ?? ''} />
           </label>
           <label className="field"><span>Expressway tolls (KES)</span>
-            <input name="express_charges" type="number" step="1" className="input" defaultValue={trip?.express_charges ?? 0} />
+            <input name="express_charges" type="number" step="1" min="0" className="input" defaultValue={trip?.express_charges ?? draft?.toll ?? 0} />
           </label>
           <label className="field"><span>Hire cost (KES, casual hire)</span>
-            <input name="hire_cost" type="number" step="1" className="input" defaultValue={trip?.hire_cost || ''} placeholder="paid to vehicle owner" />
+            <input name="hire_cost" type="number" step="1" min="0" className="input" defaultValue={trip?.hire_cost || ''} placeholder="paid to vehicle owner" />
           </label>
           <label className="field"><span>Payment</span>
             <select name="payment" className="input" defaultValue={trip?.payment ?? 'account'}>
@@ -458,7 +461,7 @@ function TripForm({ trip, lookups, defaultDate, onDone }: { trip: Trip | null; l
             <input name="voucher_no" className="input" defaultValue={trip?.voucher_no ?? ''} />
           </label>
           <label className="field"><span>Notes</span>
-            <input name="notes" className="input" defaultValue={trip?.notes ?? ''} placeholder="Via Expressway" />
+            <input name="notes" className="input" defaultValue={trip?.notes ?? draft?.notes ?? ''} placeholder="Via Expressway" />
           </label>
         </div>
         {error && <p className="tw-form-error" role="alert">{error}</p>}
